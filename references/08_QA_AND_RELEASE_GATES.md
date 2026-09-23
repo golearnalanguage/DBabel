@@ -1,4 +1,4 @@
-# QA and release gates
+# QA and delivery gates
 
 Required checks as applicable:
 
@@ -20,3 +20,8 @@ Required checks as applicable:
 
 ## Auto-repair gate
 Automatic repair is permitted only for high-confidence, adequately evidenced, non-conflicting changes within a supported format and with explicit repair authorization.
+
+## Delivery outcome
+Return the final report after repair and round-trip QA. Identify partial coverage
+and checks that could not run. Failed output QA requires FAILED status; an
+unverified output must not be described as ready for use.

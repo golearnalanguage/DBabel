@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 — 2026-09-23
+
+- Added installation and invocation instructions for Codex, Claude Code, and other agents, with an accompanying Chinese guide.
+- Moved Skill version metadata into standard frontmatter and added Codex display metadata.
+- Closed the review workflow with translation, coverage, QA feedback, and final reporting after repair verification.
+- Connected findings to source records and added repair outcomes and completion status to the report contract. Version 1.2 reports require migration to the 1.3 schema.
+- Added offline report validation, regression tests, synthetic workflow fixtures, and macOS/Linux CI.
+- Removed the publishing checklist and refreshed the package manifest.
+
 ## 1.2.0
 - Prepared the repository for public GitHub release.
 - Adopted PolyForm Noncommercial License 1.0.0 for noncommercial use.

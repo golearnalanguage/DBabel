@@ -17,3 +17,12 @@ A terminology-related proposal should state:
 
 ## Pull requests
 Keep methodology changes separate from any optional dataset work. DBabel core must remain usable without a terminology database.
+
+## Validate changes
+
+Install `requirements-dev.txt` in a virtual environment. Run
+`python scripts/check_package.py` and `python -m unittest discover -s tests -v`.
+After intentional edits, regenerate checksums with
+`python scripts/check_package.py --write-manifest` and re-run validation.
+For workflow changes, also exercise a relevant case from
+[behavioral evaluation](tests/BEHAVIORAL_EVAL.md) and record the observed result.

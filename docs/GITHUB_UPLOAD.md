@@ -48,7 +48,3 @@ If the remote repository already contains an automatically created README or lic
 - check the Issues templates;
 - create a `v1.2.0` release/tag;
 - attach the release ZIP and SHA-256 file as release assets if desired.
-
-## 5. Final public check
-
-Run through `docs/PUBLISHING_CHECKLIST.md` before announcing the repository.

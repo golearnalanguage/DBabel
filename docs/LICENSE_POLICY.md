@@ -1,6 +1,6 @@
 # License policy
 
-DBabel v1.2.0 is distributed under the **PolyForm Noncommercial License 1.0.0**.
+DBabel is distributed under the **PolyForm Noncommercial License 1.0.0**.
 
 Official terms: https://polyformproject.org/licenses/noncommercial/1.0.0
 

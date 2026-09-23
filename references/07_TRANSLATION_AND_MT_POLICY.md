@@ -22,3 +22,10 @@ Use for preferred domain terminology where inflection, syntax, context, or styli
 
 ## Provider behavior
 Do not assume a provider's glossary feature guarantees semantic correctness. Always validate output after MT.
+
+## Alignment and unresolved terms
+Align source and target by content and location. Check omissions, additions,
+numbers, and protected tokens even when paragraphs or slides were merged or split.
+Preserve unresolved high-risk wording with review notes. If translation produces a
+file, reopen it and perform applicable structural/layout checks before delivery;
+record those checks under report QA.

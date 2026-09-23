@@ -34,3 +34,16 @@ The decision vocabulary is:
 
 If repository instructions conflict, `SKILL.md` is authoritative for
 DBabel terminology workflow behavior.
+
+## Repository maintenance
+
+For changes to the Skill, schemas, or validation tools, run:
+
+```bash
+python scripts/check_package.py
+python -m unittest discover -s tests -v
+```
+
+Install validation dependencies from `requirements-dev.txt`. After intentional
+package edits, regenerate `MANIFEST.sha256` with
+`python scripts/check_package.py --write-manifest`, then run the checks again.

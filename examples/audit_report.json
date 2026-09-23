@@ -1,0 +1,135 @@
+{
+  "dbabel_version": "1.3.0",
+  "mode": "AUDIT",
+  "status": "COMPLETED_WITH_REVIEW",
+  "document": "tests/fixtures/manual.md",
+  "scope_summary": "Synthetic Product A 3 operator note and Product B section.",
+  "coverage": {
+    "status": "FULL",
+    "inspected": [
+      "manual.md lines 1–11"
+    ],
+    "uninspected": []
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "location": "manual.md:3",
+      "original": "同步节点",
+      "text_role": "prose",
+      "classification": "VENDOR_CONCEPT",
+      "vendor": "Example vendor A",
+      "product": "Product A",
+      "version": "3",
+      "concept_interpretation": "Recorded position updated after a checkpoint",
+      "decision": "REPLACE",
+      "recommendation": "同步点",
+      "reason": "The approved project glossary names this position 同步点.",
+      "confidence": "HIGH",
+      "protected": false,
+      "verification_required": true,
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "F2",
+      "location": "manual.md:5",
+      "original": "EXAMPLE_MODE",
+      "text_role": "inline code",
+      "classification": "SQL_PARAM_IDENTIFIER",
+      "decision": "PROTECT",
+      "reason": "Literal configuration key.",
+      "confidence": "HIGH",
+      "protected": true,
+      "verification_required": false,
+      "evidence_refs": []
+    },
+    {
+      "id": "F3",
+      "location": "manual.md:7",
+      "original": "Product A is 40% faster than Product B.",
+      "text_role": "prose",
+      "classification": "TECHNICAL_CLAIM",
+      "decision": "OUT_OF_SCOPE_CLAIM",
+      "reason": "A performance comparison needs separate benchmark evidence.",
+      "confidence": "REVIEW_REQUIRED",
+      "protected": false,
+      "verification_required": false,
+      "evidence_refs": [],
+      "technical_claim": true,
+      "next_action": "Request benchmark methodology and measurements if claim verification is needed."
+    },
+    {
+      "id": "F4",
+      "location": "manual.md:11",
+      "original": "relay fabric",
+      "text_role": "prose",
+      "classification": "AMBIGUOUS_HIGH_RISK",
+      "product": "Product B",
+      "decision": "REVIEW",
+      "reason": "The supplied glossary covers only Product A; Product B version and definition are missing.",
+      "confidence": "REVIEW_REQUIRED",
+      "protected": false,
+      "verification_required": true,
+      "evidence_refs": [],
+      "next_action": "Obtain the Product B version and an applicable manual."
+    }
+  ],
+  "sources": [
+    {
+      "id": "E1",
+      "source_title": "Approved project glossary (synthetic fixture)",
+      "organization": "Example project team",
+      "source_type": "user_supplied_approved_resource",
+      "locator": "tests/fixtures/project-glossary.md:7-11",
+      "product": "Product A",
+      "version": "3",
+      "retrieved_at": "2026-09-23",
+      "support_note": "The approved wording for the recorded checkpoint position is 同步点; the glossary excludes Product B and performance claims.",
+      "source_opened": true,
+      "authority_match": "HIGH",
+      "context_match": "HIGH",
+      "version_match": "EXACT",
+      "evidence_state": "CURRENT"
+    }
+  ],
+  "qa": {
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "scope_and_evidence",
+        "status": "PASS",
+        "note": "Product A rule used only in its scope; Product B remains unresolved."
+      },
+      {
+        "name": "protected_tokens",
+        "status": "PASS",
+        "note": "Configuration key and path remain unchanged; no file was edited."
+      }
+    ]
+  },
+  "repair": {
+    "status": "NOT_REQUESTED",
+    "authorized": false,
+    "changes": [],
+    "round_trip_qa": {
+      "status": "NOT_RUN",
+      "checks": [
+        {
+          "name": "reopen_output",
+          "status": "NOT_APPLICABLE",
+          "note": "Audit only."
+        }
+      ]
+    },
+    "note": "No repair was requested."
+  },
+  "limitations": [
+    "No evidence was supplied for the performance claim or Product B term."
+  ],
+  "next_actions": [
+    "Obtain Product B version and documentation.",
+    "Route the performance comparison to benchmark verification if requested."
+  ]
+}

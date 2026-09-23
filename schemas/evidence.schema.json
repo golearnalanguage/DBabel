@@ -1,22 +1,111 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"DBabel Evidence Record",
-  "type":"object",
-  "required":["source_title","source_type","locator","retrieved_at","evidence_state"],
-  "properties":{
-    "source_title":{"type":"string","minLength":1},
-    "organization":{"type":"string"},
-    "source_type":{"type":"string"},
-    "locator":{"type":"string","minLength":1},
-    "product":{"type":"string"},
-    "version":{"type":"string"},
-    "publication_or_update_date":{"type":"string"},
-    "retrieved_at":{"type":"string"},
-    "support_note":{"type":"string"},
-    "authority_match":{"type":"string","enum":["HIGH","MEDIUM","LOW","UNKNOWN"]},
-    "context_match":{"type":"string","enum":["HIGH","MEDIUM","LOW","UNKNOWN"]},
-    "version_match":{"type":"string","enum":["EXACT","ADJACENT","UNKNOWN","NOT_APPLICABLE"]},
-    "evidence_state":{"type":"string","enum":["CURRENT","STALE","CONFLICTING","INSUFFICIENT"]}
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Evidence Record",
+  "type": "object",
+  "required": [
+    "source_title",
+    "source_type",
+    "locator",
+    "retrieved_at",
+    "evidence_state",
+    "id",
+    "source_opened",
+    "support_note",
+    "authority_match",
+    "context_match",
+    "version_match"
+  ],
+  "properties": {
+    "source_title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "organization": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "standards_specification",
+        "official_vendor_same_product_version",
+        "official_vendor_adjacent_version",
+        "user_supplied_approved_resource",
+        "reputable_terminology_reference",
+        "academic_reference",
+        "community_blog_forum_social",
+        "search_snippet",
+        "mt_llm_output"
+      ]
+    },
+    "locator": {
+      "type": "string",
+      "minLength": 1
+    },
+    "product": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "publication_or_update_date": {
+      "type": "string"
+    },
+    "retrieved_at": {
+      "type": "string",
+      "minLength": 1,
+      "format": "date"
+    },
+    "support_note": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_match": {
+      "type": "string",
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "UNKNOWN"
+      ]
+    },
+    "context_match": {
+      "type": "string",
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "UNKNOWN"
+      ]
+    },
+    "version_match": {
+      "type": "string",
+      "enum": [
+        "EXACT",
+        "ADJACENT",
+        "UNKNOWN",
+        "NOT_APPLICABLE"
+      ]
+    },
+    "evidence_state": {
+      "type": "string",
+      "enum": [
+        "CURRENT",
+        "STALE",
+        "CONFLICTING",
+        "INSUFFICIENT"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "source_opened": {
+      "type": "boolean"
+    },
+    "vendor": {
+      "type": "string",
+      "minLength": 1
+    }
   },
-  "additionalProperties":false
+  "additionalProperties": false
 }

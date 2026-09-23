@@ -1,151 +1,168 @@
 # DBabel
 
-**Evidence-driven database terminology review workflows for humans and AI agents.**
+**Database terminology review for AI agents.**
 
-> Making databases speak the same language — without pretending they use the same words.
+DBabel helps translators, technical writers, and database teams use the right term
+for the right product, version, and context. Its name combines **DB** (Database)
+with **Babel** (the Tower of Babel), reflecting the work of connecting languages.
 
-DBabel is a public **Agent Skill and methodology package** for database-industry terminology lookup, document auditing, bilingual review, terminology-aware translation, and safe correction.
+Use it to check a term, review a document or translation, translate with consistent
+terminology, or produce a corrected copy. Each material change is tied to its
+location and supporting evidence, so you can see what changed and why.
 
-DBabel does **not** ship a database terminology dataset. It defines how an Agent should identify terminology, resolve vendor/product/version context, search authoritative sources, assess evidence, make review decisions, and report uncertainty.
-
-## What DBabel is
-
-DBabel is a workflow, evidence policy, and review contract. It tells an Agent:
-
-- how to detect terminology candidates;
-- how to distinguish generic terminology from vendor/product terminology;
-- how to resolve vendor, product, version, and document context;
-- when and how to search authoritative sources;
-- how to open and verify the original source instead of trusting search snippets;
-- how to evaluate conflicting evidence;
-- when to `KEEP`, `REPLACE`, `PROTECT`, `REVIEW`, or route a statement to `OUT_OF_SCOPE_CLAIM`;
-- how to treat structured files and terminology-aware translation workflows;
-- how to separate terminology correctness from technical-claim correctness.
-
-## What DBabel deliberately does not ship
-
-DBabel does **not** include:
-
-- a vendor terminology database;
-- a scraped glossary corpus;
-- copyrighted vendor manuals;
-- licensed standards text;
-- a proprietary translation memory;
-- a mandatory MT/LLM provider;
-- a database server;
-- a public "approved terms" dataset.
-
-The Agent obtains terminology evidence at runtime from user-provided resources and authoritative public or authorized sources, following DBabel's research policy.
-
-## Core workflow
-
-```text
-Document / term
-      ↓
-structure + context
-      ↓
-vendor / product / version / text role
-      ↓
-candidate classification
-      ↓
-user-provided project resources (if any)
-      ↓
-authoritative source research (when required)
-      ↓
-open original source + inspect context
-      ↓
-evidence assessment
-      ↓
-KEEP | REPLACE | PROTECT | REVIEW | OUT_OF_SCOPE_CLAIM
-      ↓
-QA / optional safe repair
-```
-
-## Core principles
-
-1. **Concept first, string second.**
-2. **Product context before normalization.**
-3. **No material recommendation without traceable evidence.**
-4. **Search results discover sources; they are not the source.**
-5. **Cross-vendor similarity is not synonymy.**
-6. **The public Skill contains rules, not vendor terminology data.**
-7. **Unknown or conflicting evidence produces review, not invented certainty.**
-8. **Original files are read-only by default; repairs go to a new copy.**
-
-## Repository layout
-
-- `SKILL.md` — normative Agent instructions.
-- `references/` — detailed review, source, translation, QA, security, and evidence policies.
-- `config/` — machine-readable workflow and search policies.
-- `schemas/` — structured output contracts.
-- `templates/` — human-readable report templates.
-- `examples/` — synthetic usage examples.
-- `tests/` — logic/regression cases, not a terminology corpus.
-- `docs/` — architecture, research basis, roadmap, licensing, and publishing guidance.
-- `.github/` — issue and pull-request templates.
+[中文说明](README.zh-CN.md) · [Skill instructions](SKILL.md) · [Examples](examples/)
 
 ## How to use
 
-Give this repository or folder to an Agent or Skill loader that supports project-level instructions. Load `SKILL.md` as the primary instruction file and expose the supporting files to the Agent.
+### Codex
 
-Typical prompts:
-
-```text
-Use DBabel to audit this PPTX for database terminology. Do not rewrite the file.
-```
+Paste this into Codex to install the skill:
 
 ```text
-Use DBabel to verify this term. Identify the vendor/product/version scope and cite the authoritative source.
+$skill-installer Install DBabel from https://github.com/golearnalanguage/DBabel.
+The skill is at the repository root (path: .).
+Install it as dbabel-database-terminology-audit and include its supporting files.
 ```
+
+Once the skill appears in the skill picker, attach your document or provide its
+local path, then invoke it:
 
 ```text
-Use DBabel to translate this technical manual. Protect commands, parameters, paths, SQL, and product names; research unresolved high-risk terms before translation.
+$dbabel-database-terminology-audit Review the attached database manual's
+English terminology. Use the product and version stated in the manual.
+Return the location, suggested wording, reason, and source for each issue.
 ```
 
-## Runtime source model
+If it does not appear, start a new session or restart Codex. For manual installation
+on macOS/Linux:
 
-DBabel does not carry the answers. It carries the method.
+```bash
+mkdir -p "$HOME/.agents/skills"
+git clone https://github.com/golearnalanguage/DBabel.git \
+  "$HOME/.agents/skills/dbabel-database-terminology-audit"
+```
 
-At runtime, the Agent should prefer:
+Choose either installer or manual installation to avoid duplicate copies.
 
-1. user-approved project resources;
-2. applicable standards and specifications;
-3. same-vendor, same-product, same-version official sources;
-4. reputable technical and terminology resources;
-5. secondary sources only for discovery or clearly qualified fallback.
+### Claude Code
 
-See `references/04_SOURCE_AND_EVIDENCE_POLICY.md` and `references/13_SEARCH_AND_RETRIEVAL_STRATEGY.md`.
+Run in a terminal:
 
-## Project status
+```bash
+mkdir -p "$HOME/.claude/skills"
+git clone https://github.com/golearnalanguage/DBabel.git \
+  "$HOME/.claude/skills/dbabel-database-terminology-audit"
+```
 
-**v1.2.0 — public Agent Skill / methodology baseline.**
+Then invoke it in Claude Code, replacing the example path with your document:
 
-This release defines the workflow, search strategy, evidence model, file-handling policy, translation constraints, QA, public repository policy, and output schemas. It is not a finished CAT application and does not include a terminology dataset.
+```text
+/dbabel-database-terminology-audit Review ./docs/database-manual.md for database terminology. Report each issue with its location, reason, and source.
+```
 
-## Security and data handling
+### Other agents
 
-Do not put confidential customer material, credentials, API keys, internal URLs, proprietary glossaries, translation memories, or non-public documentation into public issues or pull requests. DBabel's research rules are designed to minimize public queries to the smallest terminology context needed.
+For an agent that can read GitHub files, paste this prompt and attach your document:
 
-See `SECURITY.md` and `references/09_GOVERNANCE_SECURITY_COPYRIGHT.md`.
+```text
+Use DBabel from https://github.com/golearnalanguage/DBabel to review the
+attached document's database terminology.
 
-## License
+First read https://raw.githubusercontent.com/golearnalanguage/DBabel/main/SKILL.md.
+Load the supporting files it references from the same repository as needed.
+Identify the product/version context, verify material changes against appropriate
+sources, and return located findings with evidence and unresolved questions.
+```
 
-DBabel is licensed for **noncommercial use** under the **PolyForm Noncommercial License 1.0.0**.
+For a local-only agent, download the [repository ZIP](https://github.com/golearnalanguage/DBabel/archive/refs/heads/main.zip),
+extract it, and give the agent the extracted folder and your document:
 
-You may use, study, modify, and redistribute DBabel for purposes permitted by that license. Commercial use is not granted by this repository.
+```text
+Read ./DBabel-main/SKILL.md and use its supporting files to review
+./docs/database-manual.md. Use the supplied glossary and manuals as evidence.
+Return located findings and identify terms that need further verification.
+```
 
-Official license terms: https://polyformproject.org/licenses/noncommercial/1.0.0
+Replace these paths with the actual extracted folder and input document.
 
-Because commercial use is restricted, DBabel should be described as **source-available / noncommercial**, not as OSI-approved open-source software.
+## Common tasks
 
-DBabel is provided on an **"AS IS"** basis as described by the license. See `DISCLAIMER.md` for additional project-specific scope notices.
+After installing in Codex, use one of these prompts. In Claude Code, replace the
+leading `$` with `/`.
 
-## Third-party material
+**Check a term**
 
-DBabel may instruct Agents to consult standards bodies and database vendors at runtime, but it does not redistribute their documentation or terminology datasets. Product names and trademarks remain the property of their respective owners. See `THIRD_PARTY_NOTICE.md`.
+```text
+$dbabel-database-terminology-audit Check whether “schema” is used correctly
+in this PostgreSQL 17 paragraph: [paste paragraph]. Explain the concept and cite
+the relevant official documentation.
+```
 
-## Contributing
+**Review a translation**
 
-Contributions to the workflow, source/research policy, schemas, file-handling rules, QA, synthetic examples, and regression tests are welcome subject to the repository license. Do not submit scraped terminology corpora, confidential project material, or copyrighted manuals.
+```text
+$dbabel-database-terminology-audit Compare the attached Chinese source and
+English translation. Check database terms, product names, abbreviations, and
+technical tokens. Report source/target locations and suggested corrections.
+```
 
-See `CONTRIBUTING.md`.
+**Translate and verify**
+
+```text
+$dbabel-database-terminology-audit Translate ./docs/manual-zh.md into English
+using ./docs/project-glossary.csv. Preserve SQL, configuration keys, paths, and
+product names. Save a new file and report terminology that still needs review.
+```
+
+**Repair a document**
+
+```text
+$dbabel-database-terminology-audit Review ./docs/database-manual.md and apply
+well-supported terminology corrections to a new copy. Reopen the result, check
+protected tokens and non-target content, and return the file and change log.
+```
+
+## How review works
+
+Context → classification → source reading → evidence assessment → decision → QA
+→ requested repair and recheck → final report.
+
+| Decision | Result |
+|---|---|
+| `KEEP` | Keep the wording in this context |
+| `REPLACE` | Recommend a specific, evidenced correction |
+| `PROTECT` | Preserve an exact name or technical token |
+| `REVIEW` | Identify the evidence or context still needed |
+| `OUT_OF_SCOPE_CLAIM` | Route a factual claim for separate verification |
+
+DBabel uses your approved references and authoritative sources retrieved during
+the task. Document coverage and repair support depend on the agent's tools.
+See [agent integration](docs/AGENT_INTEGRATION.md) and
+[capabilities](docs/AGENT_CAPABILITY_MATRIX.md).
+
+## Validation
+
+Repository version: **1.3.0**. See [changes](CHANGELOG.md) and
+[report format](references/11_OUTPUT_AND_DATA_CONTRACTS.md).
+
+To check the package and report contracts locally (Python 3.9+):
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python scripts/check_package.py
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python scripts/validate_report.py examples/audit_report.json
+```
+
+These checks cover schema validity, evidence references, repair gates, and package
+integrity. The agent still needs to read sources and inspect document output.
+See [behavioral evaluation](tests/BEHAVIORAL_EVAL.md) for end-to-end cases.
+
+## License and contributions
+
+DBabel is available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+See [contributing](CONTRIBUTING.md) for workflow, schema, and test improvements.
+
+Installation conventions follow the official [Codex skill guide](https://learn.chatgpt.com/docs/build-skills)
+and [Claude Code skill guide](https://code.claude.com/docs/en/skills).

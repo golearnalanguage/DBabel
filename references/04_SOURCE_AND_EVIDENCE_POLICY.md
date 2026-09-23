@@ -37,3 +37,9 @@ Record retrieval date and source/version metadata. A previously valid source can
 
 ## Citation discipline
 Cite/open the underlying source document, not merely a glossary aggregator or search result, when the underlying source is available. Preserve minimal evidence necessary to support the decision.
+
+## Recorded evidence
+Use unique IDs and include the source records in the report. CURRENT means
+applicable to the reviewed scope, not necessarily the newest publication.
+An approved project rule supports project wording, not a claim of official vendor
+usage. If that distinction is material, record it explicitly before adjudication.

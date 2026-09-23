@@ -16,3 +16,7 @@
 ## Notes / conflicts
 
 ## Limitations
+
+## Result
+- Completion status:
+- Next verification step, if unresolved:

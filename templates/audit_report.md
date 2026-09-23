@@ -1,18 +1,27 @@
-# DBabel terminology audit
+# DBabel terminology review
 
 ## Scope
-- File/document:
-- Mode:
-- Languages:
-- Product/version scope:
-- External research allowed:
+- Document and mode:
+- Languages and product/version:
+- References used:
+- Coverage: inspected / uninspected units
 
 ## Findings
-| Location | Original | Class | Scope | Decision | Recommendation | Confidence | Evidence |
+| ID | Location | Original | Decision | Suggested wording | Reason | Confidence | Source ID |
 |---|---|---|---|---|---|---|---|
 
-## Technical claims routed separately
+## Sources
+| ID | Source and locator | Product/version | Supporting evidence | Retrieved |
+|---|---|---|---|---|
 
-## QA summary
+## QA and repair
+- Checks performed and results:
+- Repair authorization and status:
+- Output copy:
+- Changes: finding ID, location, before/after, outcome
+- Round-trip checks:
 
-## Limitations / unresolved items
+## Result
+- Completion status:
+- Limitations:
+- Items requiring review and next actions:

@@ -1,6 +1,6 @@
 # End-to-end workflow
 
-## INTake / preflight
+## INTAKE / preflight
 Determine task mode, languages, format, document role, privacy level, vendor/product/version hints, user-provided glossaries/references, and repair authorization.
 
 ## INGEST / structure
@@ -27,14 +27,21 @@ Evaluate authority, product match, version match, context match, recency, and co
 ## ADJUDICATION
 Produce one primary decision and a confidence class. `REVIEW` is a valid successful outcome when evidence is insufficient.
 
+## TRANSLATION
+When requested, translate using resolved HARD/SOFT constraints and aligned source units. Preserve unresolved high-risk wording with review notes.
+
 ## QA
 Check consistency, cross-vendor contamination, abbreviations, casing, protected tokens, residual source-language text, and evidence coverage.
-
-## OUTPUT
-Return findings in human-readable form and, when useful, machine-readable JSON matching the schemas.
 
 ## REPAIR
 Only after authorization. Apply approved changes to a copy. Avoid unrelated rewriting.
 
 ## ROUND_TRIP_QA
 Reopen/parse the repaired file and verify structure and non-target integrity.
+
+## Feedback and OUTPUT
+Return terminology QA failures to context/evidence assessment. After repair QA
+failure, fix and recheck the copy or mark it FAILED; do not deliver it as verified.
+Return final findings, coverage, evidence, QA, repair outcomes, and next actions
+only after all requested operations have reached a reported outcome.
+Use the completion statuses in `SKILL.md` and the structured output contract.

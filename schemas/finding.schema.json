@@ -1,24 +1,211 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"DBabel Finding",
-  "type":"object",
-  "required":["location","original","classification","decision","confidence","reason"],
-  "properties":{
-    "location":{"type":"string"},
-    "original":{"type":"string"},
-    "text_role":{"type":"string"},
-    "classification":{"type":"string"},
-    "vendor":{"type":"string"},
-    "product":{"type":"string"},
-    "version":{"type":"string"},
-    "concept_interpretation":{"type":"string"},
-    "decision":{"type":"string","enum":["KEEP","REPLACE","PROTECT","REVIEW","OUT_OF_SCOPE_CLAIM"]},
-    "recommendation":{"type":"string"},
-    "reason":{"type":"string"},
-    "confidence":{"type":"string","enum":["HIGH","MEDIUM","LOW","REVIEW_REQUIRED"]},
-    "evidence_refs":{"type":"array","items":{"type":"string"}},
-    "conflicts":{"type":"array","items":{"type":"string"}},
-    "technical_claim":{"type":"boolean"}
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Finding",
+  "type": "object",
+  "required": [
+    "location",
+    "original",
+    "classification",
+    "decision",
+    "confidence",
+    "reason",
+    "id",
+    "text_role",
+    "protected",
+    "verification_required",
+    "evidence_refs"
+  ],
+  "properties": {
+    "location": {
+      "type": "string",
+      "minLength": 1
+    },
+    "original": {
+      "type": "string"
+    },
+    "text_role": {
+      "type": "string"
+    },
+    "classification": {
+      "type": "string",
+      "enum": [
+        "GENERIC_DB",
+        "STANDARD_SQL",
+        "VENDOR_CONCEPT",
+        "PRODUCT_NAME",
+        "UI_LABEL",
+        "SQL_PARAM_IDENTIFIER",
+        "COMMAND_PATH_FILENAME",
+        "ACRONYM",
+        "AMBIGUOUS_HIGH_RISK",
+        "PROTOCOL",
+        "SECURITY_TERM",
+        "CLOUD_SERVICE_NAME",
+        "MARKETING_NAME",
+        "STANDARD_GENERAL",
+        "TECHNICAL_CLAIM"
+      ]
+    },
+    "vendor": {
+      "type": "string"
+    },
+    "product": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "concept_interpretation": {
+      "type": "string"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "KEEP",
+        "REPLACE",
+        "PROTECT",
+        "REVIEW",
+        "OUT_OF_SCOPE_CLAIM"
+      ]
+    },
+    "recommendation": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "REVIEW_REQUIRED"
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+      },
+      "uniqueItems": true
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "technical_claim": {
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "protected": {
+      "type": "boolean"
+    },
+    "verification_required": {
+      "type": "boolean"
+    },
+    "next_action": {
+      "type": "string",
+      "minLength": 1
+    }
   },
-  "additionalProperties":false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "const": "REPLACE"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "recommendation"
+        ],
+        "properties": {
+          "recommendation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_refs": {
+            "minItems": 1
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "HIGH",
+              "MEDIUM"
+            ]
+          },
+          "conflicts": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "const": "REVIEW"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "next_action"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "const": "OUT_OF_SCOPE_CLAIM"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "technical_claim",
+          "next_action"
+        ],
+        "properties": {
+          "technical_claim": {
+            "const": true
+          },
+          "classification": {
+            "const": "TECHNICAL_CLAIM"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "classification": {
+            "enum": [
+              "SQL_PARAM_IDENTIFIER",
+              "COMMAND_PATH_FILENAME"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "protected": {
+            "const": true
+          }
+        }
+      }
+    }
+  ]
 }

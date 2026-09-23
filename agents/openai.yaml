@@ -1,0 +1,4 @@
+interface:
+  display_name: "DBabel"
+  short_description: "Verify database terms and review technical translations"
+  default_prompt: "Use $dbabel-database-terminology-audit to review this document's database terminology and explain any changes with supporting sources."

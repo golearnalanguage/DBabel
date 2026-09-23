@@ -1,15 +1,323 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"DBabel Audit Report",
-  "type":"object",
-  "required":["dbabel_version","mode","findings","limitations"],
-  "properties":{
-    "dbabel_version":{"type":"string"},
-    "mode":{"type":"string"},
-    "document":{"type":"string"},
-    "scope_summary":{"type":"string"},
-    "findings":{"type":"array","items":{"$ref":"finding.schema.json"}},
-    "limitations":{"type":"array","items":{"type":"string"}}
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Audit Report",
+  "type": "object",
+  "required": [
+    "dbabel_version",
+    "mode",
+    "findings",
+    "limitations",
+    "status",
+    "sources",
+    "coverage",
+    "qa",
+    "repair"
+  ],
+  "properties": {
+    "dbabel_version": {
+      "const": "1.3.0"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "LOOKUP",
+        "AUDIT",
+        "BILINGUAL_REVIEW",
+        "TRANSLATE",
+        "REPAIR",
+        "SOURCE_RESEARCH",
+        "CLAIM_ROUTE",
+        "GOVERNANCE"
+      ]
+    },
+    "document": {
+      "type": "string"
+    },
+    "scope_summary": {
+      "type": "string"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "finding.schema.json"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "secondary_modes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "LOOKUP",
+          "AUDIT",
+          "BILINGUAL_REVIEW",
+          "TRANSLATE",
+          "REPAIR",
+          "SOURCE_RESEARCH",
+          "CLAIM_ROUTE",
+          "GOVERNANCE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "COMPLETED",
+        "COMPLETED_WITH_REVIEW",
+        "BLOCKED",
+        "FAILED"
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence.schema.json"
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "status",
+        "inspected",
+        "uninspected"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "FULL",
+            "PARTIAL",
+            "NONE"
+          ]
+        },
+        "inspected": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "uninspected": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "qa": {
+      "type": "object",
+      "required": [
+        "status",
+        "checks"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PARTIAL",
+            "FAIL",
+            "NOT_RUN"
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "status",
+              "note"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_RUN",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "repair": {
+      "type": "object",
+      "required": [
+        "status",
+        "authorized",
+        "changes",
+        "round_trip_qa",
+        "note"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "NOT_REQUESTED",
+            "PROPOSED",
+            "BLOCKED",
+            "APPLIED",
+            "VERIFIED",
+            "FAILED"
+          ]
+        },
+        "authorized": {
+          "type": "boolean"
+        },
+        "output_document": {
+          "type": "string",
+          "minLength": 1
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "finding_id",
+              "location",
+              "before",
+              "after",
+              "status"
+            ],
+            "properties": {
+              "finding_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+              },
+              "location": {
+                "type": "string",
+                "minLength": 1
+              },
+              "before": {
+                "type": "string"
+              },
+              "after": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "APPLIED",
+                  "SKIPPED",
+                  "FAILED"
+                ]
+              },
+              "literal_change_authorized": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "round_trip_qa": {
+          "type": "object",
+          "required": [
+            "status",
+            "checks"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "PASS",
+                "PARTIAL",
+                "FAIL",
+                "NOT_RUN"
+              ]
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "status",
+                  "note"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "PASS",
+                      "FAIL",
+                      "NOT_RUN",
+                      "NOT_APPLICABLE"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              "minItems": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "searches": {
+      "type": "array",
+      "items": {
+        "$ref": "search_record.schema.json"
+      }
+    },
+    "glossary_candidates": {
+      "type": "array",
+      "items": {
+        "$ref": "term_candidate.schema.json"
+      }
+    },
+    "output_documents": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
   },
-  "additionalProperties":false
+  "additionalProperties": false
 }
