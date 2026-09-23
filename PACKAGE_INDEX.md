@@ -6,6 +6,7 @@
 - [Agent instructions](SKILL.md)
 - [Integration](docs/AGENT_INTEGRATION.md) · [Capabilities](docs/AGENT_CAPABILITY_MATRIX.md)
 - [Examples](examples/) · [Report templates](templates/)
+- [Technical translation review examples — Simplified Chinese](examples/technical_translation_review_examples.zh-CN.md)
 
 ## Workflow resources
 
