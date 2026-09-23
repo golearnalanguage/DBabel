@@ -16,12 +16,14 @@ location and supporting evidence, so you can see what changed and why.
 
 ### Codex
 
-Paste this into Codex to install the skill:
+Ask Codex to install the complete skill folder:
 
 ```text
-$skill-installer Install DBabel from https://github.com/golearnalanguage/DBabel.
-The skill is at the repository root (path: .).
-Install it as dbabel-database-terminology-audit and include its supporting files.
+Install DBabel as a local Codex skill by cloning the complete repository:
+https://github.com/golearnalanguage/DBabel
+Destination: ~/.agents/skills/dbabel-database-terminology-audit
+The entry point is SKILL.md at the repository root.
+Keep all supporting directories alongside it.
 ```
 
 Once the skill appears in the skill picker, attach your document or provide its
@@ -42,7 +44,7 @@ git clone https://github.com/golearnalanguage/DBabel.git \
   "$HOME/.agents/skills/dbabel-database-terminology-audit"
 ```
 
-Choose either installer or manual installation to avoid duplicate copies.
+Both methods use the same folder; you only need to install once.
 
 ### Claude Code
 

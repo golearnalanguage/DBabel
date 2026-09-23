@@ -1,6 +1,6 @@
 # Agent integration
 
-Install the repository root as a skill folder named
+Clone the complete repository as a skill folder named
 `dbabel-database-terminology-audit`. Keep the relative directory structure intact:
 `SKILL.md` loads references, configuration, schemas, and templates as needed.
 The [README](../README.md#how-to-use) contains installation and invocation prompts.
@@ -29,12 +29,11 @@ require Python. The validator does not fetch sources or edit documents.
 ## Local updates
 
 For a Git-based installation, run `git -C <installed-skill-folder> pull --ff-only`.
-For an installer copy, update through the same installer after preserving any local
-edits. Use one installation method per host to avoid duplicate skill entries.
+Preserve any local edits before updating. Keep one installed copy per host to
+avoid duplicate skill entries.
 
 ## Installation references
 
 - [Codex local skill locations and discovery](https://learn.chatgpt.com/docs/build-skills)
 - [Claude Code skills and invocation](https://code.claude.com/docs/en/skills)
-- [OpenAI skill installer examples](https://github.com/openai/skills#installing-a-skill)
 - [Anthropic skill examples](https://github.com/anthropics/skills)

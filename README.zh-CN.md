@@ -16,9 +16,9 @@ DBabel 由 **DB（Database，数据库）**与 **Babel（巴别塔）**组合而
 把下面这段发给 Codex：
 
 ```text
-$skill-installer 请安装 https://github.com/golearnalanguage/DBabel 中的 Skill。
-SKILL.md 位于仓库根目录，路径为 .，安装名称为 dbabel-database-terminology-audit。
-请同时安装仓库中的配套文件。
+请将 https://github.com/golearnalanguage/DBabel 完整克隆到
+~/.agents/skills/dbabel-database-terminology-audit，安装为本地 Codex Skill。
+入口是仓库根目录的 SKILL.md，请保留全部配套目录。
 ```
 
 安装后，在技能选择器中找到 DBabel，上传待审文档，再发送：
