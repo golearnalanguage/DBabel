@@ -2,7 +2,8 @@
 
 Clone the complete repository as a skill folder named
 `dbabel-database-terminology-audit`. Keep the relative directory structure intact:
-`SKILL.md` loads references, configuration, schemas, and templates as needed.
+`SKILL.md` loads references, worked examples, configuration, schemas, and
+templates as needed.
 The [README](../README.md#how-to-use) contains installation and invocation prompts.
 
 For a repository checkout, `AGENTS.md` directs terminology tasks to `SKILL.md`.

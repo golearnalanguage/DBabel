@@ -63,6 +63,24 @@ or withhold it as a failed draft. Final output must reflect the last QA result.
 See [execution details](references/02_END_TO_END_WORKFLOW.md) and
 [workflow configuration](config/workflow.yaml).
 
+### Worked-example guidance
+
+When a task involves technical translation or review patterns that are easy to
+misjudge from isolated wording—such as document hierarchy, execution scope,
+logical conditions, units and quantifiers, product/version distinctions,
+protected technical tokens, or structure/alignment in PDF, tables, diagrams,
+or HTML—consult the relevant section of
+[the worked examples](examples/technical_translation_review_examples.zh-CN.md).
+
+Load only the relevant section when possible. Use examples to recognize failure
+modes, choose checks, and structure findings; do not use them as evidence for
+the current document. Illustrative product names, commands, parameters,
+translations, and conclusions are case-local and must not override user-approved
+project rules, applicable standards, or same-product/version documentation.
+
+If no example materially matches the task, do not load the file merely because
+it exists.
+
 ## Context and classification
 
 Resolve the narrowest reliable scope:
