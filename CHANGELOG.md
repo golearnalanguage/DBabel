@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Removed owner-only GitHub setup, repository metadata, and pre-publication licensing guidance.
+
 ## 1.3.0 — 2026-09-23
 
 - Added installation and invocation instructions for Codex, Claude Code, and other agents, with an accompanying Chinese guide.
@@ -13,7 +17,6 @@
 - Prepared the repository for public GitHub release.
 - Adopted PolyForm Noncommercial License 1.0.0 for noncommercial use.
 - Added `LICENSE`, `NOTICE`, `DISCLAIMER.md`, and explicit license policy.
-- Added GitHub upload instructions and repository metadata guidance.
 - Added a concise project code of conduct and release notes.
 - Clarified that DBabel is source-available/noncommercial rather than OSI-approved open source.
 - Retained the data-light architecture: DBabel ships workflow and evidence rules, not a terminology database.
@@ -27,4 +30,4 @@
 - Added minimized-query privacy rules.
 - Added project-local glossary candidate lifecycle without global approval.
 - Added search-record schema and retrieval strategy.
-- Added GitHub publishing, security, licensing-decision, and third-party notices.
+- Added security and third-party notices.

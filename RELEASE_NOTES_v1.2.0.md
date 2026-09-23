@@ -20,7 +20,7 @@ DBabel is an evidence-driven Agent Skill and methodology for database terminolog
 - JSON schemas and YAML machine-readable configuration;
 - synthetic examples and regression cases;
 - GitHub issue/PR templates;
-- security, third-party, disclaimer, publishing, and licensing documentation.
+- security, third-party, disclaimer, and licensing documentation.
 
 ## Licensing
 
