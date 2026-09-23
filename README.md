@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="assets/dbabel-social-preview.png"
+       alt="DBabel — Database terminology review for AI agents."
+       width="100%">
+</p>
+
 # DBabel
 
 **Database terminology review for AI agents.**
