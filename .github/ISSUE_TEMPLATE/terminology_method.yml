@@ -1,0 +1,14 @@
+name: Terminology method issue
+description: Propose a correction to DBabel's terminology review method, not a terminology database entry.
+title: "[Method] "
+body:
+  - type: input
+    attributes: {label: Candidate term or scenario}
+  - type: input
+    attributes: {label: Vendor / product / version scope}
+  - type: textarea
+    attributes: {label: Current DBabel behavior}
+  - type: textarea
+    attributes: {label: Proposed method change}
+  - type: textarea
+    attributes: {label: Authoritative public evidence locator}

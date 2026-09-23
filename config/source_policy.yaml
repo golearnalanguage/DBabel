@@ -1,0 +1,23 @@
+version: 1.2.0
+source_classes:
+  standards_specification:
+    role: primary_when_applicable
+    examples: [ISO_IEC, IETF, W3C, Unicode, NIST]
+  official_vendor_same_product_version:
+    role: primary_for_vendor_terms
+  official_vendor_adjacent_version:
+    role: fallback_with_version_warning
+  user_supplied_approved_resource:
+    role: primary_within_declared_project_scope
+  reputable_terminology_reference:
+    role: triangulation_or_generic_terms
+  academic_reference:
+    role: concept_and_method_support
+  community_blog_forum_social:
+    role: discovery_only_by_default
+requirements:
+  open_underlying_source: true
+  record_retrieval_date: true
+  record_product_version_when_material: true
+  preserve_conflicts: true
+  do_not_majority_vote_unrelated_vendors: true

@@ -1,0 +1,9 @@
+name: Feature request
+description: Propose a DBabel capability or workflow improvement.
+title: "[Feature] "
+body:
+  - type: textarea
+    attributes: {label: Use case}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Proposed behavior}

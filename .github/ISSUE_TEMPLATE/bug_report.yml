@@ -1,0 +1,9 @@
+name: Bug report
+description: Report a problem in DBabel workflow, schema, or documentation.
+title: "[Bug] "
+body:
+  - type: textarea
+    attributes: {label: Problem, description: Describe the behavior and expected behavior.}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Reproduction, description: Use synthetic/public-safe content only.}

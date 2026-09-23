@@ -1,0 +1,5 @@
+{"id":"T001","input":"Unknown vendor-specific term with no product context","expected_decision":"REVIEW","purpose":"must not guess"}
+{"id":"T002","input":"Executable configuration key EXAMPLE_MODE","expected_decision":"PROTECT","purpose":"protected token gate"}
+{"id":"T003","input":"Search result snippet suggests a replacement but official source not opened","expected_decision":"REVIEW","purpose":"snippet is not final evidence"}
+{"id":"T004","input":"Two different product columns use similar but unverified terms","expected_decision":"REVIEW","purpose":"no cross-vendor synonym assumption"}
+{"id":"T005","input":"Sentence includes an unverified performance percentage","expected_decision":"OUT_OF_SCOPE_CLAIM","purpose":"claim boundary"}

@@ -1,0 +1,26 @@
+version: 1.2.0
+states:
+  - INTAKE
+  - PREFLIGHT
+  - INGEST
+  - STRUCTURE
+  - CONTEXT
+  - EXTRACTION
+  - CLASSIFICATION
+  - USER_RESOURCE_RESOLUTION
+  - SOURCE_RESEARCH
+  - EVIDENCE_ASSESSMENT
+  - ADJUDICATION
+  - QA
+  - OUTPUT
+  - REPAIR
+  - ROUND_TRIP_QA
+  - PROJECT_GLOSSARY_CANDIDATE
+rules:
+  ships_terminology_database: false
+  ships_vendor_corpus: false
+  original_read_only_default: true
+  search_snippet_is_final_evidence: false
+  auto_repair_requires_high_confidence: true
+  global_auto_approval_of_discovered_terms: false
+  technical_claim_verification_separate: true

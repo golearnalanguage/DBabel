@@ -1,0 +1,11 @@
+version: 1.2.0
+formats:
+  docx: {audit: structure_aware, repair: conditional}
+  pptx: {audit: structure_aware, repair: conditional_layout_check}
+  xlsx: {audit: structure_aware, repair: conditional_formula_safe}
+  xlsm: {audit: structure_aware, repair: high_risk_macro_preservation}
+  html: {audit: dom_aware, repair: conditional}
+  md: {audit: ast_aware, repair: conditional}
+  txt: {audit: text_only, repair: conditional}
+  pdf: {audit: read_only_default, repair: dedicated_workflow_required}
+  image: {audit: vision_or_ocr, repair: image_edit_workflow_required}

@@ -1,0 +1,17 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"DBabel Search Record",
+  "type":"object",
+  "required":["candidate","query","objective","status"],
+  "properties":{
+    "candidate":{"type":"string"},
+    "vendor":{"type":"string"},
+    "product":{"type":"string"},
+    "version":{"type":"string"},
+    "query":{"type":"string"},
+    "objective":{"type":"string"},
+    "status":{"type":"string","enum":["PLANNED","SEARCHED","SOURCE_OPENED","RESOLVED","UNRESOLVED"]},
+    "source_locators":{"type":"array","items":{"type":"string"}}
+  },
+  "additionalProperties":false
+}

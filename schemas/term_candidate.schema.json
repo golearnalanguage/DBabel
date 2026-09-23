@@ -1,0 +1,15 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"DBabel Project Glossary Candidate",
+  "type":"object",
+  "required":["term","status","scope"],
+  "properties":{
+    "term":{"type":"string"},
+    "proposed_target":{"type":"string"},
+    "status":{"type":"string","enum":["DISCOVERED","EVIDENCED","USER_REVIEW","PROJECT_APPROVED","REJECTED"]},
+    "scope":{"type":"object"},
+    "evidence_refs":{"type":"array","items":{"type":"string"}},
+    "notes":{"type":"string"}
+  },
+  "additionalProperties":false
+}

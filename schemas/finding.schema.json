@@ -1,0 +1,24 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"DBabel Finding",
+  "type":"object",
+  "required":["location","original","classification","decision","confidence","reason"],
+  "properties":{
+    "location":{"type":"string"},
+    "original":{"type":"string"},
+    "text_role":{"type":"string"},
+    "classification":{"type":"string"},
+    "vendor":{"type":"string"},
+    "product":{"type":"string"},
+    "version":{"type":"string"},
+    "concept_interpretation":{"type":"string"},
+    "decision":{"type":"string","enum":["KEEP","REPLACE","PROTECT","REVIEW","OUT_OF_SCOPE_CLAIM"]},
+    "recommendation":{"type":"string"},
+    "reason":{"type":"string"},
+    "confidence":{"type":"string","enum":["HIGH","MEDIUM","LOW","REVIEW_REQUIRED"]},
+    "evidence_refs":{"type":"array","items":{"type":"string"}},
+    "conflicts":{"type":"array","items":{"type":"string"}},
+    "technical_claim":{"type":"boolean"}
+  },
+  "additionalProperties":false
+}

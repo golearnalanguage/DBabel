@@ -1,0 +1,15 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"DBabel Audit Report",
+  "type":"object",
+  "required":["dbabel_version","mode","findings","limitations"],
+  "properties":{
+    "dbabel_version":{"type":"string"},
+    "mode":{"type":"string"},
+    "document":{"type":"string"},
+    "scope_summary":{"type":"string"},
+    "findings":{"type":"array","items":{"$ref":"finding.schema.json"}},
+    "limitations":{"type":"array","items":{"type":"string"}}
+  },
+  "additionalProperties":false
+}

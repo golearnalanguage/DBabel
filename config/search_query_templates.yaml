@@ -1,0 +1,11 @@
+version: 1.2.0
+templates:
+  vendor_term: '"{term}" {vendor} {product} {version} glossary documentation'
+  ui_label: '"{term}" {vendor} {product} {version} UI documentation'
+  sql_standard: '"{term}" SQL standard terminology'
+  vendor_reference: 'site:{official_domain} "{term}" {product} {version}'
+  release_history: 'site:{official_domain} "{term}" {product} release notes rename deprecated'
+privacy:
+  include_full_user_sentence: false
+  include_customer_name: false
+  include_internal_url: false
