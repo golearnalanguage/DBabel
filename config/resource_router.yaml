@@ -32,9 +32,7 @@ mode_resources:
     - references/07_TRANSLATION_AND_MT_POLICY.md
     - references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md
     - config/translation_techniques.yaml
-  REPAIR:
-    - references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md
-    - config/translation_techniques.yaml
+  REPAIR: []
   SOURCE_RESEARCH:
     - references/04_SOURCE_AND_EVIDENCE_POLICY.md
   CLAIM_ROUTE:

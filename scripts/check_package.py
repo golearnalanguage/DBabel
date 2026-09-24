@@ -348,6 +348,28 @@ def cross_contract_errors(root=ROOT):
             'config/translation_techniques.yaml: duplicate technique id'
         )
 
+    technique_id_set = set(technique_ids)
+
+    playbook_text = (
+        root / 'references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md'
+    ).read_text(encoding='utf-8')
+
+    playbook_ids = re.findall(
+        r'^###\s+\d+\.\s+`([A-Z][A-Z0-9_]+)`\s*$',
+        playbook_text,
+        re.M,
+    )
+
+    if len(playbook_ids) != len(set(playbook_ids)):
+        errors.append(
+            'references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md: duplicate technique id'
+        )
+
+    if set(playbook_ids) != technique_id_set:
+        errors.append(
+            'translation technique IDs drifted between playbook and registry'
+        )
+
     transformations = translation_registry.get(
         'transformations',
         [],
@@ -370,12 +392,25 @@ def cross_contract_errors(root=ROOT):
         if not isinstance(item, dict):
             continue
 
-        referenced_transformations.update(
+        allowed = set(
             item.get('allowed_transformations', [])
         )
-        referenced_transformations.update(
+        restricted = set(
             item.get('restricted_transformations', [])
         )
+
+        overlap = allowed & restricted
+
+        if overlap:
+            errors.append(
+                'config/translation_techniques.yaml: {} has transformations both allowed and restricted: {}'.format(
+                    item.get('id', '<unknown>'),
+                    ', '.join(sorted(overlap)),
+                )
+            )
+
+        referenced_transformations.update(allowed)
+        referenced_transformations.update(restricted)
 
     unknown_transformations = (
         referenced_transformations
@@ -424,7 +459,6 @@ def cross_contract_errors(root=ROOT):
     for mode in (
         'BILINGUAL_REVIEW',
         'TRANSLATE',
-        'REPAIR',
     ):
         routed = set(
             (resource_router.get('mode_resources') or {}).get(
@@ -442,6 +476,24 @@ def cross_contract_errors(root=ROOT):
                     ', '.join(sorted(missing)),
                 )
             )
+
+    repair_routed = set(
+        (resource_router.get('mode_resources') or {}).get(
+            'REPAIR',
+            [],
+        )
+    )
+
+    unexpected_repair_resources = (
+        translation_resources
+        & repair_routed
+    )
+
+    if unexpected_repair_resources:
+        errors.append(
+            'config/resource_router.yaml: REPAIR must not default-route translation technique resources: '
+            + ', '.join(sorted(unexpected_repair_resources))
+        )
 
 
     return errors

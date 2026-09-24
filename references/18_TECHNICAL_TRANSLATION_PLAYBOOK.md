@@ -43,20 +43,37 @@ protection, terminology, semantic, or scope constraint.
 | Technique | Category | Risk | Core rule |
 |---|---|---:|---|
 | `TECHNICAL_TOKEN_SHIELDING` | PROTECTION | HIGH | Identify non-translatable and executable spans before translating natural language. |
-| `TERM_BEFORE_SENTENCE` | TERMINOLOGY | HIGH | Resolve material terminology constraints before polishing the surrounding sentence. |
 | `CONCEPT_BEFORE_SURFACE_FORM` | TERMINOLOGY | HIGH | Determine which technical concept a word denotes before choosing its target-language surface form. |
 | `PRODUCT_VERSION_SCOPING` | SCOPE | HIGH | Bind terminology and technical naming to the actual vendor, product, version, and text role. |
 | `TEXT_ROLE_TRANSLATION` | TEXT_ROLE | MEDIUM | Translate according to whether text functions as prose, a label, heading, state, warning, table item, or code-adjacent content. |
 | `UI_LABEL_ANCHORING` | TEXT_ROLE | HIGH | Use the exact verified UI label when documentation refers to a concrete product interface control. |
 | `MODAL_STRENGTH_PRESERVATION` | SEMANTIC_FIDELITY | HIGH | Preserve obligation, prohibition, permission, recommendation, and prerequisite strength. |
+| `CONDITION_ACTION_RESULT_PRESERVATION` | SEMANTIC_FIDELITY | HIGH | Preserve which conditions govern which actions and results in technical instructions. |
+| `SCOPE_PRESERVATION` | SEMANTIC_FIDELITY | HIGH | Preserve quantifiers, exclusions, selection boundaries, and other scope-limiting language. |
+| `PROPOSITION_PRESERVING_REORDERING` | STRUCTURE | MEDIUM | Allow target-language reordering only when proposition roles and logical relationships remain unchanged. |
 | `LONG_SENTENCE_DECOMPOSITION` | STRUCTURE | MEDIUM | Split dense technical sentences only after mapping all propositions, actors, objects, conditions, and sequence relations. |
 | `CONTROLLED_EXPLICITATION` | SEMANTIC_FIDELITY | HIGH | Add an omitted subject, object, or relation only when the surrounding context uniquely determines it. |
 | `NO_INVENTED_CAUSALITY` | SEMANTIC_FIDELITY | HIGH | Do not introduce causal, purpose, result, or dependency relations that the source does not establish. |
 | `TERMINOLOGY_VARIANT_GOVERNANCE` | TERMINOLOGY | MEDIUM | Manage preferred, admitted, forbidden, and protected variants instead of forcing one literal form everywhere. |
 | `ABBREVIATION_LIFECYCLE` | TERMINOLOGY | MEDIUM | Control abbreviation introduction, expansion, reuse, casing, and scope across a document. |
 | `SOURCE_DEFECT_ESCALATION` | REVIEW_GOVERNANCE | HIGH | Surface contradictions, ambiguity, and probable source defects instead of silently repairing them during translation. |
-| `UI_DOCS_CONSISTENCY` | SCOPE | HIGH | Coordinate documentation wording with verified UI terminology while keeping prose and UI-label roles distinct. |
-| `TARGET_LANGUAGE_TECHNICAL_NATURALNESS` | STYLE | LOW | Improve target-language technical prose only after terminology, propositional meaning, and protected content are stable. |
+
+## Workflow-level principles
+
+Some important translation rules remain workflow-level constraints rather than
+independent machine technique IDs.
+
+- Resolve scoped terminology before sentence-level stylistic polishing. This
+  ordering is already defined by `07_TRANSLATION_AND_MT_POLICY.md`.
+- UI/documentation consistency is handled compositionally by
+  `TEXT_ROLE_TRANSLATION` and `UI_LABEL_ANCHORING`, rather than by a duplicate
+  standalone technique.
+- Target-language technical naturalness remains the final constrained refinement
+  stage. It must not override terminology, protected content, propositions,
+  modality, conditions, scope, or technical roles.
+
+This separation keeps the catalog focused on discrete technical-translation
+failure modes rather than duplicating workflow sequencing or general style goals.
 
 ## Technique details
 
@@ -86,37 +103,9 @@ Identify non-translatable and executable spans before translating natural langua
 
 **QA mapping:** deterministic = PLACEHOLDER_INTEGRITY, URL_INTEGRITY, PATH_INTEGRITY, FILENAME_INTEGRITY, CLI_OPTION_INTEGRITY, ENV_VAR_INTEGRITY, PROTECTED_LITERAL, VERSION_INTEGRITY; semantic = ACCURACY, DESIGN_AND_MARKUP.
 
-**Unresolved context:** `PROTECT`.
-
-### 2. `TERM_BEFORE_SENTENCE`
-
-Resolve material terminology constraints before polishing the surrounding sentence.
-
-**Trigger patterns:** `project_glossary_match`, `domain_term`, `vendor_term`, `repeated_concept`
-
-**Required actions**
-
-- Resolve scoped approved terminology before sentence-level stylistic refinement.
-- Distinguish preferred, admitted, forbidden, and protected terms.
-- Recheck the final sentence after grammatical inflection or restructuring.
-
-**Do not**
-
-- Generate a fluent sentence first and blindly replace terminology afterward.
-- Treat frequency alone as terminology authority.
-
-**Synthetic database-domain example**
-
-- Source: 将主库切换为只读模式。
-- Unsafe: Switch the master server to read-only mode.
-- Preferred handling: Switch the primary database to read-only mode.
-- Why: The example assumes a scoped project glossary has approved primary database for 主库.
-
-**QA mapping:** deterministic = PREFERRED_TERM, FORBIDDEN_TERM; semantic = TERMINOLOGY, ACCURACY.
-
 **Unresolved context:** `REVIEW`.
 
-### 3. `CONCEPT_BEFORE_SURFACE_FORM`
+### 2. `CONCEPT_BEFORE_SURFACE_FORM`
 
 Determine which technical concept a word denotes before choosing its target-language surface form.
 
@@ -144,7 +133,7 @@ Determine which technical concept a word denotes before choosing its target-lang
 
 **Unresolved context:** `REVIEW`.
 
-### 4. `PRODUCT_VERSION_SCOPING`
+### 3. `PRODUCT_VERSION_SCOPING`
 
 Bind terminology and technical naming to the actual vendor, product, version, and text role.
 
@@ -172,7 +161,7 @@ Bind terminology and technical naming to the actual vendor, product, version, an
 
 **Unresolved context:** `REVIEW`.
 
-### 5. `TEXT_ROLE_TRANSLATION`
+### 4. `TEXT_ROLE_TRANSLATION`
 
 Translate according to whether text functions as prose, a label, heading, state, warning, table item, or code-adjacent content.
 
@@ -199,7 +188,7 @@ Translate according to whether text functions as prose, a label, heading, state,
 
 **Unresolved context:** `REVIEW`.
 
-### 6. `UI_LABEL_ANCHORING`
+### 5. `UI_LABEL_ANCHORING`
 
 Use the exact verified UI label when documentation refers to a concrete product interface control.
 
@@ -227,7 +216,7 @@ Use the exact verified UI label when documentation refers to a concrete product 
 
 **Unresolved context:** `REVIEW`.
 
-### 7. `MODAL_STRENGTH_PRESERVATION`
+### 6. `MODAL_STRENGTH_PRESERVATION`
 
 Preserve obligation, prohibition, permission, recommendation, and prerequisite strength.
 
@@ -255,7 +244,92 @@ Preserve obligation, prohibition, permission, recommendation, and prerequisite s
 
 **Unresolved context:** `REVIEW`.
 
-### 8. `LONG_SENTENCE_DECOMPOSITION`
+### 7. `CONDITION_ACTION_RESULT_PRESERVATION`
+
+Preserve which conditions govern which actions and results in technical instructions.
+
+**Trigger patterns:** `conditional_clause`, `precondition`, `postcondition`, `action_result`, `exception_condition`
+
+**Required actions**
+
+- Identify each condition, governed action, object, and stated result.
+- Preserve which condition applies to which operation.
+- Keep prerequisites and failure branches attached to the correct action.
+
+**Do not**
+
+- Turn a conditional instruction into an unconditional action.
+- Detach a failure or exception condition from the operation it governs.
+
+**Synthetic database-domain example**
+
+- Source: 连接成功后执行备份；若校验失败，不得删除原备份集。
+- Unsafe: Run the backup and delete the original backup set after validation.
+- Preferred handling: After the connection succeeds, run the backup. If validation fails, do not delete the original backup set.
+- Why: The success condition and failure prohibition govern different actions and must remain attached to them.
+
+**QA mapping:** deterministic = none; semantic = ACCURACY.
+
+**Unresolved context:** `REVIEW`.
+
+### 8. `SCOPE_PRESERVATION`
+
+Preserve quantifiers, exclusions, selection boundaries, and other scope-limiting language.
+
+**Trigger patterns:** `all`, `any`, `each`, `both`, `only`, `current`, `selected`, `either`, `except`, `unless`
+
+**Required actions**
+
+- Identify the exact span governed by each quantifier or limiter.
+- Preserve inclusions, exclusions, and selection boundaries.
+- Keep modifiers attached to the technical object they constrain.
+
+**Do not**
+
+- Widen a selected or current subset into all objects.
+- Narrow an all or each requirement without source support.
+- Drop except, only, unless, or equivalent limiting meaning.
+
+**Synthetic database-domain example**
+
+- Source: 仅删除当前节点上已选中的日志文件，其他节点不处理。
+- Unsafe: Delete the log files from all nodes.
+- Preferred handling: Delete only the selected log files on the current node; do not process the other nodes.
+- Why: Only, selected, current, and the exclusion of other nodes jointly define the operation scope.
+
+**QA mapping:** deterministic = none; semantic = ACCURACY.
+
+**Unresolved context:** `REVIEW`.
+
+### 9. `PROPOSITION_PRESERVING_REORDERING`
+
+Allow target-language reordering only when proposition roles and logical relationships remain unchanged.
+
+**Trigger patterns:** `source_target_information_order`, `topic_comment_structure`, `role_sensitive_reordering`, `clause_reordering`
+
+**Required actions**
+
+- Map actor, action, object, state, and logical relation before reordering.
+- Verify all source propositions remain present after reordering.
+- Recheck technical roles after grammatical voice or clause-order changes.
+
+**Do not**
+
+- Swap actor and recipient roles while improving target-language order.
+- Change operation sequence merely because another order reads more naturally.
+
+**Synthetic database-domain example**
+
+- Source: 归档日志由备库接收，主库负责发送。
+- Unsafe: The standby database sends the archive logs to the primary database.
+- Preferred handling: The primary database sends the archive logs, and the standby database receives them.
+- Why: Clause order may change for English readability, but sender and receiver roles must not change.
+
+**QA mapping:** deterministic = none; semantic = ACCURACY, LINGUISTIC_CONVENTIONS.
+
+**Unresolved context:** `REVIEW`.
+
+### 10. `LONG_SENTENCE_DECOMPOSITION`
 
 Split dense technical sentences only after mapping all propositions, actors, objects, conditions, and sequence relations.
 
@@ -283,7 +357,7 @@ Split dense technical sentences only after mapping all propositions, actors, obj
 
 **Unresolved context:** `REVIEW`.
 
-### 9. `CONTROLLED_EXPLICITATION`
+### 11. `CONTROLLED_EXPLICITATION`
 
 Add an omitted subject, object, or relation only when the surrounding context uniquely determines it.
 
@@ -311,7 +385,7 @@ Add an omitted subject, object, or relation only when the surrounding context un
 
 **Unresolved context:** `REVIEW`.
 
-### 10. `NO_INVENTED_CAUSALITY`
+### 12. `NO_INVENTED_CAUSALITY`
 
 Do not introduce causal, purpose, result, or dependency relations that the source does not establish.
 
@@ -337,7 +411,7 @@ Do not introduce causal, purpose, result, or dependency relations that the sourc
 
 **Unresolved context:** `REVIEW`.
 
-### 11. `TERMINOLOGY_VARIANT_GOVERNANCE`
+### 13. `TERMINOLOGY_VARIANT_GOVERNANCE`
 
 Manage preferred, admitted, forbidden, and protected variants instead of forcing one literal form everywhere.
 
@@ -365,7 +439,7 @@ Manage preferred, admitted, forbidden, and protected variants instead of forcing
 
 **Unresolved context:** `REVIEW`.
 
-### 12. `ABBREVIATION_LIFECYCLE`
+### 14. `ABBREVIATION_LIFECYCLE`
 
 Control abbreviation introduction, expansion, reuse, casing, and scope across a document.
 
@@ -393,7 +467,7 @@ Control abbreviation introduction, expansion, reuse, casing, and scope across a 
 
 **Unresolved context:** `REVIEW`.
 
-### 13. `SOURCE_DEFECT_ESCALATION`
+### 15. `SOURCE_DEFECT_ESCALATION`
 
 Surface contradictions, ambiguity, and probable source defects instead of silently repairing them during translation.
 
@@ -418,62 +492,6 @@ Surface contradictions, ambiguity, and probable source defects instead of silent
 - Why: Translation must not silently become source-authoring when the source contains a material contradiction.
 
 **QA mapping:** deterministic = none; semantic = ACCURACY.
-
-**Unresolved context:** `REVIEW`.
-
-### 14. `UI_DOCS_CONSISTENCY`
-
-Coordinate documentation wording with verified UI terminology while keeping prose and UI-label roles distinct.
-
-**Trigger patterns:** `documentation_ui_reference`, `ui_label_mismatch`, `same_feature_multiple_surfaces`
-
-**Required actions**
-
-- Verify exact labels against the applicable UI when required.
-- Use the exact label as a locked reference inside natural prose.
-- Keep conceptual prose terminology distinct from exact UI strings when appropriate.
-
-**Do not**
-
-- Force all prose wording to equal the UI label.
-- Paraphrase an exact UI label while presenting it as the interface text.
-
-**Synthetic database-domain example**
-
-- Source: 正文：“单击启动服务按钮”；同版本界面按钮实际标签为 “Start Service”。
-- Unsafe: Click the Start button on the Service Management page.
-- Preferred handling: Click Start Service on the Service Management page.
-- Why: The prose remains natural while the verified UI label is preserved exactly.
-
-**QA mapping:** deterministic = PROTECTED_LITERAL; semantic = TERMINOLOGY, ACCURACY, STYLE.
-
-**Unresolved context:** `REVIEW`.
-
-### 15. `TARGET_LANGUAGE_TECHNICAL_NATURALNESS`
-
-Improve target-language technical prose only after terminology, propositional meaning, and protected content are stable.
-
-**Trigger patterns:** `literal_translation`, `nominalization`, `awkward_technical_english`, `redundant_operation_noun`
-
-**Required actions**
-
-- Apply natural target-language syntax after hard constraints are satisfied.
-- Prefer direct technical verbs where meaning is unchanged.
-- Re-run terminology and semantic checks after stylistic refinement.
-
-**Do not**
-
-- Trade technical precision for elegance.
-- Delete repeated technical terms merely to avoid stylistic repetition.
-
-**Synthetic database-domain example**
-
-- Source: 进行数据库参数的配置。
-- Unsafe: Carry out the configuration operation of database parameters.
-- Preferred handling: Configure the database parameters.
-- Why: Naturalness is a final constrained refinement, not permission to alter technical meaning.
-
-**QA mapping:** deterministic = none; semantic = LINGUISTIC_CONVENTIONS, STYLE.
 
 **Unresolved context:** `REVIEW`.
 

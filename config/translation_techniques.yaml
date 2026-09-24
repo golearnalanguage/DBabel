@@ -52,7 +52,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - ANY
   triggers:
@@ -92,53 +91,12 @@ techniques:
     semantic_dimensions:
     - ACCURACY
     - DESIGN_AND_MARKUP
-  on_uncertainty: PROTECT
+  on_uncertainty: REVIEW
   example:
     source: 将参数 MAX_SESSIONS=200 写入 /opt/example/conf/example.ini，然后重启 ExampleDB。
     unsafe_target: Write the parameter max_sessions=200 to /opt/example/conf/example_en.ini, and then restart ExampleDB.
     preferred_target: Write MAX_SESSIONS=200 to /opt/example/conf/example.ini, and then restart ExampleDB.
     explanation: The parameter token and path are executable or structural content, not prose.
-- id: TERM_BEFORE_SENTENCE
-  category: TERMINOLOGY
-  risk: HIGH
-  summary: Resolve material terminology constraints before polishing the surrounding sentence.
-  applies_to_modes:
-  - BILINGUAL_REVIEW
-  - TRANSLATE
-  - REPAIR
-  text_roles:
-  - ANY
-  triggers:
-  - project_glossary_match
-  - domain_term
-  - vendor_term
-  - repeated_concept
-  required_actions:
-  - Resolve scoped approved terminology before sentence-level stylistic refinement.
-  - Distinguish preferred, admitted, forbidden, and protected terms.
-  - Recheck the final sentence after grammatical inflection or restructuring.
-  forbidden_actions:
-  - Generate a fluent sentence first and blindly replace terminology afterward.
-  - Treat frequency alone as terminology authority.
-  allowed_transformations:
-  - TERM_SUBSTITUTION
-  - NOMINALIZATION_SHIFT
-  - VOICE_CHANGE
-  restricted_transformations:
-  - IMPLICITATION
-  qa_mapping:
-    deterministic_checks:
-    - PREFERRED_TERM
-    - FORBIDDEN_TERM
-    semantic_dimensions:
-    - TERMINOLOGY
-    - ACCURACY
-  on_uncertainty: REVIEW
-  example:
-    source: 将主库切换为只读模式。
-    unsafe_target: Switch the master server to read-only mode.
-    preferred_target: Switch the primary database to read-only mode.
-    explanation: The example assumes a scoped project glossary has approved primary database for 主库.
 - id: CONCEPT_BEFORE_SURFACE_FORM
   category: TERMINOLOGY
   risk: HIGH
@@ -146,7 +104,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - ANY
   triggers:
@@ -183,7 +140,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - ANY
   triggers:
@@ -221,7 +177,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - PROSE
   - PROCEDURE
@@ -266,7 +221,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - UI_LABEL
   - PROCEDURE
@@ -309,7 +263,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - PROSE
   - PROCEDURE
@@ -345,6 +298,140 @@ techniques:
     unsafe_target: Delete the temporary copy, and then validate it.
     preferred_target: Delete the temporary copy only after validation passes.
     explanation: The source establishes a prerequisite, not merely an event sequence.
+- id: CONDITION_ACTION_RESULT_PRESERVATION
+  category: SEMANTIC_FIDELITY
+  risk: HIGH
+  summary: Preserve which conditions govern which actions and results in technical instructions.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  - WARNING
+  - TABLE
+  triggers:
+  - conditional_clause
+  - precondition
+  - postcondition
+  - action_result
+  - exception_condition
+  required_actions:
+  - Identify each condition, governed action, object, and stated result.
+  - Preserve which condition applies to which operation.
+  - Keep prerequisites and failure branches attached to the correct action.
+  forbidden_actions:
+  - Turn a conditional instruction into an unconditional action.
+  - Detach a failure or exception condition from the operation it governs.
+  allowed_transformations:
+  - CLAUSE_REORDERING
+  - SENTENCE_SPLIT
+  - VOICE_CHANGE
+  restricted_transformations:
+  - IMPLICITATION
+  - SENTENCE_MERGE
+  - EXPLICITATION
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - ACCURACY
+  on_uncertainty: REVIEW
+  example:
+    source: 连接成功后执行备份；若校验失败，不得删除原备份集。
+    unsafe_target: Run the backup and delete the original backup set after validation.
+    preferred_target: After the connection succeeds, run the backup. If validation fails, do not delete the original backup set.
+    explanation: The success condition and failure prohibition govern different actions and must remain attached to them.
+- id: SCOPE_PRESERVATION
+  category: SEMANTIC_FIDELITY
+  risk: HIGH
+  summary: Preserve quantifiers, exclusions, selection boundaries, and other scope-limiting language.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  - WARNING
+  - TABLE
+  triggers:
+  - all
+  - any
+  - each
+  - both
+  - only
+  - current
+  - selected
+  - either
+  - except
+  - unless
+  required_actions:
+  - Identify the exact span governed by each quantifier or limiter.
+  - Preserve inclusions, exclusions, and selection boundaries.
+  - Keep modifiers attached to the technical object they constrain.
+  forbidden_actions:
+  - Widen a selected or current subset into all objects.
+  - Narrow an all or each requirement without source support.
+  - Drop except, only, unless, or equivalent limiting meaning.
+  allowed_transformations:
+  - CLAUSE_REORDERING
+  - SENTENCE_SPLIT
+  restricted_transformations:
+  - IMPLICITATION
+  - SENTENCE_MERGE
+  - EXPLICITATION
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - ACCURACY
+  on_uncertainty: REVIEW
+  example:
+    source: 仅删除当前节点上已选中的日志文件，其他节点不处理。
+    unsafe_target: Delete the log files from all nodes.
+    preferred_target: Delete only the selected log files on the current node; do not process the other nodes.
+    explanation: Only, selected, current, and the exclusion of other nodes jointly define the operation scope.
+- id: PROPOSITION_PRESERVING_REORDERING
+  category: STRUCTURE
+  risk: MEDIUM
+  summary: Allow target-language reordering only when proposition roles and logical relationships remain unchanged.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  - WARNING
+  triggers:
+  - source_target_information_order
+  - topic_comment_structure
+  - role_sensitive_reordering
+  - clause_reordering
+  required_actions:
+  - Map actor, action, object, state, and logical relation before reordering.
+  - Verify all source propositions remain present after reordering.
+  - Recheck technical roles after grammatical voice or clause-order changes.
+  forbidden_actions:
+  - Swap actor and recipient roles while improving target-language order.
+  - Change operation sequence merely because another order reads more naturally.
+  allowed_transformations:
+  - CLAUSE_REORDERING
+  - VOICE_CHANGE
+  - NOMINALIZATION_SHIFT
+  - SENTENCE_SPLIT
+  restricted_transformations:
+  - IMPLICITATION
+  - SENTENCE_MERGE
+  - EXPLICITATION
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - ACCURACY
+    - LINGUISTIC_CONVENTIONS
+  on_uncertainty: REVIEW
+  example:
+    source: 归档日志由备库接收，主库负责发送。
+    unsafe_target: The standby database sends the archive logs to the primary database.
+    preferred_target: The primary database sends the archive logs, and the standby database receives them.
+    explanation: Clause order may change for English readability, but sender and receiver roles must not change.
 - id: LONG_SENTENCE_DECOMPOSITION
   category: STRUCTURE
   risk: MEDIUM
@@ -352,7 +439,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - PROSE
   - PROCEDURE
@@ -397,7 +483,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - PROSE
   - PROCEDURE
@@ -435,7 +520,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - PROSE
   - PROCEDURE
@@ -473,7 +557,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - ANY
   triggers:
@@ -512,7 +595,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - PROSE
   - HEADING
@@ -551,7 +633,6 @@ techniques:
   applies_to_modes:
   - BILINGUAL_REVIEW
   - TRANSLATE
-  - REPAIR
   text_roles:
   - ANY
   triggers:
@@ -581,88 +662,3 @@ techniques:
     unsafe_target: Resolve the conflict by translating the step as host A only because that seems more typical.
     preferred_target: 'REVIEW: the source execution scope conflicts; request authoritative clarification before normalizing the target.'
     explanation: Translation must not silently become source-authoring when the source contains a material contradiction.
-- id: UI_DOCS_CONSISTENCY
-  category: SCOPE
-  risk: HIGH
-  summary: Coordinate documentation wording with verified UI terminology while keeping prose and UI-label roles distinct.
-  applies_to_modes:
-  - BILINGUAL_REVIEW
-  - TRANSLATE
-  - REPAIR
-  text_roles:
-  - PROSE
-  - PROCEDURE
-  - UI_LABEL
-  triggers:
-  - documentation_ui_reference
-  - ui_label_mismatch
-  - same_feature_multiple_surfaces
-  required_actions:
-  - Verify exact labels against the applicable UI when required.
-  - Use the exact label as a locked reference inside natural prose.
-  - Keep conceptual prose terminology distinct from exact UI strings when appropriate.
-  forbidden_actions:
-  - Force all prose wording to equal the UI label.
-  - Paraphrase an exact UI label while presenting it as the interface text.
-  allowed_transformations:
-  - UI_LABEL_LOCK
-  - TERM_SUBSTITUTION
-  restricted_transformations:
-  - IMPLICITATION
-  qa_mapping:
-    deterministic_checks:
-    - PROTECTED_LITERAL
-    semantic_dimensions:
-    - TERMINOLOGY
-    - ACCURACY
-    - STYLE
-  on_uncertainty: REVIEW
-  example:
-    source: 正文：“单击启动服务按钮”；同版本界面按钮实际标签为 “Start Service”。
-    unsafe_target: Click the Start button on the Service Management page.
-    preferred_target: Click Start Service on the Service Management page.
-    explanation: The prose remains natural while the verified UI label is preserved exactly.
-- id: TARGET_LANGUAGE_TECHNICAL_NATURALNESS
-  category: STYLE
-  risk: LOW
-  summary: Improve target-language technical prose only after terminology, propositional meaning, and protected content are stable.
-  applies_to_modes:
-  - BILINGUAL_REVIEW
-  - TRANSLATE
-  - REPAIR
-  text_roles:
-  - PROSE
-  - PROCEDURE
-  - HEADING
-  - WARNING
-  triggers:
-  - literal_translation
-  - nominalization
-  - awkward_technical_english
-  - redundant_operation_noun
-  required_actions:
-  - Apply natural target-language syntax after hard constraints are satisfied.
-  - Prefer direct technical verbs where meaning is unchanged.
-  - Re-run terminology and semantic checks after stylistic refinement.
-  forbidden_actions:
-  - Trade technical precision for elegance.
-  - Delete repeated technical terms merely to avoid stylistic repetition.
-  allowed_transformations:
-  - VOICE_CHANGE
-  - NOMINALIZATION_SHIFT
-  - CLAUSE_REORDERING
-  - PUNCTUATION_LOCALIZATION
-  restricted_transformations:
-  - EXPLICITATION
-  - IMPLICITATION
-  qa_mapping:
-    deterministic_checks: []
-    semantic_dimensions:
-    - LINGUISTIC_CONVENTIONS
-    - STYLE
-  on_uncertainty: REVIEW
-  example:
-    source: 进行数据库参数的配置。
-    unsafe_target: Carry out the configuration operation of database parameters.
-    preferred_target: Configure the database parameters.
-    explanation: Naturalness is a final constrained refinement, not permission to alter technical meaning.

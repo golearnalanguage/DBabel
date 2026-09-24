@@ -56,7 +56,7 @@ file, reopen it and perform applicable structural/layout checks before delivery.
 
 ## Technical translation technique layer
 
-For `BILINGUAL_REVIEW`, `TRANSLATE`, and translation-oriented `REPAIR`, load the
+For `BILINGUAL_REVIEW` and `TRANSLATE`, load the
 routed technical translation playbook and machine-readable technique registry:
 
 - `references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md`

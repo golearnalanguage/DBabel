@@ -152,8 +152,7 @@
               "type": "string",
               "enum": [
                 "BILINGUAL_REVIEW",
-                "TRANSLATE",
-                "REPAIR"
+                "TRANSLATE"
               ]
             }
           },
@@ -291,11 +290,7 @@
             "additionalProperties": false
           },
           "on_uncertainty": {
-            "type": "string",
-            "enum": [
-              "REVIEW",
-              "PROTECT"
-            ]
+            "const": "REVIEW"
           },
           "example": {
             "type": "object",

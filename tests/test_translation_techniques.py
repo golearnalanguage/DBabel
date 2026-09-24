@@ -1,6 +1,7 @@
 """Contracts for the DBabel technical translation technique registry."""
 import json
 from pathlib import Path
+import re
 import unittest
 
 import yaml
@@ -11,23 +12,24 @@ REGISTRY = ROOT / "config" / "translation_techniques.yaml"
 SCHEMA = ROOT / "schemas" / "translation_techniques.schema.json"
 ROUTER = ROOT / "config" / "resource_router.yaml"
 QA = ROOT / "config" / "deterministic_qa.yaml"
+PLAYBOOK = ROOT / "references" / "18_TECHNICAL_TRANSLATION_PLAYBOOK.md"
 
 EXPECTED_TECHNIQUES = {
     "TECHNICAL_TOKEN_SHIELDING",
-    "TERM_BEFORE_SENTENCE",
     "CONCEPT_BEFORE_SURFACE_FORM",
     "PRODUCT_VERSION_SCOPING",
     "TEXT_ROLE_TRANSLATION",
     "UI_LABEL_ANCHORING",
     "MODAL_STRENGTH_PRESERVATION",
+    "CONDITION_ACTION_RESULT_PRESERVATION",
+    "SCOPE_PRESERVATION",
+    "PROPOSITION_PRESERVING_REORDERING",
     "LONG_SENTENCE_DECOMPOSITION",
     "CONTROLLED_EXPLICITATION",
     "NO_INVENTED_CAUSALITY",
     "TERMINOLOGY_VARIANT_GOVERNANCE",
     "ABBREVIATION_LIFECYCLE",
     "SOURCE_DEFECT_ESCALATION",
-    "UI_DOCS_CONSISTENCY",
-    "TARGET_LANGUAGE_TECHNICAL_NATURALNESS",
 }
 
 
@@ -38,6 +40,7 @@ class TranslationTechniqueContractTests(unittest.TestCase):
         cls.schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
         cls.router = yaml.safe_load(ROUTER.read_text(encoding="utf-8"))
         cls.qa = yaml.safe_load(QA.read_text(encoding="utf-8"))
+        cls.playbook = PLAYBOOK.read_text(encoding="utf-8")
 
     def test_registry_matches_schema(self):
         errors = list(
@@ -49,6 +52,20 @@ class TranslationTechniqueContractTests(unittest.TestCase):
         ids = [item["id"] for item in self.registry["techniques"]]
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(set(ids), EXPECTED_TECHNIQUES)
+
+    def test_playbook_ids_match_registry(self):
+        playbook_ids = re.findall(
+            r"^###\s+\d+\.\s+`([A-Z][A-Z0-9_]+)`\s*$",
+            self.playbook,
+            re.M,
+        )
+        registry_ids = [
+            item["id"]
+            for item in self.registry["techniques"]
+        ]
+
+        self.assertEqual(len(playbook_ids), len(set(playbook_ids)))
+        self.assertEqual(set(playbook_ids), set(registry_ids))
 
     def test_transformation_references_resolve(self):
         transform_ids = {
@@ -66,6 +83,15 @@ class TranslationTechniqueContractTests(unittest.TestCase):
             referenced - transform_ids,
             set(),
         )
+
+    def test_allowed_and_restricted_transformations_are_disjoint(self):
+        for item in self.registry["techniques"]:
+            with self.subTest(technique=item["id"]):
+                self.assertEqual(
+                    set(item["allowed_transformations"])
+                    & set(item["restricted_transformations"]),
+                    set(),
+                )
 
     def test_deterministic_check_links_resolve(self):
         known = set(self.qa["checks"])
@@ -87,13 +113,19 @@ class TranslationTechniqueContractTests(unittest.TestCase):
             "config/translation_techniques.yaml",
         }
 
-        for mode in ("BILINGUAL_REVIEW", "TRANSLATE", "REPAIR"):
+        for mode in ("BILINGUAL_REVIEW", "TRANSLATE"):
             with self.subTest(mode=mode):
                 self.assertTrue(
                     required.issubset(
                         set(self.router["mode_resources"][mode])
                     )
                 )
+
+        self.assertEqual(
+            required
+            & set(self.router["mode_resources"]["REPAIR"]),
+            set(),
+        )
 
     def test_guardrail_policy_is_fail_closed(self):
         policy = self.registry["policy"]
@@ -117,6 +149,21 @@ class TranslationTechniqueContractTests(unittest.TestCase):
         self.assertIs(
             policy["ai_suggestion_is_approval"],
             False,
+        )
+
+        self.assertEqual(
+            {
+                item["on_uncertainty"]
+                for item in self.registry["techniques"]
+            },
+            {"REVIEW"},
+        )
+
+        self.assertTrue(
+            all(
+                "REPAIR" not in item["applies_to_modes"]
+                for item in self.registry["techniques"]
+            )
         )
 
 
