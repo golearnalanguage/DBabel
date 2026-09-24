@@ -9,7 +9,11 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from check_package import PACKAGE_VERSION, cross_contract_errors
+from check_package import (
+    PACKAGE_VERSION,
+    REVIEW_WORKBENCH_VERSION,
+    cross_contract_errors,
+)
 
 
 class PackageContractTests(unittest.TestCase):
@@ -31,6 +35,31 @@ class PackageContractTests(unittest.TestCase):
 
     def test_package_version_constant(self):
         self.assertEqual(PACKAGE_VERSION, '1.4.0')
+        self.assertEqual(
+            REVIEW_WORKBENCH_VERSION,
+            '1.5.0-dev',
+        )
+
+
+    def test_review_session_uses_shared_workbench_version(self):
+        creator=(
+            ROOT/'scripts/create_review_session.py'
+        ).read_text(encoding='utf-8')
+
+        self.assertIn(
+            'from version_info import REVIEW_WORKBENCH_VERSION',
+            creator,
+        )
+
+        self.assertIn(
+            '"dbabel_version": REVIEW_WORKBENCH_VERSION',
+            creator,
+        )
+
+        self.assertNotIn(
+            '"dbabel_version": "1.5.0-dev"',
+            creator,
+        )
 
     def test_cross_contracts_clean(self):
         self.assertEqual(cross_contract_errors(ROOT), [])
