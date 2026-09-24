@@ -1,11 +1,12 @@
 """Central version declarations for DBabel repository contracts.
 
-PACKAGE_VERSION is the currently released Skill/package contract.
+PACKAGE_VERSION identifies the current DBabel Skill/package contract.
 
-REVIEW_WORKBENCH_VERSION identifies the unreleased Review Workbench
-development contract. It must not be interpreted as a released package,
-Git tag, or release version.
+REVIEW_WORKBENCH_VERSION identifies the Review Workbench contract.
+For a formal DBabel release, the package and Workbench versions are kept
+explicitly aligned while remaining separate constants so version drift can
+still be detected by package validation.
 """
 
-PACKAGE_VERSION = "1.4.0"
-REVIEW_WORKBENCH_VERSION = "1.5.0-dev"
+PACKAGE_VERSION = "1.5.0"
+REVIEW_WORKBENCH_VERSION = "1.5.0"

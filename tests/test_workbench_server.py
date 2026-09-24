@@ -15,11 +15,11 @@ from start_review_workbench import Handler,WorkbenchState
 
 def make_fake_repo(root):
     (root/'scripts').mkdir(parents=True);(root/'config').mkdir(parents=True)
-    (root/'config'/'deterministic_qa.yaml').write_text('version: 1.4.0\n')
+    (root/'config'/'deterministic_qa.yaml').write_text('version: 1.5.0\n')
     (root/'scripts'/'check_bilingual_integrity.py').write_text('''\ndef load_config(path): return {}\ndef _load_glossary(path): return None\ndef run_qa(units, config, glossary): return {"summary":{"units_checked":len(units),"error_count":0,"warning_count":0},"checks_run":[],"issues":[]}\n''')
 
 def make_bundle(root):
-    b=root/'x.dbreview';b.mkdir();session={'format_version':'1.0','session_id':'RS_x','created_at':'2026-01-01T00:00:00Z','dbabel_version':'1.5.0-dev','mode':'BILINGUAL_REVIEW','title':'Server test','bundle_files':{'units':'units.jsonl','issues':'issues.json','evidence':'evidence.json','decisions':'decisions.json','events':'events.jsonl','anchors':'anchors.json'},'original':{'filename':'x.jsonl','format':'review-data','sha256':'0'*64},'counts':{'units':1,'issues':0,'evidence':0},'export_policy':{'require_all_confirmed':True,'block_unwaived_errors':True,'require_user_edit_recheck':True,'never_overwrite_original':True}}
+    b=root/'x.dbreview';b.mkdir();session={'format_version':'1.0','session_id':'RS_x','created_at':'2026-01-01T00:00:00Z','dbabel_version':'1.5.0','mode':'BILINGUAL_REVIEW','title':'Server test','bundle_files':{'units':'units.jsonl','issues':'issues.json','evidence':'evidence.json','decisions':'decisions.json','events':'events.jsonl','anchors':'anchors.json'},'original':{'filename':'x.jsonl','format':'review-data','sha256':'0'*64},'counts':{'units':1,'issues':0,'evidence':0},'export_policy':{'require_all_confirmed':True,'block_unwaived_errors':True,'require_user_edit_recheck':True,'never_overwrite_original':True}}
     write_json(b/'session.json',session);write_jsonl(b/'units.jsonl',[{'id':'U1','location':'u','source':'s','current_target':'t','labels':[],'finding_refs':[],'qa_issue_refs':[],'evidence_refs':[],'requires_confirmation':True}]);write_json(b/'issues.json',[]);write_json(b/'evidence.json',[]);write_json(b/'decisions.json',[default_decision('U1')]);write_json(b/'anchors.json',{});(b/'events.jsonl').write_text('');return b
 
 class ServerTests(unittest.TestCase):

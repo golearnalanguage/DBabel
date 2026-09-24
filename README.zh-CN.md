@@ -293,13 +293,12 @@ $dbabel-database-terminology-audit 请结合附件术语表，将 manual-zh.md �
 
 ## 本地验证
 
-当前仓库包版本为 **1.4.0**。
+当前仓库包版本为 **1.5.0**。
 
-Review Workbench 当前开发版本为 **1.5.0-dev**。
+Review Workbench 当前版本为 **1.5.0**。
 
-其中 `1.4.0` 是当前已经发布的 Skill/package 契约版本；`1.5.0-dev`
-只表示尚未正式发布的 Review Workbench 开发契约，不代表已经存在
-DBabel v1.5.0 正式 Release 或 Git tag。
+`1.5.0` 是当前 DBabel Skill/package 与 Review Workbench 的统一契约版本。
+正式 Git tag 与 GitHub Release 仅在发布提交通过完整验证矩阵后创建。
 
 Python 3.9+：
 

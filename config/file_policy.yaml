@@ -1,4 +1,4 @@
-version: 1.4.0
+version: 1.5.0
 formats:
   docx: {audit: structure_aware, repair: conditional}
   pptx: {audit: structure_aware, repair: conditional_layout_check}

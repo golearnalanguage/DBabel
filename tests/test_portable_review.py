@@ -27,7 +27,7 @@ def make_bundle(root):
         "format_version": "1.0",
         "session_id": "RS_x",
         "created_at": "2026-01-01T00:00:00Z",
-        "dbabel_version": "1.5.0-dev",
+        "dbabel_version": "1.5.0",
         "mode": "BILINGUAL_REVIEW",
         "title": "XSS test",
         "bundle_files": {

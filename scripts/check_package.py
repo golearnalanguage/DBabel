@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 from validate_report import ROOT, validate_report
 from version_info import PACKAGE_VERSION, REVIEW_WORKBENCH_VERSION
 
-LEGACY_REPORT_VERSIONS = {'1.3.0'}
+LEGACY_REPORT_VERSIONS = {'1.3.0', '1.4.0'}
 SUPPORTED_REPORT_VERSIONS = LEGACY_REPORT_VERSIONS | {PACKAGE_VERSION}
 
 GLOSSARY_CSV_HEADER = [
@@ -131,7 +131,7 @@ def cross_contract_errors(root=ROOT):
         errors.append('README.zh-CN.md: repository version does not match package version')
 
     workbench_match = re.search(
-        r'Review Workbench development version:\s*\*\*([^*]+)\*\*',
+        r'Review Workbench version:\s*\*\*([^*]+)\*\*',
         readme,
     )
     if (
@@ -139,11 +139,11 @@ def cross_contract_errors(root=ROOT):
         or workbench_match.group(1) != REVIEW_WORKBENCH_VERSION
     ):
         errors.append(
-            'README.md: Review Workbench development version drifted'
+            'README.md: Review Workbench version drifted'
         )
 
     workbench_match_zh = re.search(
-        r'Review Workbench 当前开发版本为\s*\*\*([^*]+)\*\*',
+        r'Review Workbench 当前版本为\s*\*\*([^*]+)\*\*',
         readme_zh,
     )
     if (
@@ -151,7 +151,7 @@ def cross_contract_errors(root=ROOT):
         or workbench_match_zh.group(1) != REVIEW_WORKBENCH_VERSION
     ):
         errors.append(
-            'README.zh-CN.md: Review Workbench development version drifted'
+            'README.zh-CN.md: Review Workbench version drifted'
         )
 
     workbench_doc = (

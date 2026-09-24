@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 1.5.0
+## 1.5.0 — 2026-09-25
 
 - Added DBabel Review Workbench for explicit human-in-the-loop bilingual review.
 - Added `.dbreview` Review Sessions, review schemas, evidence/issues/decision
@@ -14,6 +14,19 @@
 - Added an Agent-to-Workbench handoff contract so suggestions and findings never
   become fabricated human approval.
 - Added explicit review-only versus native-export mode feedback.
+- Added explicit auditable DOCX alignment maps for `ALIGNED`, `SPLIT`, `MERGED`,
+  `UNALIGNED`, and `AMBIGUOUS` relationships, with complete paragraph coverage
+  checks and fail-closed native write-back for non-`ALIGNED` units.
+- Strengthened DOCX anchors with Word `w14:paraId` identity and fail-closed
+  behavior when a previously anchored paragraph ID disappears.
+- Added DOCX structure guards for field codes and tracked revisions while
+  regression-testing paragraph extraction inside tables, hyperlinks, and
+  content controls.
+- Made desktop bulk review updates transactional, preserved reviewer notes,
+  prevented hidden selections from leaking across filters/pages, and retained
+  safe local bulk behavior in Portable Review.
+- Removed or explicitly disabled remaining inactive Workbench controls and
+  completed Portable Review copy/theme compatibility hardening.
 
 ## 1.4.0 — 2026-09-24
 

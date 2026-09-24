@@ -2,7 +2,7 @@
 name: dbabel-database-terminology-audit
 description: Verify database terminology, audit documents, review bilingual translations, translate with terminology constraints, and repair evidenced terminology errors. Use for database terminology and localization tasks; SQL debugging and database administration are outside this workflow.
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
 ---
 
 # DBabel

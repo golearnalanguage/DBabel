@@ -6,6 +6,13 @@
 
 # DBabel
 
+<p align="center">
+  <a href="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml"><img alt="CI" src="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/golearnalanguage/DBabel/releases"><img alt="Release" src="https://img.shields.io/github/v/release/golearnalanguage/DBabel?display_name=tag&sort=semver"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue"></a>
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.9%20%7C%203.11-3776AB?logo=python&logoColor=white">
+</p>
+
 **Database terminology review and technical-localization QA for AI agents.**
 
 DBabel helps translators, technical writers, database teams, and AI agents use the
@@ -355,13 +362,13 @@ capabilities and the structures actually inspected.
 
 ## Validation
 
-Repository version: **1.4.0**.
+Repository version: **1.5.0**.
 
-Review Workbench development version: **1.5.0-dev**.
+Review Workbench version: **1.5.0**.
 
-`1.4.0` is the current released Skill/package contract. `1.5.0-dev` identifies
-the unreleased Review Workbench development contract and does not represent a
-published DBabel release or Git tag.
+`1.5.0` is the current DBabel Skill/package and Review Workbench contract.
+The Git tag and GitHub Release are created only after the release commit passes
+the full validation matrix.
 
 See [changes](CHANGELOG.md) and
 [report format](references/11_OUTPUT_AND_DATA_CONTRACTS.md).
