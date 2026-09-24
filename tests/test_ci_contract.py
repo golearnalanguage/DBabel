@@ -36,6 +36,7 @@ class CIContractTests(unittest.TestCase):
     def test_required_validation_commands_are_present(self):
         runs = '\n'.join(str(step.get('run', '')) for step in self.steps)
         required = [
+            'python -m compileall -q scripts tests',
             'python scripts/check_package.py',
             'python scripts/validate_glossary.py tests/fixtures/project_glossary.json',
             'python scripts/validate_glossary.py tests/fixtures/project_glossary.csv',
