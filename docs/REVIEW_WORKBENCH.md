@@ -129,6 +129,12 @@ python scripts/export_reviewed_document.py translated.dbreview \
 
 DOCM/PPTX/XLSX/PDF native repair is not claimed by this development slice.
 
+For DOCX, ordinary paragraph text inside tables, hyperlinks, and content
+controls is extractable and covered by regression tests. Paragraphs containing
+Word field codes or tracked revisions remain reviewable, but native write-back
+is blocked because editing their displayed `w:t` text can invalidate Word's
+field/revision semantics.
+
 ## Visual contract
 
 The desktop Workbench has a fixed review-oriented shell derived from the DBabel brand

@@ -23,6 +23,10 @@ W14_NS = "http://schemas.microsoft.com/office/word/2010/wordml"
 W14_PARA_ID = "{%s}paraId" % W14_NS
 W_P = "{%s}p" % W_NS
 W_T = "{%s}t" % W_NS
+W_FLD_CHAR = "{%s}fldChar" % W_NS
+W_INSTR_TEXT = "{%s}instrText" % W_NS
+W_INS = "{%s}ins" % W_NS
+W_DEL = "{%s}del" % W_NS
 
 PART_RE = re.compile(
     r"^word/(?:document|header\d+|footer\d+|footnotes|endnotes|comments)\.xml$"
@@ -62,6 +66,31 @@ def _visible_text(paragraph: ET.Element) -> str:
     return "".join(node.text or "" for node in _paragraph_text_nodes(paragraph))
 
 
+def _writeback_blockers(
+    paragraph: ET.Element,
+) -> List[str]:
+    tags = {
+        element.tag
+        for element in paragraph.iter()
+    }
+
+    blockers: List[str] = []
+
+    if (
+        W_FLD_CHAR in tags
+        or W_INSTR_TEXT in tags
+    ):
+        blockers.append("FIELD_CODE")
+
+    if (
+        W_INS in tags
+        or W_DEL in tags
+    ):
+        blockers.append("TRACKED_CHANGE")
+
+    return blockers
+
+
 def extract_paragraphs(path: Path) -> List[Dict[str, Any]]:
     _supported_docx(path)
     rows: List[Dict[str, Any]] = []
@@ -81,6 +110,9 @@ def extract_paragraphs(path: Path) -> List[Dict[str, Any]]:
                     "text": text,
                     "text_sha256": _sha_text(text),
                     "text_node_count": len(_paragraph_text_nodes(paragraph)),
+                    "writeback_blockers": _writeback_blockers(
+                        paragraph
+                    ),
                 })
                 ordinal += 1
     return rows
