@@ -206,5 +206,24 @@ class PortableTests(unittest.TestCase):
             )
 
 
+    def test_legacy_theme_listener_uses_single_callback_argument(self):
+        js = (
+            ROOT
+            / "review_workbench"
+            / "portable_app.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "else if(mq.addListener)mq.addListener(sync);",
+            js,
+        )
+
+        self.assertNotIn(
+            "mq.addListener('change',sync)",
+            js,
+        )
+
+
+
 if __name__ == "__main__":
     unittest.main()
