@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Deterministic Surface Signal Rules",
+  "type": "object",
+  "required": [
+    "version",
+    "schema_version",
+    "policy",
+    "literal_detectors",
+    "lexical_detectors",
+    "context_detectors"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "surface_only",
+        "semantic_inference_allowed",
+        "output_is_evidence",
+        "output_is_finding",
+        "output_authorizes_repair",
+        "output_is_human_approval"
+      ],
+      "properties": {
+        "surface_only": {
+          "const": true
+        },
+        "semantic_inference_allowed": {
+          "const": false
+        },
+        "output_is_evidence": {
+          "const": false
+        },
+        "output_is_finding": {
+          "const": false
+        },
+        "output_authorizes_repair": {
+          "const": false
+        },
+        "output_is_human_approval": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "literal_detectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "extractor",
+          "signal"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "extractor": {
+            "type": "string",
+            "minLength": 1
+          },
+          "signal": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "lexical_detectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "signal",
+          "languages",
+          "match",
+          "values"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "signal": {
+            "type": "string",
+            "minLength": 1
+          },
+          "languages": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "match": {
+            "type": "string",
+            "enum": [
+              "TOKEN",
+              "SUBSTRING"
+            ]
+          },
+          "values": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "context_detectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "field",
+          "equals",
+          "signal"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "field": {
+            "const": "text_role"
+          },
+          "equals": {
+            "type": "string",
+            "minLength": 1
+          },
+          "signal": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

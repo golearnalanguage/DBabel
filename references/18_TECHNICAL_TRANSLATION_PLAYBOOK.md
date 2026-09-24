@@ -26,6 +26,8 @@ The techniques are execution guidance, not source evidence.
 
 The machine-readable `triggers` in this playbook may route explicit unit-level observations to candidate techniques. Matching is exact rather than fuzzy; task mode and concrete text role constrain applicability; unknown or unmatched signals remain visible; and a candidate does not establish that a translation failure occurred. Semantic adjudication is required before `finding.technique` is populated. A candidate never chooses a semantic decision or authorizes repair.
 
+The deterministic surface extractor is intentionally narrower than the full trigger catalog. It may emit only allowlisted, directly observable literal, lexical, or text-role cues. Triggers that require concept resolution, cross-sentence reasoning, source-defect judgment, role mapping, attachment analysis, or product/version inference remain semantic agent work and are never synthesized by regex alone.
+
 ## Execution order
 
 Use the techniques in this order when applicable:

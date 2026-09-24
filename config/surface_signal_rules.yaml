@@ -1,0 +1,269 @@
+version: 1.5.0
+schema_version: 1
+
+policy:
+  surface_only: true
+  semantic_inference_allowed: false
+  output_is_evidence: false
+  output_is_finding: false
+  output_authorizes_repair: false
+  output_is_human_approval: false
+
+literal_detectors:
+  - id: PLACEHOLDER_LITERAL
+    extractor: placeholders
+    signal: placeholder
+
+  - id: URL_LITERAL
+    extractor: urls
+    signal: url
+
+  - id: PATH_LITERAL
+    extractor: paths
+    signal: path
+
+  - id: FILENAME_LITERAL
+    extractor: filenames
+    signal: filename
+
+  - id: ENVIRONMENT_VARIABLE_LITERAL
+    extractor: environment_variables
+    signal: environment_variable
+
+  - id: VERSION_LITERAL
+    extractor: versions
+    signal: version_literal
+
+lexical_detectors:
+  - id: MODAL_MUST_EN
+    signal: must
+    languages: [en]
+    match: TOKEN
+    values: [must]
+
+  - id: MODAL_MUST_NOT_EN
+    signal: must_not
+    languages: [en]
+    match: TOKEN
+    values: ["must not"]
+
+  - id: MODAL_SHOULD_EN
+    signal: should
+    languages: [en]
+    match: TOKEN
+    values: [should]
+
+  - id: MODAL_REQUIRED_EN
+    signal: required
+    languages: [en]
+    match: TOKEN
+    values: [required]
+
+  - id: MODAL_RECOMMENDED_EN
+    signal: recommended
+    languages: [en]
+    match: TOKEN
+    values: [recommended]
+
+  - id: MODAL_MUST_ZH
+    signal: must
+    languages: [zh]
+    match: SUBSTRING
+    values: ["必须", "务必"]
+
+  - id: MODAL_MUST_NOT_ZH
+    signal: must_not
+    languages: [zh]
+    match: SUBSTRING
+    values: ["不得", "禁止", "严禁"]
+
+  - id: MODAL_SHOULD_ZH
+    signal: should
+    languages: [zh]
+    match: SUBSTRING
+    values: ["应当", "应该"]
+
+  - id: MODAL_RECOMMENDED_ZH
+    signal: recommended
+    languages: [zh]
+    match: SUBSTRING
+    values: ["建议", "推荐"]
+
+  - id: SCOPE_ALL_EN
+    signal: all
+    languages: [en]
+    match: TOKEN
+    values: [all]
+
+  - id: SCOPE_ANY_EN
+    signal: any
+    languages: [en]
+    match: TOKEN
+    values: [any]
+
+  - id: SCOPE_EACH_EN
+    signal: each
+    languages: [en]
+    match: TOKEN
+    values: [each]
+
+  - id: SCOPE_BOTH_EN
+    signal: both
+    languages: [en]
+    match: TOKEN
+    values: [both]
+
+  - id: SCOPE_ONLY_EN
+    signal: only
+    languages: [en]
+    match: TOKEN
+    values: [only]
+
+  - id: SCOPE_CURRENT_EN
+    signal: current
+    languages: [en]
+    match: TOKEN
+    values: [current]
+
+  - id: SCOPE_SELECTED_EN
+    signal: selected
+    languages: [en]
+    match: TOKEN
+    values: [selected]
+
+  - id: SCOPE_EITHER_EN
+    signal: either
+    languages: [en]
+    match: TOKEN
+    values: [either]
+
+  - id: SCOPE_EXCEPT_EN
+    signal: except
+    languages: [en]
+    match: TOKEN
+    values: [except]
+
+  - id: SCOPE_UNLESS_EN
+    signal: unless
+    languages: [en]
+    match: TOKEN
+    values: [unless]
+
+  - id: SCOPE_ALL_ZH
+    signal: all
+    languages: [zh]
+    match: SUBSTRING
+    values: ["所有", "全部"]
+
+  - id: SCOPE_ANY_ZH
+    signal: any
+    languages: [zh]
+    match: SUBSTRING
+    values: ["任意", "任何"]
+
+  - id: SCOPE_EACH_ZH
+    signal: each
+    languages: [zh]
+    match: SUBSTRING
+    values: ["每个"]
+
+  - id: SCOPE_BOTH_ZH
+    signal: both
+    languages: [zh]
+    match: SUBSTRING
+    values: ["两者"]
+
+  - id: SCOPE_ONLY_ZH
+    signal: only
+    languages: [zh]
+    match: SUBSTRING
+    values: ["仅", "仅限"]
+
+  - id: SCOPE_CURRENT_ZH
+    signal: current
+    languages: [zh]
+    match: SUBSTRING
+    values: ["当前"]
+
+  - id: SCOPE_SELECTED_ZH
+    signal: selected
+    languages: [zh]
+    match: SUBSTRING
+    values: ["选中", "已选"]
+
+  - id: SCOPE_EITHER_ZH
+    signal: either
+    languages: [zh]
+    match: SUBSTRING
+    values: ["任一"]
+
+  - id: SCOPE_EXCEPT_ZH
+    signal: except
+    languages: [zh]
+    match: SUBSTRING
+    values: ["除外"]
+
+  - id: SCOPE_UNLESS_ZH
+    signal: unless
+    languages: [zh]
+    match: SUBSTRING
+    values: ["除非"]
+
+  - id: CONDITION_IF_EN
+    signal: conditional_clause
+    languages: [en]
+    match: TOKEN
+    values: [if]
+
+  - id: CONDITION_IF_ZH
+    signal: conditional_clause
+    languages: [zh]
+    match: SUBSTRING
+    values: ["如果", "若"]
+
+  - id: CAUSAL_BECAUSE_EN
+    signal: because
+    languages: [en]
+    match: TOKEN
+    values: [because]
+
+  - id: CAUSAL_THEREFORE_EN
+    signal: therefore
+    languages: [en]
+    match: TOKEN
+    values: [therefore]
+
+  - id: CAUSAL_SO_THAT_EN
+    signal: so_that
+    languages: [en]
+    match: TOKEN
+    values: ["so that"]
+
+  - id: CAUSAL_BECAUSE_ZH
+    signal: because
+    languages: [zh]
+    match: SUBSTRING
+    values: ["因为"]
+
+  - id: CAUSAL_THEREFORE_ZH
+    signal: therefore
+    languages: [zh]
+    match: SUBSTRING
+    values: ["因此", "所以"]
+
+  - id: CAUSAL_SO_THAT_ZH
+    signal: so_that
+    languages: [zh]
+    match: SUBSTRING
+    values: ["以便"]
+
+context_detectors:
+  - id: TEXT_ROLE_UI_LABEL
+    field: text_role
+    equals: UI_LABEL
+    signal: ui_text
+
+  - id: TEXT_ROLE_HEADING
+    field: text_role
+    equals: HEADING
+    signal: heading

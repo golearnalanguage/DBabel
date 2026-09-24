@@ -115,6 +115,8 @@ Confidence is `HIGH`, `MEDIUM`, `LOW`, or `REVIEW_REQUIRED`.
 
 For `BILINGUAL_REVIEW` and `TRANSLATE`, explicit observed translation signals may be routed to candidate techniques with `scripts/suggest_translation_techniques.py`. Candidate routing uses exact catalog triggers plus applicable mode and concrete text role. A candidate is diagnostic routing metadata only: it is not evidence, a finding, a semantic decision, repair authorization, or human approval. Confirm the failure mode semantically before attaching a technique annotation to a finding.
 
+`scripts/extract_translation_signals.py` may produce those observations from an allowlisted set of deterministic surface cues such as protected literals, explicit modal/scope markers, explicit condition or causal connectors, and declared text roles. The extractor records source/target/context provenance and never infers semantic-only triggers such as source conflicts, omitted antecedents, role reversal, polysemy, or cross-product equivalence. Missing language or text-role context must not be guessed.
+
 ### 6. Run bilingual QA only after alignment
 
 When aligned source/target units exist, run applicable deterministic checks and then

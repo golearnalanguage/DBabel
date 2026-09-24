@@ -33,6 +33,9 @@
 - [Technique signal observation schema](schemas/technique_signal_observations.schema.json)
 - [Technique candidate report schema](schemas/technique_candidate_report.schema.json)
 - [Technique candidate router](scripts/suggest_translation_techniques.py)
+- [Deterministic surface signal rules](config/surface_signal_rules.yaml)
+- [Surface signal rule schema](schemas/surface_signal_rules.schema.json)
+- [Raw-text surface signal extractor](scripts/extract_translation_signals.py)
 - [Candidate-routing example](examples/technique_signal_observations.json)
 
 ## Accuracy Core

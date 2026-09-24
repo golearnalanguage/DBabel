@@ -60,6 +60,7 @@ These contracts serve different stages and must remain distinct:
 - `schemas/technique_annotation.schema.json` — optional semantic-finding metadata that records the
   technique, risk, controlled transformations, quality dimensions, and human-readable trigger reason.
 - `schemas/technique_signal_observations.schema.json` — explicit unit-level signals observed before semantic adjudication;
+- `schemas/surface_signal_rules.schema.json` — contract for the deterministic raw-text signal allowlist and detector configuration;
 - `schemas/technique_candidate_report.schema.json` — catalog-routed candidate techniques that remain non-authoritative.
 
 A successful preflight does not imply successful ingest. A clean deterministic QA

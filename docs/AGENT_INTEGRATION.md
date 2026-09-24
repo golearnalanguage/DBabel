@@ -66,6 +66,8 @@ The router performs exact trigger matching and filters by task mode and concrete
 
 Candidate output guides semantic adjudication only. A candidate does not authorize `KEEP`, `REPLACE`, `PROTECT`, `REVIEW`, repair, or human approval. Only an adjudicated semantic finding may carry formal `technique` metadata.
 
+For aligned bilingual units, `scripts/extract_translation_signals.py` can create candidate-routing observations from a deliberately narrow allowlist of surface-detectable cues. Each generated signal records its side, detector ID, matched text, and span when available. Language-aware lexical rules are skipped rather than guessed when language metadata is missing. Semantic-only playbook triggers remain outside this deterministic extractor and require agent adjudication.
+
 For structured DBabel reports, load `schemas/audit_report.schema.json` and its local
 references. Run `scripts/validate_report.py` with dependencies from
 `requirements-dev.txt` when Python is available. The validator checks recorded

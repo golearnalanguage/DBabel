@@ -16,6 +16,9 @@ from suggest_translation_techniques import (
     validate_candidate_report_schema,
 )
 from technique_contract import load_translation_registry
+from extract_translation_signals import (
+    surface_rule_cross_errors,
+)
 from version_info import PACKAGE_VERSION, REVIEW_WORKBENCH_VERSION
 
 LEGACY_REPORT_VERSIONS = {'1.3.0', '1.4.0'}
@@ -454,6 +457,50 @@ def cross_contract_errors(root=ROOT):
         errors.append(
             'config/translation_techniques.yaml: unknown deterministic QA checks: '
             + ', '.join(sorted(unknown_qa_checks))
+        )
+
+    surface_rules = _read_yaml(
+        root / 'config/surface_signal_rules.yaml'
+    )
+
+    surface_schema = _read_json(
+        root / 'schemas/surface_signal_rules.schema.json'
+    )
+
+    surface_validation_errors = sorted(
+        Draft202012Validator(
+            surface_schema
+        ).iter_errors(
+            surface_rules
+        ),
+        key=lambda error: list(
+            error.absolute_path
+        ),
+    )
+
+    for error in surface_validation_errors:
+        location = '.'.join(
+            str(value)
+            for value
+            in error.absolute_path
+        ) or '<root>'
+
+        errors.append(
+            'config/surface_signal_rules.yaml: {}: {}'.format(
+                location,
+                error.message,
+            )
+        )
+
+    if not surface_validation_errors:
+        errors.extend(
+            'config/surface_signal_rules.yaml: {}'.format(
+                error
+            )
+            for error in surface_rule_cross_errors(
+                surface_rules,
+                translation_registry,
+            )
         )
 
     translation_resources = {
