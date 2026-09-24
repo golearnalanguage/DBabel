@@ -195,3 +195,18 @@ Reference/demo reviewer identity is `clay` with the `CL` avatar. Runtime impleme
 may later source reviewer identity from an explicit user/session setting, but the review
 contract must never infer or overwrite decision authorship silently. The README preview
 uses the approved Workbench template with `clay` and no simulated OS title-bar controls.
+
+
+## Technique-aware review findings
+
+Semantic review issues may include a translation-technique annotation containing
+the technique ID, catalog risk, controlled transformations, semantic quality
+dimensions, and a concise trigger reason.
+
+Desktop and Portable Review expose this metadata in the Suggestion inspector as
+diagnostic context. It explains why DBabel surfaced the finding; it does not add a
+new human-decision state, convert deterministic QA into a semantic verdict, or
+authorize repair.
+
+Human decisions remain `UNREVIEWED`, `ACCEPT_SUGGESTION`, `KEEP_CURRENT`,
+`USER_EDITED`, `DEFERRED`, `BLOCKED`, and `WAIVED`.

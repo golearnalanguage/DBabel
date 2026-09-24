@@ -27,7 +27,29 @@
   const issueFilterDefs=[['TERM_GROUP','TERM','blue'],['NUMBER_UNIT_INTEGRITY','NUMBER_UNIT','orange'],['EVIDENCE_GROUP','EVIDENCE','purple'],['ERROR','ERROR','red'],['WARNING','WARNING','yellow'],['PATH_INTEGRITY','PATH','blue'],['PLACEHOLDER_INTEGRITY','PLACEHOLDER','blue'],['VERSION_INTEGRITY','VERSION','blue']];
   function issueFilterMatch(u,key){const iss=issuesFor(u.id);if(key==='ERROR'||key==='WARNING')return iss.some(i=>i.severity===key);if(key==='EVIDENCE_GROUP')return evidenceFor(u).length>0||iss.some(i=>(i.label||i.check_id||'').includes('EVIDENCE'));if(key==='TERM_GROUP')return iss.some(i=>['TERM','PREFERRED_TERM'].includes(i.label||i.check_id))||(u.labels||[]).some(x=>['TERM','PREFERRED_TERM'].includes(x));return iss.some(i=>(i.label||i.check_id||i.severity)===key);}
   function pct(n,total){return total?` (${(n*100/total).toFixed(1)}%)`:'';}
-  function searchable(u){return [u.id,u.location,u.source,u.current_target,u.suggested_target||'',...(u.labels||[]),...issuesFor(u.id).flatMap(x=>[x.label||'',x.check_id||'',x.message||'',x.classification||''])].join('\n').toLowerCase();}
+  function searchable(u){
+    return [
+      u.id,
+      u.location,
+      u.source,
+      u.current_target,
+      u.suggested_target||'',
+      ...(u.labels||[]),
+      ...issuesFor(u.id).flatMap(
+        x=>[
+          x.label||'',
+          x.check_id||'',
+          x.message||'',
+          x.classification||'',
+          x.technique?.technique_id||'',
+          x.technique?.risk||'',
+          x.technique?.trigger_reason||'',
+          ...(x.technique?.transformations||[]),
+          ...(x.technique?.quality_dimensions||[])
+        ]
+      )
+    ].join('\n').toLowerCase();
+  }
   function filterUnits(){const q=el('searchBox').value.trim().toLowerCase(),quick=el('quickFilter').value;let items=state.units.filter(u=>{if(q&&!searchable(u).includes(q))return false;if(quick!=='ALL'&&!reviewMatches(u,quick))return false;if(state.reviewFilters.size&&![...state.reviewFilters].some(k=>reviewMatches(u,k)))return false;if(state.issueFilters.size&&![...state.issueFilters].some(k=>issueFilterMatch(u,k)))return false;return true;});const sort=el('sortSelect').value;if(sort==='STATUS')items=items.slice().sort((a,b)=>decisionFor(a.id).status.localeCompare(decisionFor(b.id).status)||unitIndex(a.id)-unitIndex(b.id));if(sort==='ISSUES')items=items.slice().sort((a,b)=>issuesFor(b.id).length-issuesFor(a.id).length||unitIndex(a.id)-unitIndex(b.id));return items;}
   function metricValue(id,n,total,showPct=true){const root=el(id);root.replaceChildren(document.createTextNode(n.toLocaleString()));if(showPct&&total){const p=node('span',`(${(n*100/total).toFixed(1)}%)`,'metric-pct');root.append(p);}}
   function renderMetrics(){const total=state.units.length,reviewed=state.units.filter(u=>reviewMatches(u,'REVIEWED')).length,withIssues=state.units.filter(u=>reviewMatches(u,'WITH_ISSUES')).length,pending=state.units.filter(u=>reviewMatches(u,'TO_REVIEW')).length;metricValue('metricTotal',total,total,false);metricValue('metricReviewed',reviewed,total);metricValue('metricIssues',withIssues,total);metricValue('metricPending',pending,total);el('countToReview').textContent=pending;el('countReviewed').textContent=reviewed;el('countWithIssues').textContent=withIssues;}
@@ -260,7 +282,137 @@
   }
 
   function selectUnit(id){state.selected=id;state.editing=false;const u=state.units.find(x=>x.id===id);if(!u)return;const d=decisionFor(id),idx=unitIndex(id);el('segmentCounter').textContent=`Segment ${idx+1} of ${state.units.length.toLocaleString()}`;el('sourceText').textContent=u.source;el('targetText').value=d.approved_target!==undefined?d.approved_target:u.current_target;el('targetText').readOnly=true;el('targetText').classList.remove('editing');el('editToggle').replaceChildren();el('editToggle').append(svgUse('i-edit'),document.createTextNode('Edit'));el('reviewerNote').value=d.reviewer_note||'';el('waiverReason').value=d.waiver_reason||'';el('waiverField').classList.add('hidden');el('decisionSelect').value=d.status;const iss=issuesFor(id);const chips=el('issueChips');chips.replaceChildren();for(const i of iss.slice(0,5)){const raw=i.label||i.check_id||i.severity,txt=issueDisplay(raw);const chip=node('span',txt,'issue-chip '+issueClass(i));chip.title=raw;chips.append(chip);}if(evidenceFor(u).length&&!iss.some(i=>(i.label||i.check_id||'').includes('EVIDENCE'))){const ev=node('span','EVIDENCE','issue-chip evidence');ev.title='Linked evidence';chips.append(ev);}if(!iss.length&&!evidenceFor(u).length)chips.append(node('span','CLEAN','issue-chip default'));el('evidenceTabCount').textContent=`(${evidenceFor(u).length})`;const terms=[...(u.labels||[]),...iss.map(i=>i.label||i.check_id||'')].filter(Boolean);el('termTabCount').textContent=`(${new Set(terms).size})`;renderSuggestion(u);renderEvidence(u);renderTerminology(u);setTab('suggestion');renderTable();}
-  function renderSuggestion(u){const iss=issuesFor(u.id);el('suggestionBox').textContent=u.suggested_target||'No replacement suggestion. Review the current target and supporting issues.';const reasons=iss.map(i=>i.message).filter(Boolean);el('reasonBox').textContent=reasons.length?reasons.slice(0,3).join(' · '):'No deterministic or semantic issue is attached to this unit.';renderSuggestionEvidence(u);}
+  function renderSuggestion(u){
+    const iss=issuesFor(u.id);
+    el('suggestionBox').textContent=
+      u.suggested_target||
+      'No replacement suggestion. Review the current target and supporting issues.';
+
+    const reasons=iss
+      .map(i=>i.message)
+      .filter(Boolean);
+
+    el('reasonBox').textContent=
+      reasons.length
+        ? reasons.slice(0,3).join(' · ')
+        : 'No deterministic or semantic issue is attached to this unit.';
+
+    renderTechniqueMetadata(u);
+    renderSuggestionEvidence(u);
+  }
+
+  function renderTechniqueMetadata(u){
+    const root=el('techniqueList');
+    root.replaceChildren();
+
+    const annotated=issuesFor(u.id).filter(
+      issue=>
+        issue.kind==='SEMANTIC' &&
+        issue.technique
+    );
+
+    if(!annotated.length){
+      root.append(
+        node(
+          'div',
+          'No technique annotation is attached to this finding.',
+          'technique-empty'
+        )
+      );
+      return;
+    }
+
+    for(const issue of annotated){
+      const technique=issue.technique;
+      const card=node(
+        'div',
+        undefined,
+        'technique-card'
+      );
+
+      const head=node(
+        'div',
+        undefined,
+        'technique-head'
+      );
+
+      head.append(
+        node(
+          'code',
+          technique.technique_id,
+          'technique-id'
+        ),
+        node(
+          'span',
+          technique.risk,
+          'technique-risk '+
+            String(
+              technique.risk||''
+            ).toLowerCase()
+        )
+      );
+
+      card.append(head);
+
+      const dimensions=
+        technique.quality_dimensions||[];
+
+      if(dimensions.length){
+        const row=node(
+          'div',
+          undefined,
+          'technique-meta'
+        );
+
+        row.append(
+          node(
+            'strong',
+            'Quality'
+          ),
+          node(
+            'span',
+            dimensions.join(' · ')
+          )
+        );
+
+        card.append(row);
+      }
+
+      const transformations=
+        technique.transformations||[];
+
+      if(transformations.length){
+        const row=node(
+          'div',
+          undefined,
+          'technique-meta'
+        );
+
+        row.append(
+          node(
+            'strong',
+            'Transformation'
+          ),
+          node(
+            'span',
+            transformations.join(' · ')
+          )
+        );
+
+        card.append(row);
+      }
+
+      card.append(
+        node(
+          'div',
+          technique.trigger_reason,
+          'technique-reason'
+        )
+      );
+
+      root.append(card);
+    }
+  }
   function renderSuggestionEvidence(u){const evs=evidenceFor(u),root=el('suggestionEvidenceList');root.replaceChildren();el('suggestionEvidenceCount').textContent=evs.length?`View all (${evs.length})`:'No linked evidence';for(const e of evs.slice(0,1)){const c=node('div',undefined,'evidence-card');c.append(node('div',e.source_title||e.id,'evidence-title'));c.append(node('div',e.support_note||'','evidence-note'));c.append(node('div',e.locator||'','evidence-locator'));root.append(c);}if(!evs.length)root.append(node('div','No evidence record is linked to this unit.','evidence-card'));}
 
   function renderEvidence(u){const evs=evidenceFor(u),root=el('evidenceList');root.replaceChildren();el('evidenceCountText').textContent=evs.length?`View all (${evs.length})`:'No linked evidence';for(const e of evs){const c=node('div',undefined,'evidence-card');c.append(node('div',e.source_title||e.id,'evidence-title'));c.append(node('div',e.support_note||'','evidence-note'));c.append(node('div',e.locator||'','evidence-locator'));root.append(c);}if(!evs.length)root.append(node('div','No evidence record is linked to this unit.','evidence-card'));}

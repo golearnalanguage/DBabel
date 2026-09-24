@@ -27,7 +27,29 @@
   function systemTheme(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
   function applyTheme(pref){state.theme=['system','light','dark'].includes(pref)?pref:'system';document.documentElement.dataset.theme=state.theme==='system'?systemTheme():state.theme;document.documentElement.dataset.themePref=state.theme;el('themeSelect').value=state.theme;try{localStorage.setItem(THEME_KEY,state.theme);}catch(_){}}
   function initTheme(){let saved='system';try{saved=localStorage.getItem(THEME_KEY)||'system';}catch(_){}applyTheme(saved);if(window.matchMedia){const mq=window.matchMedia('(prefers-color-scheme: dark)'),sync=()=>{if(state.theme==='system')applyTheme('system');};if(mq.addEventListener)mq.addEventListener('change',sync);else if(mq.addListener)mq.addListener(sync);}}
-  function searchable(u){return [u.id,u.location,u.source,u.current_target,u.suggested_target||'',...(u.labels||[]),...issuesFor(u.id).flatMap(x=>[x.label||'',x.check_id||'',x.message||'',x.classification||''])].join('\n').toLowerCase();}
+  function searchable(u){
+    return [
+      u.id,
+      u.location,
+      u.source,
+      u.current_target,
+      u.suggested_target||'',
+      ...(u.labels||[]),
+      ...issuesFor(u.id).flatMap(
+        x=>[
+          x.label||'',
+          x.check_id||'',
+          x.message||'',
+          x.classification||'',
+          x.technique?.technique_id||'',
+          x.technique?.risk||'',
+          x.technique?.trigger_reason||'',
+          ...(x.technique?.transformations||[]),
+          ...(x.technique?.quality_dimensions||[])
+        ]
+      )
+    ].join('\n').toLowerCase();
+  }
   function filterUnits(){const q=el('searchBox').value.trim().toLowerCase(),quick=el('quickFilter').value;let items=state.units.filter(u=>{if(q&&!searchable(u).includes(q))return false;if(quick!=='ALL'&&!reviewMatches(u,quick))return false;if(state.reviewFilters.size&&![...state.reviewFilters].some(k=>reviewMatches(u,k)))return false;if(state.issueFilters.size&&![...state.issueFilters].some(k=>issueFilterMatch(u,k)))return false;return true;});const sort=el('sortSelect').value;if(sort==='STATUS')items=items.slice().sort((a,b)=>decisionFor(a.id).status.localeCompare(decisionFor(b.id).status)||unitIndex(a.id)-unitIndex(b.id));if(sort==='ISSUES')items=items.slice().sort((a,b)=>issuesFor(b.id).length-issuesFor(a.id).length||unitIndex(a.id)-unitIndex(b.id));return items;}
   function metricValue(id,n,total,showPct=true){const root=el(id);root.replaceChildren(document.createTextNode(n.toLocaleString()));if(showPct&&total)root.append(node('span',`(${(n*100/total).toFixed(1)}%)`,'metric-pct'));}
   function renderMetrics(){const total=state.units.length,reviewed=state.units.filter(u=>reviewMatches(u,'REVIEWED')).length,withIssues=state.units.filter(u=>reviewMatches(u,'WITH_ISSUES')).length,pending=state.units.filter(u=>reviewMatches(u,'TO_REVIEW')).length;metricValue('metricTotal',total,total,false);metricValue('metricReviewed',reviewed,total);metricValue('metricIssues',withIssues,total);metricValue('metricPending',pending,total);el('countToReview').textContent=pending;el('countReviewed').textContent=reviewed;el('countWithIssues').textContent=withIssues;el('exportHint').textContent=`${reviewed} / ${total} reviewed · portable decisions only`;}
@@ -284,7 +306,137 @@
     renderMetrics();
   }
 
-  function renderSuggestion(u){const iss=issuesFor(u.id);el('suggestionBox').textContent=u.suggested_target||'No replacement suggestion. Review the current target and supporting issues.';const reasons=iss.map(i=>i.message).filter(Boolean);el('reasonBox').textContent=reasons.length?reasons.slice(0,3).join(' · '):'No deterministic or semantic issue is attached to this unit.';renderSuggestionEvidence(u);}
+  function renderSuggestion(u){
+    const iss=issuesFor(u.id);
+    el('suggestionBox').textContent=
+      u.suggested_target||
+      'No replacement suggestion. Review the current target and supporting issues.';
+
+    const reasons=iss
+      .map(i=>i.message)
+      .filter(Boolean);
+
+    el('reasonBox').textContent=
+      reasons.length
+        ? reasons.slice(0,3).join(' · ')
+        : 'No deterministic or semantic issue is attached to this unit.';
+
+    renderTechniqueMetadata(u);
+    renderSuggestionEvidence(u);
+  }
+
+  function renderTechniqueMetadata(u){
+    const root=el('techniqueList');
+    root.replaceChildren();
+
+    const annotated=issuesFor(u.id).filter(
+      issue=>
+        issue.kind==='SEMANTIC' &&
+        issue.technique
+    );
+
+    if(!annotated.length){
+      root.append(
+        node(
+          'div',
+          'No technique annotation is attached to this finding.',
+          'technique-empty'
+        )
+      );
+      return;
+    }
+
+    for(const issue of annotated){
+      const technique=issue.technique;
+      const card=node(
+        'div',
+        undefined,
+        'technique-card'
+      );
+
+      const head=node(
+        'div',
+        undefined,
+        'technique-head'
+      );
+
+      head.append(
+        node(
+          'code',
+          technique.technique_id,
+          'technique-id'
+        ),
+        node(
+          'span',
+          technique.risk,
+          'technique-risk '+
+            String(
+              technique.risk||''
+            ).toLowerCase()
+        )
+      );
+
+      card.append(head);
+
+      const dimensions=
+        technique.quality_dimensions||[];
+
+      if(dimensions.length){
+        const row=node(
+          'div',
+          undefined,
+          'technique-meta'
+        );
+
+        row.append(
+          node(
+            'strong',
+            'Quality'
+          ),
+          node(
+            'span',
+            dimensions.join(' · ')
+          )
+        );
+
+        card.append(row);
+      }
+
+      const transformations=
+        technique.transformations||[];
+
+      if(transformations.length){
+        const row=node(
+          'div',
+          undefined,
+          'technique-meta'
+        );
+
+        row.append(
+          node(
+            'strong',
+            'Transformation'
+          ),
+          node(
+            'span',
+            transformations.join(' · ')
+          )
+        );
+
+        card.append(row);
+      }
+
+      card.append(
+        node(
+          'div',
+          technique.trigger_reason,
+          'technique-reason'
+        )
+      );
+
+      root.append(card);
+    }
+  }
   function renderSuggestionEvidence(u){const evs=evidenceFor(u),root=el('suggestionEvidenceList');root.replaceChildren();el('suggestionEvidenceCount').textContent=evs.length?`View all (${evs.length})`:'No linked evidence';for(const e of evs.slice(0,1)){const c=node('div',undefined,'evidence-card');c.append(node('div',e.source_title||e.id,'evidence-title'));c.append(node('div',e.support_note||'','evidence-note'));c.append(node('div',e.locator||'','evidence-locator'));root.append(c);}if(!evs.length)root.append(node('div','No evidence record is linked to this unit.','evidence-card'));}
 
   function renderEvidence(u){const evs=evidenceFor(u),root=el('evidenceList');root.replaceChildren();el('evidenceCountText').textContent=evs.length?`View all (${evs.length})`:'No linked evidence';for(const e of evs){const c=node('div',undefined,'evidence-card');c.append(node('div',e.source_title||e.id,'evidence-title'));c.append(node('div',e.support_note||'','evidence-note'));c.append(node('div',e.locator||'','evidence-locator'));root.append(c);}if(!evs.length)root.append(node('div','No evidence record is linked to this unit.','evidence-card'));}

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added technique-aware semantic review findings and Desktop/Portable Workbench explainability for technique risk, controlled transformations, quality dimensions, and trigger reasons without changing human decision semantics.
+
 - Added a routed Technical Translation Playbook with 15 maintainable database and
   technical-localization techniques, controlled transformation risks, synthetic
   bilingual examples, and machine-readable technique contracts.

@@ -169,3 +169,93 @@ button,input,select,textarea{font:inherit;color:inherit}button,select,input,text
     flex-wrap:wrap;
   }
 }
+
+
+/* v1.5 technique-aware review explainability */
+.technique-section{
+  margin-top:10px;
+}
+
+.technique-card{
+  margin:8px 0;
+  padding:11px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--surface-2);
+}
+
+.technique-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:8px;
+}
+
+.technique-id{
+  color:var(--blue);
+  background:var(--blue-soft);
+  border-radius:5px;
+  padding:3px 6px;
+  font-size:10.5px;
+  font-weight:700;
+  overflow-wrap:anywhere;
+}
+
+.technique-risk{
+  border-radius:999px;
+  padding:2px 7px;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+
+.technique-risk.high{
+  color:var(--red);
+  background:var(--red-soft);
+}
+
+.technique-risk.medium{
+  color:var(--orange);
+  background:var(--orange-soft);
+}
+
+.technique-risk.low{
+  color:var(--green);
+  background:var(--green-soft);
+}
+
+.technique-meta{
+  display:grid;
+  grid-template-columns:92px minmax(0,1fr);
+  gap:8px;
+  margin-top:5px;
+  color:var(--text-soft);
+  font-size:10.5px;
+  line-height:1.4;
+}
+
+.technique-meta strong{
+  color:var(--muted);
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:.035em;
+}
+
+.technique-reason{
+  margin-top:8px;
+  padding-top:8px;
+  border-top:1px solid var(--line);
+  color:var(--text-soft);
+  font-size:11px;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+
+.technique-empty{
+  padding:9px 10px;
+  border:1px dashed var(--line-strong);
+  border-radius:8px;
+  color:var(--muted);
+  font-size:10.5px;
+}

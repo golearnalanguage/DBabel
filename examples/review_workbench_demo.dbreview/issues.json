@@ -11,8 +11,19 @@
       "E001"
     ],
     "blocking": false,
-    "fingerprint": "63d386f2cccec258b845aad7de66d316380fc7206906076af951d7d5b863e8aa",
-    "suggestion": "The primary database sends archived logs to the standby database."
+    "fingerprint": "4b60ec8e5cdb7eb1ebc0b707253f92bea1f604d1093495f877d580c569a8d9d3",
+    "suggestion": "The primary database sends archived logs to the standby database.",
+    "technique": {
+      "technique_id": "PROPOSITION_PRESERVING_REORDERING",
+      "risk": "MEDIUM",
+      "transformations": [
+        "CLAUSE_REORDERING"
+      ],
+      "quality_dimensions": [
+        "ACCURACY"
+      ],
+      "trigger_reason": "The target reverses the sender and receiver roles while restructuring the sentence."
+    }
   },
   {
     "id": "Q0002",

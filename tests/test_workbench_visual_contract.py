@@ -243,5 +243,103 @@ class VisualContractTests(unittest.TestCase):
 
 
 
+
+    def test_technique_reasoning_is_visible_but_not_a_decision(self):
+        desktop_html=(
+            ROOT/'review_workbench/static/index.html'
+        ).read_text(encoding='utf-8')
+
+        portable_html=(
+            ROOT/'review_workbench/portable_template.html'
+        ).read_text(encoding='utf-8')
+
+        desktop_js=(
+            ROOT/'review_workbench/static/app.js'
+        ).read_text(encoding='utf-8')
+
+        portable_js=(
+            ROOT/'review_workbench/portable_app.js'
+        ).read_text(encoding='utf-8')
+
+        css=(
+            ROOT/'review_workbench/static/style.css'
+        ).read_text(encoding='utf-8')
+
+        for content in (
+            desktop_html,
+            portable_html,
+        ):
+            self.assertIn(
+                'Technique reasoning',
+                content,
+            )
+            self.assertIn(
+                'Diagnostic · human decision unchanged',
+                content,
+            )
+            self.assertIn(
+                'id="techniqueList"',
+                content,
+            )
+
+        for code in (
+            desktop_js,
+            portable_js,
+        ):
+            self.assertIn(
+                'function renderTechniqueMetadata(u)',
+                code,
+            )
+            self.assertIn(
+                'technique.technique_id',
+                code,
+            )
+            self.assertIn(
+                'technique.trigger_reason',
+                code,
+            )
+            self.assertIn(
+                'technique.quality_dimensions',
+                code,
+            )
+            self.assertIn(
+                'technique.transformations',
+                code,
+            )
+
+        self.assertIn(
+            '.technique-card',
+            css,
+        )
+
+        issues=(
+            ROOT
+            / 'examples'
+            / 'review_workbench_demo.dbreview'
+            / 'issues.json'
+        ).read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn(
+            'PROPOSITION_PRESERVING_REORDERING',
+            issues,
+        )
+
+        decision_schema=(
+            ROOT
+            / 'schemas'
+            / 'review_decision.schema.json'
+        ).read_text(
+            encoding='utf-8'
+        )
+
+        self.assertNotIn(
+            'TECHNIQUE_ACCEPTED',
+            decision_schema,
+        )
+
+
+
 if __name__=='__main__':
     unittest.main()
