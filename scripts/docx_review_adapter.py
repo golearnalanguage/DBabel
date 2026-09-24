@@ -148,6 +148,28 @@ def build_anchors(path: Path, units: Sequence[Dict[str, Any]]) -> Dict[str, Dict
         if len(candidates) == 1:
             row = candidates[0]
             anchor_id = "A_{}".format(unit_id)
+
+            blockers = list(
+                row.get("writeback_blockers") or []
+            )
+
+            if blockers:
+                anchors[unit_id] = {
+                    "id": anchor_id,
+                    "unit_id": unit_id,
+                    "status": "BLOCKED",
+                    "reason": (
+                        "unsupported DOCX write-back structure: "
+                        + ", ".join(blockers)
+                    ),
+                    "part": row["part"],
+                    "paragraph_ordinal": row["paragraph_ordinal"],
+                    "para_id": row.get("para_id"),
+                    "original_text": target,
+                    "writeback_blockers": blockers,
+                }
+                continue
+
             anchors[unit_id] = {
                 "id": anchor_id,
                 "unit_id": unit_id,
