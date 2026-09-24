@@ -26,6 +26,17 @@ class CIContractTests(unittest.TestCase):
             },
         )
 
+    def test_repository_text_is_normalized_to_lf(self):
+        attributes = (
+            ROOT / '.gitattributes'
+        ).read_text(encoding='utf-8')
+
+        self.assertIn(
+            '* text=auto eol=lf',
+            attributes,
+        )
+
+
     def test_python_matrix_includes_minimum_and_reference_versions(self):
         versions = {str(value) for value in self.job['strategy']['matrix']['python-version']}
         self.assertEqual(versions, {'3.9', '3.11'})
