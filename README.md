@@ -21,6 +21,96 @@ inputs owned or supplied by the user.
 
 [中文说明](README.zh-CN.md) · [Skill kernel](SKILL.md) · [Package index](PACKAGE_INDEX.md) · [Examples](examples/)
 
+## What DBabel is built on
+
+DBabel is a repository-based **Agent Skill**, not a standalone machine-translation
+engine or a bundled terminology database. Its architecture combines a compact Agent
+kernel with progressive routing, evidence-based terminology adjudication,
+deterministic QA, file preflight, and schema-driven validation.
+
+| Layer | Uses | Purpose |
+|---|---|---|
+| Agent kernel | `SKILL.md` + Task Context | Keep only invariant rules in the always-loaded core |
+| Progressive routing | Resource Router + Example Router | Load only the references and worked-example sections required by the current state |
+| Evidence framework | Project-approved resources + authoritative runtime sources | Bind terminology decisions to product, version, text role, and evidence scope |
+| Accuracy Core | Project glossary + deterministic bilingual QA | Detect repeatable integrity risks without pretending to make semantic judgments |
+| Document preflight | Content-based format probe + capability/backend registry | Verify what a file actually is and whether a suitable parser is available before ingest |
+| Ingest validation | Coverage and structure reporting | Separate "parser selected" from "content actually inspected" |
+| Repair governance | Authorization + evidence + round-trip QA gates | Prevent a detected issue or proposed replacement from becoming an unverified edit |
+| Package validation | JSON Schema + Python validators + regression tests + CI | Keep runtime, report, routing, version, and package contracts mutually consistent |
+
+The design is provider-independent: an Agent, LLM, MT system, search tool, parser, or
+format backend can be plugged in when available, but none of them becomes semantic
+authority merely by being present. DBabel keeps the final terminology decision tied
+to context and evidence.
+
+The methodology is informed by terminology and localization standards such as ISO
+704, TBX-related terminology models, W3C ITS 2.0, and OASIS XLIFF 2.1. These are
+design references; DBabel does **not** claim TBX, TMX, or XLIFF compatibility unless
+a dedicated adapter and conformance tests are implemented.
+
+## Capabilities at a glance
+
+| Capability | What DBabel does |
+|---|---|
+| Terminology lookup | Resolve a term against product, version, context, and supporting evidence |
+| Document audit | Find terminology, scope, protected-token, and evidence issues with stable locations |
+| Bilingual review | Compare aligned source/target units for terminology, omissions, numbers, placeholders, and protected content |
+| Technical translation | Generate target text under project terminology and protected-token constraints, then recheck it |
+| Project glossary governance | Validate JSON/CSV glossaries and enforce only scoped `PROJECT_APPROVED` entries |
+| Deterministic QA | Check placeholders, URLs, paths, filenames, CLI options, environment variables, versions, numbers, units, and protected literals |
+| Source research | Route unresolved or version-sensitive terminology to appropriate authoritative sources |
+| Technical-claim routing | Separate terminology problems from unsupported performance, compatibility, licensing, or capability claims |
+| Controlled repair | Apply only authorized, evidence-supported changes and verify the output with round-trip QA |
+| Progressive instruction loading | Avoid loading every policy/reference/example when the current task does not need them |
+
+## Format support
+
+DBabel separates **format recognition**, **parser availability**, **ingest coverage**,
+and **repair capability**. A file being recognized does not guarantee that every
+structure in that file can be parsed or safely edited.
+
+### Workflow-aware formats
+
+| Format | Review/audit posture | Repair posture |
+|---|---|---|
+| DOCX | Structure-aware paragraphs, tables, headings, and other exposed Word structures | Conditional; preserve run-level formatting and non-target content |
+| PPTX | Slides, shapes, tables, charts/notes when exposed | Conditional; requires layout/overflow recheck |
+| XLSX | Cells, headers, tables, comments/notes when exposed; formulas protected | Conditional; formula-safe handling required |
+| XLSM | Same as XLSX plus macro awareness | High-risk; macros must be preserved and generic repair may be blocked |
+| HTML | DOM-aware visible text, metadata, attributes, links, code, scripts/styles | Conditional; preserve markup and bindings |
+| Markdown | AST-aware handling when available; protect code, links, and front matter | Conditional |
+| TXT | Text-only with reduced structural confidence | Conditional |
+| PDF | Page/location-aware audit; read-only by default | Dedicated PDF workflow required |
+| Image / UI screenshot | Vision/OCR candidate extraction with explicit uncertainty | Image-edit workflow required |
+
+### Additional format awareness
+
+The built-in bounded format probe can also recognize or classify common container
+and data formats such as DOCM/PPTM, legacy OLE Office containers (`.doc/.xls/.ppt`),
+ODT/ODS/ODP, EPUB, ZIP, JSON, XML, CSV, and common image signatures. Recognition is
+only the first gate: actual parsing still depends on a compatible runtime backend.
+
+Optional backends can extend detection or parsing, but they are registered rather
+than auto-installed. DBabel's core remains usable with Python 3.9+ and the repository
+validation dependencies only.
+
+## Key design properties
+
+- **Progressive** — route and load only what the current task state requires.
+- **Fail-closed** — missing scope, format conflicts, unsupported repair paths, and
+  ambiguous evidence remain explicit instead of being guessed through.
+- **Data-light** — no bundled vendor terminology corpus or proprietary translation
+  memory is required.
+- **Scope-aware** — product, version, text role, and project approval remain part of
+  the decision boundary.
+- **Deterministic where possible, semantic where necessary** — mechanical integrity
+  checks are repeatable, while meaning still requires contextual adjudication.
+- **Auditable** — findings, evidence, coverage, repair actions, and QA states are
+  represented as explicit contracts rather than implicit Agent claims.
+- **Provider-independent** — optional parsers, search tools, MT systems, and LLMs can
+  assist the workflow without owning the final terminology decision.
+
 ## How to use
 
 ### Codex
