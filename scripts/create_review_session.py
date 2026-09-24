@@ -28,6 +28,7 @@ from review_model import (
     write_jsonl,
 )
 from docx_review_adapter import build_anchors
+from version_info import REVIEW_WORKBENCH_VERSION
 
 
 def _load_units(path: Path) -> List[Dict[str, Any]]:
@@ -208,7 +209,7 @@ def main() -> int:
             "format_version": "1.0",
             "session_id": "RS_{}".format(uuid.uuid4().hex),
             "created_at": utc_now(),
-            "dbabel_version": "1.5.0-dev",
+            "dbabel_version": REVIEW_WORKBENCH_VERSION,
             "mode": args.mode,
             "title": args.title or ("Review: " + original_info["filename"]),
             "bundle_files": {

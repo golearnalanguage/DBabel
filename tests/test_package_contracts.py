@@ -88,5 +88,24 @@ class PackageContractTests(unittest.TestCase):
             'example routes drifted from example_router.yaml')
 
 
+
+    def test_workbench_readme_version_drift_is_rejected(self):
+        def mutate(path):
+            text=path.read_text(encoding='utf-8')
+            path.write_text(
+                text.replace(
+                    'Review Workbench development version: **1.5.0-dev**',
+                    'Review Workbench development version: **9.9.9-dev**',
+                ),
+                encoding='utf-8',
+            )
+
+        self.assert_rejected_after(
+            'README.md',
+            mutate,
+            'Review Workbench development version drifted',
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,13 @@
 # DBabel Review Workbench — v1.5 development contract
 
+Current released DBabel Skill/package version: **1.4.0**.
+
+Current Review Workbench development contract: **1.5.0-dev**.
+
+The Workbench development version is intentionally separate from the released
+package version until a formal v1.5.0 release is prepared. It does not by itself
+create or move a Git tag or GitHub Release.
+
 The Review Workbench adds a human approval layer between DBabel findings/QA and any
 native-format repair. It is intentionally not a full CAT platform.
 

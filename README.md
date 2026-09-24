@@ -355,7 +355,15 @@ capabilities and the structures actually inspected.
 
 ## Validation
 
-Repository version: **1.4.0**. See [changes](CHANGELOG.md) and
+Repository version: **1.4.0**.
+
+Review Workbench development version: **1.5.0-dev**.
+
+`1.4.0` is the current released Skill/package contract. `1.5.0-dev` identifies
+the unreleased Review Workbench development contract and does not represent a
+published DBabel release or Git tag.
+
+See [changes](CHANGELOG.md) and
 [report format](references/11_OUTPUT_AND_DATA_CONTRACTS.md).
 
 Local validation requires Python 3.9+ and the development dependencies:

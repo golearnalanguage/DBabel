@@ -11,8 +11,8 @@ import subprocess
 import yaml
 from jsonschema import Draft202012Validator
 from validate_report import ROOT, validate_report
+from version_info import PACKAGE_VERSION, REVIEW_WORKBENCH_VERSION
 
-PACKAGE_VERSION = '1.4.0'
 LEGACY_REPORT_VERSIONS = {'1.3.0'}
 SUPPORTED_REPORT_VERSIONS = LEGACY_REPORT_VERSIONS | {PACKAGE_VERSION}
 
@@ -129,6 +129,42 @@ def cross_contract_errors(root=ROOT):
     match_zh = re.search(r'当前仓库包版本(?:为|：)?\s*\*\*([0-9]+\.[0-9]+\.[0-9]+)\*\*', readme_zh)
     if not match_zh or match_zh.group(1) != PACKAGE_VERSION:
         errors.append('README.zh-CN.md: repository version does not match package version')
+
+    workbench_match = re.search(
+        r'Review Workbench development version:\s*\*\*([^*]+)\*\*',
+        readme,
+    )
+    if (
+        not workbench_match
+        or workbench_match.group(1) != REVIEW_WORKBENCH_VERSION
+    ):
+        errors.append(
+            'README.md: Review Workbench development version drifted'
+        )
+
+    workbench_match_zh = re.search(
+        r'Review Workbench 当前开发版本为\s*\*\*([^*]+)\*\*',
+        readme_zh,
+    )
+    if (
+        not workbench_match_zh
+        or workbench_match_zh.group(1) != REVIEW_WORKBENCH_VERSION
+    ):
+        errors.append(
+            'README.zh-CN.md: Review Workbench development version drifted'
+        )
+
+    workbench_doc = (
+        root / 'docs/REVIEW_WORKBENCH.md'
+    ).read_text(encoding='utf-8')
+
+    if (
+        '**{}**'.format(REVIEW_WORKBENCH_VERSION)
+        not in workbench_doc
+    ):
+        errors.append(
+            'docs/REVIEW_WORKBENCH.md: Workbench version drifted'
+        )
 
     changelog = (root / 'CHANGELOG.md').read_text(encoding='utf-8')
     unreleased = f'## Unreleased — {PACKAGE_VERSION}' in changelog
