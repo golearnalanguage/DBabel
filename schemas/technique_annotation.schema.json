@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Translation Technique Annotation",
+  "type": "object",
+  "required": [
+    "technique_id",
+    "risk",
+    "transformations",
+    "quality_dimensions",
+    "trigger_reason"
+  ],
+  "properties": {
+    "technique_id": {
+      "$ref": "translation_techniques.schema.json#/$defs/technique_id"
+    },
+    "risk": {
+      "$ref": "translation_techniques.schema.json#/$defs/risk_level"
+    },
+    "transformations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "translation_techniques.schema.json#/$defs/transformation_id"
+      }
+    },
+    "quality_dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "translation_techniques.schema.json#/$defs/semantic_dimension"
+      }
+    },
+    "trigger_reason": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

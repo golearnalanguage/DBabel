@@ -29,6 +29,10 @@ from review_model import (
 )
 from docx_review_adapter import build_anchors
 from version_info import REVIEW_WORKBENCH_VERSION
+from technique_contract import (
+    load_translation_registry,
+    validate_technique_annotation,
+)
 
 
 def _load_units(path: Path) -> List[Dict[str, Any]]:
@@ -221,11 +225,52 @@ def main() -> int:
                 unit["labels"].append(converted["label"])
 
         if args.audit_report:
-            audit = read_json(Path(args.audit_report))
-            evidence = list(audit.get("sources") or [])
+            audit = read_json(
+                Path(
+                    args.audit_report
+                )
+            )
+
+            technique_registry = (
+                load_translation_registry(
+                    HERE.parent
+                )
+            )
+
+            evidence = list(
+                audit.get(
+                    "sources"
+                )
+                or []
+            )
             evidence_ids = {str(x.get("id")) for x in evidence}
             for finding in audit.get("findings") or []:
-                unit_id = _map_finding_to_unit(finding, units)
+                technique_errors = (
+                    validate_technique_annotation(
+                        finding.get(
+                            "technique"
+                        ),
+                        technique_registry,
+                    )
+                )
+
+                if technique_errors:
+                    raise ValueError(
+                        "finding {} technique: {}".format(
+                            finding.get(
+                                "id",
+                                "<unknown>",
+                            ),
+                            "; ".join(
+                                technique_errors
+                            ),
+                        )
+                    )
+
+                unit_id = _map_finding_to_unit(
+                    finding,
+                    units,
+                )
                 if unit_id is None:
                     # Unmappable findings stay visible as limitations outside the unit grid.
                     continue

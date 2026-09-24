@@ -57,10 +57,17 @@ These contracts serve different stages and must remain distinct:
   results, not semantic decisions or repair authorization;
 - `schemas/translation_techniques.schema.json` — machine-readable technical
   translation technique and controlled-transformation registry.
+- `schemas/technique_annotation.schema.json` — optional semantic-finding metadata that records the
+  technique, risk, controlled transformations, quality dimensions, and human-readable trigger reason.
 
 A successful preflight does not imply successful ingest. A clean deterministic QA
 report does not establish semantic correctness. A deterministic issue does not by
 itself justify `REPLACE` or authorize editing.
+
+A semantic finding may carry a technique annotation. That annotation explains the
+translation failure mode; it is not a second decision vocabulary, human approval,
+or repair authorization. Deterministic issues remain `POTENTIAL_ISSUE` and do not
+receive technique annotations by default.
 
 ## Validate
 

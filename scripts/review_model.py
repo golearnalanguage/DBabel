@@ -17,8 +17,11 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tupl
 
 try:
     from jsonschema import Draft202012Validator
+    from referencing import Registry, Resource
 except ImportError:  # pragma: no cover
     Draft202012Validator = None
+    Registry = None
+    Resource = None
 
 REVIEW_STATUSES = {
     "UNREVIEWED",
@@ -96,18 +99,90 @@ def load_schema(schema_path: Path) -> Dict[str, Any]:
 
 
 def validate_against_schema(value: Any, schema_path: Path) -> List[str]:
-    if Draft202012Validator is None:
-        raise RuntimeError("jsonschema is required for DBabel review contract validation")
-    validator = Draft202012Validator(load_schema(schema_path))
+    if (
+        Draft202012Validator is None
+        or Registry is None
+        or Resource is None
+    ):
+        raise RuntimeError(
+            "jsonschema and referencing are required for DBabel review contract validation"
+        )
+
+    schema_dir = schema_path.parent
+    base = "https://dbabel.invalid/schemas/"
+
+    schemas = {
+        path.name: load_schema(path)
+        for path in schema_dir.glob("*.json")
+    }
+
+    registry = Registry().with_resources(
+        (
+            base + name,
+            Resource.from_contents(schema),
+        )
+        for name, schema in schemas.items()
+    )
+
+    validator = Draft202012Validator(
+        {
+            "$ref": (
+                base
+                + schema_path.name
+            )
+        },
+        registry=registry,
+    )
+
     errors = []
-    for error in sorted(validator.iter_errors(value), key=lambda e: list(e.absolute_path)):
-        where = "/".join(str(x) for x in error.absolute_path)
-        errors.append("{}: {}".format(where or "$", error.message))
+
+    for error in sorted(
+        validator.iter_errors(value),
+        key=lambda e: list(
+            e.absolute_path
+        ),
+    ):
+        where = "/".join(
+            str(x)
+            for x in error.absolute_path
+        )
+
+        errors.append(
+            "{}: {}".format(
+                where or "$",
+                error.message,
+            )
+        )
+
     return errors
 
 
 def review_issue_fingerprint(issue: Dict[str, Any]) -> str:
-    """Stable fingerprint independent of transient Q0001-style IDs."""
+    """Stable fingerprint independent of transient IDs and explanation wording."""
+
+    technique = issue.get("technique")
+    technique_identity = None
+
+    if isinstance(technique, dict):
+        technique_identity = {
+            "technique_id": technique.get(
+                "technique_id"
+            ),
+            "risk": technique.get("risk"),
+            "transformations": sorted(
+                technique.get(
+                    "transformations"
+                )
+                or []
+            ),
+            "quality_dimensions": sorted(
+                technique.get(
+                    "quality_dimensions"
+                )
+                or []
+            ),
+        }
+
     material = {
         "unit_id": issue.get("unit_id"),
         "kind": issue.get("kind"),
@@ -117,7 +192,9 @@ def review_issue_fingerprint(issue: Dict[str, Any]) -> str:
         "target_items": issue.get("target_items") or [],
         "glossary_entry_id": issue.get("glossary_entry_id"),
         "suggestion": issue.get("suggestion"),
+        "technique": technique_identity,
     }
+
     return sha256_json(material)
 
 
@@ -158,8 +235,70 @@ def semantic_finding_to_review(finding: Dict[str, Any], unit_id: str) -> Dict[st
         "blocking": blocking,
     }
     if finding.get("recommendation") is not None:
-        value["suggestion"] = str(finding.get("recommendation"))
-    value["fingerprint"] = review_issue_fingerprint(value)
+        value["suggestion"] = str(
+            finding.get(
+                "recommendation"
+            )
+        )
+
+    technique = finding.get(
+        "technique"
+    )
+
+    if technique is not None:
+        if not isinstance(
+            technique,
+            dict,
+        ):
+            raise ValueError(
+                "finding technique annotation must be an object"
+            )
+
+        value["technique"] = {
+            "technique_id": str(
+                technique.get(
+                    "technique_id"
+                )
+                or ""
+            ),
+            "risk": str(
+                technique.get(
+                    "risk"
+                )
+                or ""
+            ),
+            "transformations": [
+                str(item)
+                for item in (
+                    technique.get(
+                        "transformations"
+                    )
+                    or []
+                )
+            ],
+            "quality_dimensions": [
+                str(item)
+                for item in (
+                    technique.get(
+                        "quality_dimensions"
+                    )
+                    or []
+                )
+            ],
+            "trigger_reason": str(
+                technique.get(
+                    "trigger_reason"
+                )
+                or ""
+            ),
+        }
+
+    value["fingerprint"] = (
+        review_issue_fingerprint(
+            value
+        )
+    )
+
     return value
 
 

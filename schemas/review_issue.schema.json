@@ -3,24 +3,112 @@
   "title": "DBabel Review Issue",
   "type": "object",
   "required": [
-    "id", "unit_id", "kind", "label", "severity", "classification",
-    "message", "fingerprint", "blocking", "evidence_refs"
+    "id",
+    "unit_id",
+    "kind",
+    "label",
+    "severity",
+    "classification",
+    "message",
+    "fingerprint",
+    "blocking",
+    "evidence_refs"
   ],
   "properties": {
-    "id": {"type": "string", "minLength": 1},
-    "unit_id": {"type": "string", "minLength": 1},
-    "kind": {"type": "string", "enum": ["DETERMINISTIC", "SEMANTIC"]},
-    "label": {"type": "string", "minLength": 1},
-    "severity": {"type": "string", "enum": ["ERROR", "WARNING", "INFO", "REVIEW"]},
-    "classification": {"type": "string", "minLength": 1},
-    "message": {"type": "string", "minLength": 1},
-    "suggestion": {"type": "string"},
-    "source_items": {"type": "array", "items": {"type": "string"}},
-    "target_items": {"type": "array", "items": {"type": "string"}},
-    "glossary_entry_id": {"type": "string", "minLength": 1},
-    "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
-    "fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-    "blocking": {"type": "boolean"}
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "unit_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "DETERMINISTIC",
+        "SEMANTIC"
+      ]
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "ERROR",
+        "WARNING",
+        "INFO",
+        "REVIEW"
+      ]
+    },
+    "classification": {
+      "type": "string",
+      "minLength": 1
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suggestion": {
+      "type": "string"
+    },
+    "source_items": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "target_items": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "glossary_entry_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "blocking": {
+      "type": "boolean"
+    },
+    "technique": {
+      "$ref": "technique_annotation.schema.json"
+    }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "const": "DETERMINISTIC"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "technique"
+          ]
+        }
+      }
+    }
+  ]
 }

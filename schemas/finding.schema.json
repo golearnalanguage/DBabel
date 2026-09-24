@@ -114,6 +114,9 @@
     "next_action": {
       "type": "string",
       "minLength": 1
+    },
+    "technique": {
+      "$ref": "technique_annotation.schema.json"
     }
   },
   "additionalProperties": false,

@@ -61,29 +61,10 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "enum": [
-              "TERM_SUBSTITUTION",
-              "CLAUSE_REORDERING",
-              "SENTENCE_SPLIT",
-              "SENTENCE_MERGE",
-              "EXPLICITATION",
-              "IMPLICITATION",
-              "VOICE_CHANGE",
-              "NOMINALIZATION_SHIFT",
-              "UI_LABEL_LOCK",
-              "DNT_PRESERVATION",
-              "ABBREVIATION_EXPANSION",
-              "PUNCTUATION_LOCALIZATION"
-            ]
+            "$ref": "#/$defs/transformation_id"
           },
           "risk": {
-            "type": "string",
-            "enum": [
-              "LOW",
-              "MEDIUM",
-              "HIGH"
-            ]
+            "$ref": "#/$defs/risk_level"
           },
           "description": {
             "type": "string",
@@ -116,8 +97,7 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "pattern": "^[A-Z][A-Z0-9_]+$"
+            "$ref": "#/$defs/technique_id"
           },
           "category": {
             "type": "string",
@@ -133,12 +113,7 @@
             ]
           },
           "risk": {
-            "type": "string",
-            "enum": [
-              "LOW",
-              "MEDIUM",
-              "HIGH"
-            ]
+            "$ref": "#/$defs/risk_level"
           },
           "summary": {
             "type": "string",
@@ -203,42 +178,14 @@
             "type": "array",
             "uniqueItems": true,
             "items": {
-              "type": "string",
-              "enum": [
-                "TERM_SUBSTITUTION",
-                "CLAUSE_REORDERING",
-                "SENTENCE_SPLIT",
-                "SENTENCE_MERGE",
-                "EXPLICITATION",
-                "IMPLICITATION",
-                "VOICE_CHANGE",
-                "NOMINALIZATION_SHIFT",
-                "UI_LABEL_LOCK",
-                "DNT_PRESERVATION",
-                "ABBREVIATION_EXPANSION",
-                "PUNCTUATION_LOCALIZATION"
-              ]
+              "$ref": "#/$defs/transformation_id"
             }
           },
           "restricted_transformations": {
             "type": "array",
             "uniqueItems": true,
             "items": {
-              "type": "string",
-              "enum": [
-                "TERM_SUBSTITUTION",
-                "CLAUSE_REORDERING",
-                "SENTENCE_SPLIT",
-                "SENTENCE_MERGE",
-                "EXPLICITATION",
-                "IMPLICITATION",
-                "VOICE_CHANGE",
-                "NOMINALIZATION_SHIFT",
-                "UI_LABEL_LOCK",
-                "DNT_PRESERVATION",
-                "ABBREVIATION_EXPANSION",
-                "PUNCTUATION_LOCALIZATION"
-              ]
+              "$ref": "#/$defs/transformation_id"
             }
           },
           "qa_mapping": {
@@ -274,16 +221,7 @@
                 "minItems": 1,
                 "uniqueItems": true,
                 "items": {
-                  "type": "string",
-                  "enum": [
-                    "TERMINOLOGY",
-                    "ACCURACY",
-                    "LINGUISTIC_CONVENTIONS",
-                    "STYLE",
-                    "LOCALE_CONVENTIONS",
-                    "AUDIENCE_APPROPRIATENESS",
-                    "DESIGN_AND_MARKUP"
-                  ]
+                  "$ref": "#/$defs/semantic_dimension"
                 }
               }
             },
@@ -325,5 +263,48 @@
       }
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "technique_id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]+$"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "transformation_id": {
+      "type": "string",
+      "enum": [
+        "TERM_SUBSTITUTION",
+        "CLAUSE_REORDERING",
+        "SENTENCE_SPLIT",
+        "SENTENCE_MERGE",
+        "EXPLICITATION",
+        "IMPLICITATION",
+        "VOICE_CHANGE",
+        "NOMINALIZATION_SHIFT",
+        "UI_LABEL_LOCK",
+        "DNT_PRESERVATION",
+        "ABBREVIATION_EXPANSION",
+        "PUNCTUATION_LOCALIZATION"
+      ]
+    },
+    "semantic_dimension": {
+      "type": "string",
+      "enum": [
+        "TERMINOLOGY",
+        "ACCURACY",
+        "LINGUISTIC_CONVENTIONS",
+        "STYLE",
+        "LOCALE_CONVENTIONS",
+        "AUDIENCE_APPROPRIATENESS",
+        "DESIGN_AND_MARKUP"
+      ]
+    }
+  }
 }

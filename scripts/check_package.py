@@ -540,8 +540,21 @@ def check_package(write_manifest=False):
                 schema = _read_json(path)
                 Draft202012Validator.check_schema(schema)
                 for ref in _schema_refs(schema):
-                    if not (path.parent / ref).is_file():
-                        errors.append(f'{path_name}: unresolved schema reference {ref}')
+                    local_ref = ref.split(
+                        '#',
+                        1,
+                    )[0]
+
+                    if (
+                        local_ref
+                        and not (
+                            path.parent
+                            / local_ref
+                        ).is_file()
+                    ):
+                        errors.append(
+                            f'{path_name}: unresolved schema reference {ref}'
+                        )
             if path.suffix == '.md':
                 text = path.read_text(encoding='utf-8')
                 for link in re.findall(r'\[[^\]\n]*\]\(([^)\s]+)\)', text):

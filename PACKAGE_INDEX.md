@@ -29,6 +29,7 @@
 - [Technical translation playbook](references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md)
 - [Machine-readable technique registry](config/translation_techniques.yaml)
 - [Technique registry schema](schemas/translation_techniques.schema.json)
+- [Technique annotation schema](schemas/technique_annotation.schema.json)
 
 ## Accuracy Core
 

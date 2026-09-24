@@ -6,7 +6,7 @@ SCHEMAS=ROOT/'schemas'
 
 class ContractTests(unittest.TestCase):
     def test_all_review_schemas_are_valid_draft_2020_12(self):
-        names=['review_session.schema.json','review_unit.schema.json','review_issue.schema.json','review_decision.schema.json','review_event.schema.json','export_receipt.schema.json']
+        names=['review_session.schema.json','review_unit.schema.json','review_issue.schema.json','review_decision.schema.json','review_event.schema.json','export_receipt.schema.json','technique_annotation.schema.json']
         for name in names:
             with self.subTest(name=name):Draft202012Validator.check_schema(json.loads((SCHEMAS/name).read_text()))
     def test_frontend_never_uses_innerhtml_for_document_content(self):

@@ -7,6 +7,11 @@ from pathlib import Path
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
+from technique_contract import (
+    load_translation_registry,
+    validate_technique_annotation,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'https://dbabel.invalid/schemas/'
 
@@ -38,13 +43,41 @@ def validate_report(report):
               for e in validator().iter_errors(report)]
     if errors:
         return errors
-    sources = {s['id']: s for s in report['sources']}
-    findings = {f['id']: f for f in report['findings']}
+    technique_registry = (
+        load_translation_registry(
+            ROOT
+        )
+    )
+
+    sources = {
+        s['id']: s
+        for s in report['sources']
+    }
+
+    findings = {
+        f['id']: f
+        for f in report['findings']
+    }
     if len(sources) != len(report['sources']):
         errors.append('duplicate source IDs')
     if len(findings) != len(report['findings']):
         errors.append('duplicate finding IDs')
     for f in report['findings']:
+        for technique_error in (
+            validate_technique_annotation(
+                f.get(
+                    "technique"
+                ),
+                technique_registry,
+            )
+        ):
+            errors.append(
+                "{}: {}".format(
+                    f["id"],
+                    technique_error,
+                )
+            )
+
         refs = f['evidence_refs']
         if any(ref not in sources for ref in refs):
             errors.append(f"{f['id']}: dangling evidence reference")
