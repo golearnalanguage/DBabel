@@ -19,7 +19,11 @@ class CIContractTests(unittest.TestCase):
     def test_os_matrix(self):
         self.assertEqual(
             set(self.job['strategy']['matrix']['os']),
-            {'ubuntu-latest', 'macos-latest'},
+            {
+                'ubuntu-latest',
+                'macos-latest',
+                'windows-latest',
+            },
         )
 
     def test_python_matrix_includes_minimum_and_reference_versions(self):

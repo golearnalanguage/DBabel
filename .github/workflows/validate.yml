@@ -19,6 +19,7 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
+          - windows-latest
         python-version:
           - '3.9'
           - '3.11'
@@ -28,10 +29,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -57,13 +58,13 @@ jobs:
           python scripts/check_bilingual_integrity.py
           tests/fixtures/bilingual_units.jsonl
           --glossary tests/fixtures/project_glossary.json
-          --output /tmp/dbabel-ci-qa.json
+          --output "${{ runner.temp }}/dbabel-ci-qa.json"
 
       - name: Run progressive runtime-plan smoke test
         run: >-
           python scripts/prepare_runtime.py
           --mode LOOKUP
-          --output /tmp/dbabel-runtime-plan.json
+          --output "${{ runner.temp }}/dbabel-runtime-plan.json"
 
       - name: Run full regression suite
         run: python -m unittest discover -s tests -v
