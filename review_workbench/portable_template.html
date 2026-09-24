@@ -66,7 +66,7 @@
       <label class="global-search"><svg><use href="#i-search"></use></svg><input id="searchBox" type="search" placeholder="Search source, target, term, or issue..."></label>
       <div class="reviewer-zone">
         <label class="theme-control" title="Appearance"><span>Theme</span><select id="themeSelect" aria-label="Appearance theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
-        <button class="icon-only" title="Notifications" aria-label="Notifications"><svg><use href="#i-bell"></use></svg></button><span class="divider"></span><span class="avatar">CL</span><strong>clay</strong><span>⌄</span>
+        <button class="icon-only" disabled title="Notifications are not available in v1.5" aria-label="Notifications"><svg><use href="#i-bell"></use></svg></button><span class="divider"></span><span class="avatar">CL</span><strong>clay</strong><span>⌄</span>
       </div>
     </header>
 
@@ -103,7 +103,7 @@
       </section>
 
       <aside class="inspector" id="inspector">
-        <div class="inspector-head"><strong id="segmentCounter">Segment 0 of 0</strong><div><button id="unitPrev"><svg><use href="#i-left"></use></svg></button><button id="unitNext"><svg><use href="#i-right"></use></svg></button><button class="close-inspector" title="Keep inspector open">×</button></div></div>
+        <div class="inspector-head"><strong id="segmentCounter">Segment 0 of 0</strong><div><button id="unitPrev"><svg><use href="#i-left"></use></svg></button><button id="unitNext"><svg><use href="#i-right"></use></svg></button><button class="close-inspector" disabled title="Inspector remains open in v1.5">×</button></div></div>
         <section class="inspector-block"><div class="field-head"><strong id="sourceLabel">Source</strong><button class="copy-button" data-copy="sourceText" title="Copy source">▣</button></div><div id="sourceText" class="readonly-text"></div></section>
         <section class="inspector-block"><div class="field-head"><strong id="targetLabel">Target</strong><button id="editToggle" class="mini-edit"><svg><use href="#i-edit"></use></svg>Edit</button></div><textarea id="targetText" class="target-editor" spellcheck="false" readonly></textarea></section>
         <div class="status-issues-row"><label><strong>Status</strong><select id="decisionSelect"></select></label><div><strong>Issues</strong><div id="issueChips" class="issue-chips"></div></div></div>

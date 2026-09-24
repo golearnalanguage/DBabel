@@ -202,5 +202,46 @@ class VisualContractTests(unittest.TestCase):
         )
 
 
+    def test_remaining_controls_are_explicit_and_portable_copy_is_wired(self):
+        desktop_html=(
+            ROOT/'review_workbench/static/index.html'
+        ).read_text(encoding='utf-8')
+
+        portable_html=(
+            ROOT/'review_workbench/portable_template.html'
+        ).read_text(encoding='utf-8')
+
+        portable_js=(
+            ROOT/'review_workbench/portable_app.js'
+        ).read_text(encoding='utf-8')
+
+        for content in (
+            desktop_html,
+            portable_html,
+        ):
+            self.assertIn(
+                'class="icon-only" disabled '
+                'title="Notifications are not available in v1.5"',
+                content,
+            )
+
+            self.assertIn(
+                'class="close-inspector" disabled '
+                'title="Inspector remains open in v1.5"',
+                content,
+            )
+
+        self.assertIn(
+            'async function copyText(id)',
+            portable_js,
+        )
+
+        self.assertIn(
+            "document.querySelectorAll('[data-copy]')",
+            portable_js,
+        )
+
+
+
 if __name__=='__main__':
     unittest.main()
