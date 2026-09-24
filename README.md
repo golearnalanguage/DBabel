@@ -7,7 +7,7 @@
 # DBabel
 
 <p align="center">
-  <a href="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml"><img alt="CI" src="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml"><img alt="CI" src="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml/badge.svg?branch=main&event=push"></a>
   <a href="https://github.com/golearnalanguage/DBabel/releases"><img alt="Release" src="https://img.shields.io/github/v/release/golearnalanguage/DBabel?display_name=tag&sort=semver"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.9%20%7C%203.11-3776AB?logo=python&logoColor=white">
