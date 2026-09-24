@@ -88,6 +88,52 @@ def _load_units(path: Path) -> List[Dict[str, Any]]:
 
         review["alignment"] = alignment
 
+        if unit.get("alignment_id"):
+            review["alignment_id"] = str(
+                unit["alignment_id"]
+            )
+
+        for refs_key in (
+            "source_refs",
+            "target_refs",
+        ):
+            if refs_key not in unit:
+                continue
+
+            raw_refs = unit[refs_key]
+
+            if not isinstance(raw_refs, list):
+                raise ValueError(
+                    "unit {} {} must be an array".format(
+                        unit_id,
+                        refs_key,
+                    )
+                )
+
+            refs = [
+                str(ref)
+                for ref in raw_refs
+                if str(ref)
+            ]
+
+            if len(refs) != len(raw_refs):
+                raise ValueError(
+                    "unit {} {} contains an empty reference".format(
+                        unit_id,
+                        refs_key,
+                    )
+                )
+
+            if len(refs) != len(set(refs)):
+                raise ValueError(
+                    "unit {} {} contains duplicate references".format(
+                        unit_id,
+                        refs_key,
+                    )
+                )
+
+            review[refs_key] = refs
+
         for key in ("source_language", "target_language"):
             if unit.get(key):
                 review[key] = str(unit[key])

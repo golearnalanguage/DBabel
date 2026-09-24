@@ -47,6 +47,38 @@ Manual.dbreview/
 The local path of the original is not stored unless the creator explicitly requests a
 path hint.
 
+## Bilingual DOCX alignment
+
+The default extractor remains fail-closed and positional. If source and target
+non-empty paragraph counts differ, DBabel does not guess an alignment.
+
+For real bilingual documents that contain split or merged paragraphs, use an
+explicit alignment map.
+
+The map uses `format_version` `1.0` and an `alignments` array. Each alignment
+entry contains a stable `id`, 1-based `source` paragraph indexes, 1-based
+`target` paragraph indexes, and one of these states:
+
+- `ALIGNED`: exactly 1 source paragraph to 1 target paragraph.
+- `SPLIT`: exactly 1 source paragraph to multiple target paragraphs.
+- `MERGED`: multiple source paragraphs to exactly 1 target paragraph.
+- `UNALIGNED`: exactly one unmatched paragraph on one side.
+- `AMBIGUOUS`: content exists on both sides but the mapping requires human
+  resolution.
+
+Every non-empty source and target paragraph must be represented exactly once.
+Missing coverage, duplicate consumption, out-of-range indexes, or alignment
+states that do not match their source/target cardinality fail closed.
+
+DBabel does not infer `SPLIT`, `MERGED`, `UNALIGNED`, or `AMBIGUOUS`
+relationships automatically. Those relationships must be explicitly supplied.
+
+The extractor records `alignment_id`, `source_refs`, and `target_refs` in review
+units so the mapping remains auditable after `.dbreview` creation.
+
+Only `ALIGNED` units can participate in native DOCX write-back. Other alignment
+states remain reviewable but continue to block native export.
+
 ## Desktop workflow
 
 ```bash
