@@ -1,0 +1,668 @@
+version: 1.5.0
+schema_version: 1
+policy:
+  examples_are_evidence: false
+  source_truth_over_fluency: true
+  deterministic_qa_authorizes_change: false
+  unresolved_context_action: REVIEW
+  protected_literal_change_requires_authorization: true
+  ai_suggestion_is_approval: false
+transformations:
+- id: TERM_SUBSTITUTION
+  risk: MEDIUM
+  description: Replace a term with a scoped approved or evidenced equivalent.
+- id: CLAUSE_REORDERING
+  risk: MEDIUM
+  description: Reorder clauses while preserving conditions, scope, and logical relations.
+- id: SENTENCE_SPLIT
+  risk: MEDIUM
+  description: Split one source sentence into multiple target sentences without losing propositions.
+- id: SENTENCE_MERGE
+  risk: HIGH
+  description: Merge source sentences only when proposition boundaries and logical relations remain explicit.
+- id: EXPLICITATION
+  risk: HIGH
+  description: Make an implicit element explicit only when the context uniquely supports it.
+- id: IMPLICITATION
+  risk: HIGH
+  description: Omit an explicit source element only when meaning and constraints remain fully recoverable.
+- id: VOICE_CHANGE
+  risk: LOW
+  description: Change grammatical voice without changing actor, action, object, or responsibility.
+- id: NOMINALIZATION_SHIFT
+  risk: LOW
+  description: Convert nominalized technical wording to a direct verb construction or vice versa.
+- id: UI_LABEL_LOCK
+  risk: LOW
+  description: Preserve an exact verified UI label instead of stylistically rewriting it.
+- id: DNT_PRESERVATION
+  risk: LOW
+  description: Preserve do-not-translate or executable material exactly.
+- id: ABBREVIATION_EXPANSION
+  risk: MEDIUM
+  description: Introduce or expand an abbreviation only under an established abbreviation policy.
+- id: PUNCTUATION_LOCALIZATION
+  risk: LOW
+  description: Adapt punctuation to target-language conventions without changing executable or UI syntax.
+techniques:
+- id: TECHNICAL_TOKEN_SHIELDING
+  category: PROTECTION
+  risk: HIGH
+  summary: Identify non-translatable and executable spans before translating natural language.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - ANY
+  triggers:
+  - identifier
+  - parameter
+  - command
+  - path
+  - filename
+  - placeholder
+  - url
+  - environment_variable
+  - version_literal
+  required_actions:
+  - Mark protected spans before generation.
+  - Preserve protected bytes unless a separate change is explicitly authorized.
+  - Run applicable deterministic integrity checks after translation.
+  forbidden_actions:
+  - Translate or stylistically normalize executable identifiers.
+  - Rewrite paths, filenames, placeholders, or parameter names for fluency.
+  allowed_transformations:
+  - DNT_PRESERVATION
+  - PUNCTUATION_LOCALIZATION
+  restricted_transformations:
+  - TERM_SUBSTITUTION
+  - EXPLICITATION
+  - IMPLICITATION
+  qa_mapping:
+    deterministic_checks:
+    - PLACEHOLDER_INTEGRITY
+    - URL_INTEGRITY
+    - PATH_INTEGRITY
+    - FILENAME_INTEGRITY
+    - CLI_OPTION_INTEGRITY
+    - ENV_VAR_INTEGRITY
+    - PROTECTED_LITERAL
+    - VERSION_INTEGRITY
+    semantic_dimensions:
+    - ACCURACY
+    - DESIGN_AND_MARKUP
+  on_uncertainty: PROTECT
+  example:
+    source: 将参数 MAX_SESSIONS=200 写入 /opt/example/conf/example.ini，然后重启 ExampleDB。
+    unsafe_target: Write the parameter max_sessions=200 to /opt/example/conf/example_en.ini, and then restart ExampleDB.
+    preferred_target: Write MAX_SESSIONS=200 to /opt/example/conf/example.ini, and then restart ExampleDB.
+    explanation: The parameter token and path are executable or structural content, not prose.
+- id: TERM_BEFORE_SENTENCE
+  category: TERMINOLOGY
+  risk: HIGH
+  summary: Resolve material terminology constraints before polishing the surrounding sentence.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - ANY
+  triggers:
+  - project_glossary_match
+  - domain_term
+  - vendor_term
+  - repeated_concept
+  required_actions:
+  - Resolve scoped approved terminology before sentence-level stylistic refinement.
+  - Distinguish preferred, admitted, forbidden, and protected terms.
+  - Recheck the final sentence after grammatical inflection or restructuring.
+  forbidden_actions:
+  - Generate a fluent sentence first and blindly replace terminology afterward.
+  - Treat frequency alone as terminology authority.
+  allowed_transformations:
+  - TERM_SUBSTITUTION
+  - NOMINALIZATION_SHIFT
+  - VOICE_CHANGE
+  restricted_transformations:
+  - IMPLICITATION
+  qa_mapping:
+    deterministic_checks:
+    - PREFERRED_TERM
+    - FORBIDDEN_TERM
+    semantic_dimensions:
+    - TERMINOLOGY
+    - ACCURACY
+  on_uncertainty: REVIEW
+  example:
+    source: 将主库切换为只读模式。
+    unsafe_target: Switch the master server to read-only mode.
+    preferred_target: Switch the primary database to read-only mode.
+    explanation: The example assumes a scoped project glossary has approved primary database for 主库.
+- id: CONCEPT_BEFORE_SURFACE_FORM
+  category: TERMINOLOGY
+  risk: HIGH
+  summary: Determine which technical concept a word denotes before choosing its target-language surface form.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - ANY
+  triggers:
+  - polysemy
+  - ambiguous_database_term
+  - same_form_multiple_concepts
+  required_actions:
+  - Identify the concept, object type, operation, and nearby technical context.
+  - Preserve ambiguity when the source does not resolve it.
+  - Escalate high-risk unresolved concepts to REVIEW.
+  forbidden_actions:
+  - Translate an ambiguous database term from a bilingual dictionary alone.
+  - Choose the statistically common meaning without contextual evidence.
+  allowed_transformations:
+  - TERM_SUBSTITUTION
+  restricted_transformations:
+  - EXPLICITATION
+  - IMPLICITATION
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - TERMINOLOGY
+    - ACCURACY
+  on_uncertainty: REVIEW
+  example:
+    source: 检查归档是否完整。
+    unsafe_target: Check whether archiving is complete.
+    preferred_target: 'REVIEW: determine whether 归档 denotes an archive file or set, an archive log, or the archiving process before translating.'
+    explanation: The isolated surface form does not identify the technical object or operation.
+- id: PRODUCT_VERSION_SCOPING
+  category: SCOPE
+  risk: HIGH
+  summary: Bind terminology and technical naming to the actual vendor, product, version, and text role.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - ANY
+  triggers:
+  - vendor_specific_term
+  - version_sensitive_term
+  - renamed_parameter
+  - cross_product_mapping
+  required_actions:
+  - Record applicable vendor, product, and version where material.
+  - Use same-product and same-version evidence for official naming when required.
+  - Keep older valid names in historical version scope.
+  forbidden_actions:
+  - Propagate a terminology decision across database products by analogy.
+  - Back-port a renamed parameter or feature name to an older version without evidence.
+  allowed_transformations:
+  - TERM_SUBSTITUTION
+  restricted_transformations:
+  - EXPLICITATION
+  qa_mapping:
+    deterministic_checks:
+    - VERSION_INTEGRITY
+    semantic_dimensions:
+    - TERMINOLOGY
+    - ACCURACY
+  on_uncertainty: REVIEW
+  example:
+    source: 版本 2.0 将旧参数名替换为新参数名。
+    unsafe_target: Use the new parameter name in every version of the product.
+    preferred_target: Use the parameter name documented for the actual product version; do not apply the rename to another version without evidence.
+    explanation: A valid rename in one version does not establish terminology for adjacent versions.
+- id: TEXT_ROLE_TRANSLATION
+  category: TEXT_ROLE
+  risk: MEDIUM
+  summary: Translate according to whether text functions as prose, a label, heading, state, warning, table item, or code-adjacent content.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  - HEADING
+  - UI_LABEL
+  - WARNING
+  - TABLE
+  - CODE_ADJACENT
+  triggers:
+  - same_token_different_role
+  - ui_text
+  - heading
+  - state_text
+  required_actions:
+  - Identify the text role before selecting wording.
+  - Keep role-specific grammar, capitalization, and concision.
+  - Do not propagate a UI-label translation into prose merely because the source token matches.
+  forbidden_actions:
+  - Apply one string replacement to every occurrence regardless of role.
+  allowed_transformations:
+  - TERM_SUBSTITUTION
+  - VOICE_CHANGE
+  - PUNCTUATION_LOCALIZATION
+  restricted_transformations:
+  - SENTENCE_MERGE
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - TERMINOLOGY
+    - STYLE
+    - LINGUISTIC_CONVENTIONS
+  on_uncertainty: REVIEW
+  example:
+    source: “打开”同时出现在按钮文本和“文件已打开”状态说明中。
+    unsafe_target: Translate every occurrence as Open.
+    preferred_target: Translate the button as an action label; translate the status occurrence according to its grammatical and semantic role.
+    explanation: Identical source forms can represent different text roles and therefore different target forms.
+- id: UI_LABEL_ANCHORING
+  category: TEXT_ROLE
+  risk: HIGH
+  summary: Use the exact verified UI label when documentation refers to a concrete product interface control.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - UI_LABEL
+  - PROCEDURE
+  - PROSE
+  triggers:
+  - exact_ui_label
+  - menu_item
+  - button_name
+  - dialog_label
+  required_actions:
+  - Verify the label against the applicable product and version when exact UI wording matters.
+  - Lock the verified label inside surrounding prose.
+  - Keep prose grammar separate from the exact label.
+  forbidden_actions:
+  - Improve or paraphrase a verified UI label for style.
+  - Reuse a label from another version without confirmation.
+  allowed_transformations:
+  - UI_LABEL_LOCK
+  - DNT_PRESERVATION
+  restricted_transformations:
+  - TERM_SUBSTITUTION
+  - NOMINALIZATION_SHIFT
+  qa_mapping:
+    deterministic_checks:
+    - PROTECTED_LITERAL
+    semantic_dimensions:
+    - TERMINOLOGY
+    - ACCURACY
+    - DESIGN_AND_MARKUP
+  on_uncertainty: REVIEW
+  example:
+    source: 单击“Start Service”，等待状态变为 Running。
+    unsafe_target: Click “Start the Service”, and wait until the status becomes Running.
+    preferred_target: Click “Start Service”, and wait until the status becomes Running.
+    explanation: Start Service is treated as an exact verified UI label in this example.
+- id: MODAL_STRENGTH_PRESERVATION
+  category: SEMANTIC_FIDELITY
+  risk: HIGH
+  summary: Preserve obligation, prohibition, permission, recommendation, and prerequisite strength.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  - WARNING
+  triggers:
+  - must
+  - must_not
+  - should
+  - may
+  - only_after
+  - required
+  - recommended
+  required_actions:
+  - Identify modal force before restructuring the sentence.
+  - Preserve prerequisite and prohibition direction.
+  - Distinguish necessary conditions from sufficient conditions.
+  forbidden_actions:
+  - Weaken must into should or recommendation.
+  - Turn only-after prerequisites into ordinary chronological suggestions.
+  allowed_transformations:
+  - CLAUSE_REORDERING
+  - SENTENCE_SPLIT
+  restricted_transformations:
+  - IMPLICITATION
+  - SENTENCE_MERGE
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - ACCURACY
+  on_uncertainty: REVIEW
+  example:
+    source: 只有校验通过后，才可以删除临时副本。
+    unsafe_target: Delete the temporary copy, and then validate it.
+    preferred_target: Delete the temporary copy only after validation passes.
+    explanation: The source establishes a prerequisite, not merely an event sequence.
+- id: LONG_SENTENCE_DECOMPOSITION
+  category: STRUCTURE
+  risk: MEDIUM
+  summary: Split dense technical sentences only after mapping all propositions, actors, objects, conditions, and sequence relations.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  - WARNING
+  triggers:
+  - multiple_actions
+  - multiple_conditions
+  - dense_clause_chain
+  - ambiguous_attachment
+  required_actions:
+  - Map propositions before splitting.
+  - Preserve actor, action, object, condition, sequence, and scope.
+  - Recheck cross-sentence references after decomposition.
+  forbidden_actions:
+  - Drop subordinate conditions to make the target shorter.
+  - Reorder operational steps solely for stylistic fluency.
+  allowed_transformations:
+  - SENTENCE_SPLIT
+  - CLAUSE_REORDERING
+  - VOICE_CHANGE
+  - NOMINALIZATION_SHIFT
+  restricted_transformations:
+  - SENTENCE_MERGE
+  - IMPLICITATION
+  - EXPLICITATION
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - ACCURACY
+    - LINGUISTIC_CONVENTIONS
+    - STYLE
+  on_uncertainty: REVIEW
+  example:
+    source: 备份完成并通过完整性校验后，停止目标服务，复制控制文件，然后在目标节点启动实例并确认状态正常。
+    unsafe_target: Stop the target service and start the instance after the backup, then validate and copy the control file.
+    preferred_target: After the backup completes and passes integrity validation, stop the target service and copy the control file. Then start the instance on the target node and verify its status.
+    explanation: The target may split the sentence, but the prerequisite and action order must remain intact.
+- id: CONTROLLED_EXPLICITATION
+  category: SEMANTIC_FIDELITY
+  risk: HIGH
+  summary: Add an omitted subject, object, or relation only when the surrounding context uniquely determines it.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  triggers:
+  - omitted_subject
+  - omitted_object
+  - pronoun_resolution
+  - context_recovery
+  required_actions:
+  - Resolve the omitted element from explicit nearby context.
+  - Record REVIEW when more than one antecedent remains plausible.
+  - Prefer the narrowest supported explicit wording.
+  forbidden_actions:
+  - Invent a technical object because it is common in similar deployments.
+  - Use world knowledge to silently repair an ambiguous source sentence.
+  allowed_transformations:
+  - EXPLICITATION
+  - VOICE_CHANGE
+  restricted_transformations:
+  - IMPLICITATION
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - ACCURACY
+  on_uncertainty: REVIEW
+  example:
+    source: 上一句已明确对象为监听服务：“配置完成后启动。”
+    unsafe_target: After configuration is complete, start the database service.
+    preferred_target: After configuration is complete, start the listener service.
+    explanation: The explicit subject is permitted only because the preceding context uniquely identifies the listener service.
+- id: NO_INVENTED_CAUSALITY
+  category: SEMANTIC_FIDELITY
+  risk: HIGH
+  summary: Do not introduce causal, purpose, result, or dependency relations that the source does not establish.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  triggers:
+  - adjacent_sentences
+  - therefore
+  - because
+  - so_that
+  - result_relation
+  required_actions:
+  - Separate chronology from causality.
+  - Add causal connectors only when supported by the source or scoped evidence.
+  forbidden_actions:
+  - Use because, therefore, so that, or equivalent connectors merely to make prose smoother.
+  allowed_transformations:
+  - VOICE_CHANGE
+  - SENTENCE_SPLIT
+  restricted_transformations:
+  - EXPLICITATION
+  - SENTENCE_MERGE
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - ACCURACY
+  on_uncertainty: REVIEW
+  example:
+    source: 主库写入日志。备库接收日志。
+    unsafe_target: The primary database writes logs so that the standby database can receive them.
+    preferred_target: The primary database writes logs. The standby database receives logs.
+    explanation: The two source propositions are adjacent, but the source does not explicitly encode a purpose relation.
+- id: TERMINOLOGY_VARIANT_GOVERNANCE
+  category: TERMINOLOGY
+  risk: MEDIUM
+  summary: Manage preferred, admitted, forbidden, and protected variants instead of forcing one literal form everywhere.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - ANY
+  triggers:
+  - preferred_term
+  - admitted_variant
+  - forbidden_variant
+  - grammatical_variant
+  required_actions:
+  - Apply project-approved term behavior within its declared scope.
+  - Allow admitted variants only where their text role and grammar permit.
+  - Keep forbidden forms detectable after generation.
+  forbidden_actions:
+  - Treat every non-preferred variant as an error when the glossary explicitly admits it.
+  - Use an admitted shorthand outside its approved role or scope.
+  allowed_transformations:
+  - TERM_SUBSTITUTION
+  - NOMINALIZATION_SHIFT
+  restricted_transformations: []
+  qa_mapping:
+    deterministic_checks:
+    - PREFERRED_TERM
+    - FORBIDDEN_TERM
+    semantic_dimensions:
+    - TERMINOLOGY
+    - STYLE
+  on_uncertainty: REVIEW
+  example:
+    source: 项目术语表：preferred=primary database；admitted=primary；forbidden=master database。
+    unsafe_target: Switch the master database to read-only mode.
+    preferred_target: Use primary database in normal prose, or the admitted primary form only where the scoped project rule permits it.
+    explanation: Terminology governance distinguishes preferred usage from valid scoped variants and forbidden forms.
+- id: ABBREVIATION_LIFECYCLE
+  category: TERMINOLOGY
+  risk: MEDIUM
+  summary: Control abbreviation introduction, expansion, reuse, casing, and scope across a document.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - PROSE
+  - HEADING
+  - TABLE
+  triggers:
+  - acronym
+  - first_use
+  - full_form
+  - abbreviation_reuse
+  required_actions:
+  - Determine whether a recognized abbreviation already exists in the scoped material.
+  - Apply first-use and subsequent-use rules consistently.
+  - Preserve casing and avoid creating undocumented abbreviations.
+  forbidden_actions:
+  - Invent an abbreviation to shorten the target text.
+  - Expand a product-specific abbreviation using an unverified full form.
+  allowed_transformations:
+  - ABBREVIATION_EXPANSION
+  restricted_transformations:
+  - IMPLICITATION
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - TERMINOLOGY
+    - STYLE
+  on_uncertainty: REVIEW
+  example:
+    source: 首次出现：“灾难恢复（DR）”；后文：“DR 演练”。
+    unsafe_target: Use DR at first occurrence without an established expansion, or repeat the full form at every occurrence.
+    preferred_target: Use disaster recovery (DR) at first occurrence and DR drill in later scoped occurrences.
+    explanation: The example demonstrates lifecycle handling rather than asserting a product-specific abbreviation.
+- id: SOURCE_DEFECT_ESCALATION
+  category: REVIEW_GOVERNANCE
+  risk: HIGH
+  summary: Surface contradictions, ambiguity, and probable source defects instead of silently repairing them during translation.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - ANY
+  triggers:
+  - source_conflict
+  - scope_conflict
+  - probable_copy_error
+  - contradictory_instruction
+  required_actions:
+  - Identify the conflicting source spans.
+  - State what evidence or author confirmation would resolve the conflict.
+  - Keep the translation decision at REVIEW until the source issue is resolved when material.
+  forbidden_actions:
+  - Choose the operationally familiar interpretation and present it as source truth.
+  - Hide a source defect by producing a clean target sentence.
+  allowed_transformations: []
+  restricted_transformations:
+  - TERM_SUBSTITUTION
+  - EXPLICITATION
+  - IMPLICITATION
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - ACCURACY
+  on_uncertainty: REVIEW
+  example:
+    source: 标题：“仅在主机 A 执行”；步骤：“在主机 A 和 B 上执行以下命令”。
+    unsafe_target: Resolve the conflict by translating the step as host A only because that seems more typical.
+    preferred_target: 'REVIEW: the source execution scope conflicts; request authoritative clarification before normalizing the target.'
+    explanation: Translation must not silently become source-authoring when the source contains a material contradiction.
+- id: UI_DOCS_CONSISTENCY
+  category: SCOPE
+  risk: HIGH
+  summary: Coordinate documentation wording with verified UI terminology while keeping prose and UI-label roles distinct.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  - UI_LABEL
+  triggers:
+  - documentation_ui_reference
+  - ui_label_mismatch
+  - same_feature_multiple_surfaces
+  required_actions:
+  - Verify exact labels against the applicable UI when required.
+  - Use the exact label as a locked reference inside natural prose.
+  - Keep conceptual prose terminology distinct from exact UI strings when appropriate.
+  forbidden_actions:
+  - Force all prose wording to equal the UI label.
+  - Paraphrase an exact UI label while presenting it as the interface text.
+  allowed_transformations:
+  - UI_LABEL_LOCK
+  - TERM_SUBSTITUTION
+  restricted_transformations:
+  - IMPLICITATION
+  qa_mapping:
+    deterministic_checks:
+    - PROTECTED_LITERAL
+    semantic_dimensions:
+    - TERMINOLOGY
+    - ACCURACY
+    - STYLE
+  on_uncertainty: REVIEW
+  example:
+    source: 正文：“单击启动服务按钮”；同版本界面按钮实际标签为 “Start Service”。
+    unsafe_target: Click the Start button on the Service Management page.
+    preferred_target: Click Start Service on the Service Management page.
+    explanation: The prose remains natural while the verified UI label is preserved exactly.
+- id: TARGET_LANGUAGE_TECHNICAL_NATURALNESS
+  category: STYLE
+  risk: LOW
+  summary: Improve target-language technical prose only after terminology, propositional meaning, and protected content are stable.
+  applies_to_modes:
+  - BILINGUAL_REVIEW
+  - TRANSLATE
+  - REPAIR
+  text_roles:
+  - PROSE
+  - PROCEDURE
+  - HEADING
+  - WARNING
+  triggers:
+  - literal_translation
+  - nominalization
+  - awkward_technical_english
+  - redundant_operation_noun
+  required_actions:
+  - Apply natural target-language syntax after hard constraints are satisfied.
+  - Prefer direct technical verbs where meaning is unchanged.
+  - Re-run terminology and semantic checks after stylistic refinement.
+  forbidden_actions:
+  - Trade technical precision for elegance.
+  - Delete repeated technical terms merely to avoid stylistic repetition.
+  allowed_transformations:
+  - VOICE_CHANGE
+  - NOMINALIZATION_SHIFT
+  - CLAUSE_REORDERING
+  - PUNCTUATION_LOCALIZATION
+  restricted_transformations:
+  - EXPLICITATION
+  - IMPLICITATION
+  qa_mapping:
+    deterministic_checks: []
+    semantic_dimensions:
+    - LINGUISTIC_CONVENTIONS
+    - STYLE
+  on_uncertainty: REVIEW
+  example:
+    source: 进行数据库参数的配置。
+    unsafe_target: Carry out the configuration operation of database parameters.
+    preferred_target: Configure the database parameters.
+    explanation: Naturalness is a final constrained refinement, not permission to alter technical meaning.

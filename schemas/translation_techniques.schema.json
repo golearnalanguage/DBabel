@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Technical Translation Technique Registry",
+  "type": "object",
+  "required": [
+    "version",
+    "schema_version",
+    "policy",
+    "transformations",
+    "techniques"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "examples_are_evidence",
+        "source_truth_over_fluency",
+        "deterministic_qa_authorizes_change",
+        "unresolved_context_action",
+        "protected_literal_change_requires_authorization",
+        "ai_suggestion_is_approval"
+      ],
+      "properties": {
+        "examples_are_evidence": {
+          "const": false
+        },
+        "source_truth_over_fluency": {
+          "const": true
+        },
+        "deterministic_qa_authorizes_change": {
+          "const": false
+        },
+        "unresolved_context_action": {
+          "const": "REVIEW"
+        },
+        "protected_literal_change_requires_authorization": {
+          "const": true
+        },
+        "ai_suggestion_is_approval": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "transformations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "risk",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "TERM_SUBSTITUTION",
+              "CLAUSE_REORDERING",
+              "SENTENCE_SPLIT",
+              "SENTENCE_MERGE",
+              "EXPLICITATION",
+              "IMPLICITATION",
+              "VOICE_CHANGE",
+              "NOMINALIZATION_SHIFT",
+              "UI_LABEL_LOCK",
+              "DNT_PRESERVATION",
+              "ABBREVIATION_EXPANSION",
+              "PUNCTUATION_LOCALIZATION"
+            ]
+          },
+          "risk": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "techniques": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "risk",
+          "summary",
+          "applies_to_modes",
+          "text_roles",
+          "triggers",
+          "required_actions",
+          "forbidden_actions",
+          "allowed_transformations",
+          "restricted_transformations",
+          "qa_mapping",
+          "on_uncertainty",
+          "example"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]+$"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "PROTECTION",
+              "TERMINOLOGY",
+              "SCOPE",
+              "TEXT_ROLE",
+              "SEMANTIC_FIDELITY",
+              "STRUCTURE",
+              "REVIEW_GOVERNANCE",
+              "STYLE"
+            ]
+          },
+          "risk": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "applies_to_modes": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "BILINGUAL_REVIEW",
+                "TRANSLATE",
+                "REPAIR"
+              ]
+            }
+          },
+          "text_roles": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "ANY",
+                "PROSE",
+                "PROCEDURE",
+                "HEADING",
+                "UI_LABEL",
+                "WARNING",
+                "TABLE",
+                "CODE_ADJACENT"
+              ]
+            }
+          },
+          "triggers": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required_actions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "forbidden_actions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "allowed_transformations": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "TERM_SUBSTITUTION",
+                "CLAUSE_REORDERING",
+                "SENTENCE_SPLIT",
+                "SENTENCE_MERGE",
+                "EXPLICITATION",
+                "IMPLICITATION",
+                "VOICE_CHANGE",
+                "NOMINALIZATION_SHIFT",
+                "UI_LABEL_LOCK",
+                "DNT_PRESERVATION",
+                "ABBREVIATION_EXPANSION",
+                "PUNCTUATION_LOCALIZATION"
+              ]
+            }
+          },
+          "restricted_transformations": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "TERM_SUBSTITUTION",
+                "CLAUSE_REORDERING",
+                "SENTENCE_SPLIT",
+                "SENTENCE_MERGE",
+                "EXPLICITATION",
+                "IMPLICITATION",
+                "VOICE_CHANGE",
+                "NOMINALIZATION_SHIFT",
+                "UI_LABEL_LOCK",
+                "DNT_PRESERVATION",
+                "ABBREVIATION_EXPANSION",
+                "PUNCTUATION_LOCALIZATION"
+              ]
+            }
+          },
+          "qa_mapping": {
+            "type": "object",
+            "required": [
+              "deterministic_checks",
+              "semantic_dimensions"
+            ],
+            "properties": {
+              "deterministic_checks": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "PLACEHOLDER_INTEGRITY",
+                    "URL_INTEGRITY",
+                    "PATH_INTEGRITY",
+                    "FILENAME_INTEGRITY",
+                    "CLI_OPTION_INTEGRITY",
+                    "ENV_VAR_INTEGRITY",
+                    "PROTECTED_LITERAL",
+                    "FORBIDDEN_TERM",
+                    "VERSION_INTEGRITY",
+                    "NUMBER_INTEGRITY",
+                    "NUMBER_UNIT_INTEGRITY",
+                    "PREFERRED_TERM"
+                  ]
+                }
+              },
+              "semantic_dimensions": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "TERMINOLOGY",
+                    "ACCURACY",
+                    "LINGUISTIC_CONVENTIONS",
+                    "STYLE",
+                    "LOCALE_CONVENTIONS",
+                    "AUDIENCE_APPROPRIATENESS",
+                    "DESIGN_AND_MARKUP"
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "on_uncertainty": {
+            "type": "string",
+            "enum": [
+              "REVIEW",
+              "PROTECT"
+            ]
+          },
+          "example": {
+            "type": "object",
+            "required": [
+              "source",
+              "unsafe_target",
+              "preferred_target",
+              "explanation"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "unsafe_target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "preferred_target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "explanation": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

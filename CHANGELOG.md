@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Added a routed Technical Translation Playbook with 15 maintainable database and
+  technical-localization techniques, controlled transformation risks, synthetic
+  bilingual examples, and machine-readable technique contracts.
+- Added cross-contract validation between translation techniques, deterministic QA,
+  and progressive resource routing.
+- Corrected the output/data-contract documentation to reflect v1.5 report
+  compatibility.
+
+
 ## 1.5.0 — 2026-09-25
 
 - Added DBabel Review Workbench for explicit human-in-the-loop bilingual review.

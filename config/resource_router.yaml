@@ -26,9 +26,15 @@ mode_resources:
   BILINGUAL_REVIEW:
     - references/03_TERMINOLOGY_CLASSIFICATION.md
     - references/07_TRANSLATION_AND_MT_POLICY.md
+    - references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md
+    - config/translation_techniques.yaml
   TRANSLATE:
     - references/07_TRANSLATION_AND_MT_POLICY.md
-  REPAIR: []
+    - references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md
+    - config/translation_techniques.yaml
+  REPAIR:
+    - references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md
+    - config/translation_techniques.yaml
   SOURCE_RESEARCH:
     - references/04_SOURCE_AND_EVIDENCE_POLICY.md
   CLAIM_ROUTE:

@@ -53,3 +53,24 @@ Ambiguous alignment is a review condition, not a deterministic QA input.
 
 Preserve unresolved high-risk wording with review notes. If translation produces a
 file, reopen it and perform applicable structural/layout checks before delivery.
+
+## Technical translation technique layer
+
+For `BILINGUAL_REVIEW`, `TRANSLATE`, and translation-oriented `REPAIR`, load the
+routed technical translation playbook and machine-readable technique registry:
+
+- `references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md`
+- `config/translation_techniques.yaml`
+
+Apply them after structural/protected-content identification and scoped terminology
+resolution, but before final stylistic polishing. Their priority is:
+
+1. protected technical content;
+2. product/version/concept/text-role constraints;
+3. propositional and modal fidelity;
+4. controlled structural transformations;
+5. target-language technical naturalness.
+
+A lower-priority style transformation must not override a higher-priority technical
+constraint. Technique examples are diagnostic patterns, not evidence for the current
+task.

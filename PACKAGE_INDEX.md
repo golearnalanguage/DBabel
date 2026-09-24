@@ -23,6 +23,13 @@
 - [Ingest validator](scripts/validate_ingest.py)
 - [Optional format backends](plugins/FORMAT_BACKENDS.md)
 
+## Translation Playbook
+
+- [Translation and MT policy](references/07_TRANSLATION_AND_MT_POLICY.md)
+- [Technical translation playbook](references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md)
+- [Machine-readable technique registry](config/translation_techniques.yaml)
+- [Technique registry schema](schemas/translation_techniques.schema.json)
+
 ## Accuracy Core
 
 - [Project terminology resolution](references/14_PROJECT_TERMINOLOGY_RESOLUTION.md)

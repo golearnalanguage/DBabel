@@ -305,6 +305,145 @@ def cross_contract_errors(root=ROOT):
         if qa_policy.get(key) != expected:
             errors.append(f'config/deterministic_qa.yaml: safety invariant {key} must be {expected}')
 
+
+    # Technical translation technique registry is a routed package contract.
+    translation_registry = _read_yaml(
+        root / 'config/translation_techniques.yaml'
+    )
+    translation_schema = _read_json(
+        root / 'schemas/translation_techniques.schema.json'
+    )
+
+    translation_validation_errors = sorted(
+        Draft202012Validator(
+            translation_schema
+        ).iter_errors(
+            translation_registry
+        ),
+        key=lambda error: list(error.absolute_path),
+    )
+
+    for error in translation_validation_errors:
+        location = '.'.join(
+            str(value)
+            for value in error.absolute_path
+        ) or '<root>'
+
+        errors.append(
+            'config/translation_techniques.yaml: {}: {}'.format(
+                location,
+                error.message,
+            )
+        )
+
+    techniques = translation_registry.get('techniques', [])
+    technique_ids = [
+        item.get('id')
+        for item in techniques
+        if isinstance(item, dict)
+    ]
+
+    if len(technique_ids) != len(set(technique_ids)):
+        errors.append(
+            'config/translation_techniques.yaml: duplicate technique id'
+        )
+
+    transformations = translation_registry.get(
+        'transformations',
+        [],
+    )
+    transformation_ids = [
+        item.get('id')
+        for item in transformations
+        if isinstance(item, dict)
+    ]
+
+    if len(transformation_ids) != len(set(transformation_ids)):
+        errors.append(
+            'config/translation_techniques.yaml: duplicate transformation id'
+        )
+
+    known_transformations = set(transformation_ids)
+    referenced_transformations = set()
+
+    for item in techniques:
+        if not isinstance(item, dict):
+            continue
+
+        referenced_transformations.update(
+            item.get('allowed_transformations', [])
+        )
+        referenced_transformations.update(
+            item.get('restricted_transformations', [])
+        )
+
+    unknown_transformations = (
+        referenced_transformations
+        - known_transformations
+    )
+
+    if unknown_transformations:
+        errors.append(
+            'config/translation_techniques.yaml: unknown transformations: '
+            + ', '.join(sorted(unknown_transformations))
+        )
+
+    known_qa_checks = set(
+        (deterministic_qa.get('checks') or {})
+    )
+    referenced_qa_checks = set()
+
+    for item in techniques:
+        if not isinstance(item, dict):
+            continue
+
+        qa_mapping = item.get('qa_mapping') or {}
+        referenced_qa_checks.update(
+            qa_mapping.get(
+                'deterministic_checks',
+                [],
+            )
+        )
+
+    unknown_qa_checks = (
+        referenced_qa_checks
+        - known_qa_checks
+    )
+
+    if unknown_qa_checks:
+        errors.append(
+            'config/translation_techniques.yaml: unknown deterministic QA checks: '
+            + ', '.join(sorted(unknown_qa_checks))
+        )
+
+    translation_resources = {
+        'references/18_TECHNICAL_TRANSLATION_PLAYBOOK.md',
+        'config/translation_techniques.yaml',
+    }
+
+    for mode in (
+        'BILINGUAL_REVIEW',
+        'TRANSLATE',
+        'REPAIR',
+    ):
+        routed = set(
+            (resource_router.get('mode_resources') or {}).get(
+                mode,
+                [],
+            )
+        )
+
+        missing = translation_resources - routed
+
+        if missing:
+            errors.append(
+                'config/resource_router.yaml: {} missing translation resources: {}'.format(
+                    mode,
+                    ', '.join(sorted(missing)),
+                )
+            )
+
+
     return errors
 
 
