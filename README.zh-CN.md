@@ -13,6 +13,29 @@ DBabel 采用“轻数据、重方法”的设计。仓库提供工作流、Sche
 
 [English](README.md) · [Skill Kernel](SKILL.md) · [Package Index](PACKAGE_INDEX.md)
 
+## Review Workbench 预览
+
+<p align="center">
+  <img src="assets/dbabel-review-workbench-preview.png"
+       alt="DBabel Review Workbench——双语 human-in-the-loop 技术审校界面。"
+       width="100%">
+</p>
+
+DBabel Review Workbench 是一个用于双语技术审校的本地 human-in-the-loop 工作台。
+它把对齐后的原文/译文、术语问题、确定性 QA 问题、支持证据和建议译文集中到同一个
+审校界面中。
+
+审校人员可以逐条检查 segment，对照证据和术语上下文，并明确记录
+**接受建议（Accept Suggestion）**、**保留当前译文（Keep Current）**、
+**编辑（Edit）**、**暂缓（Defer）**、**阻断（Block）**或**豁免（Waive）**
+等决策。审校状态、问题状态和 QA 状态彼此独立，因此 AI 建议或检测到的问题不会被
+自动视为人工批准。
+
+在原格式导出前，Workbench 会执行 DBabel 的 Export Gate 和新一轮确定性 QA。
+当前 native write-back adapter 支持 **DOCX**，并包含原文件哈希校验、anchor 校验、
+非破坏式输出和 round-trip verification。Workbench 同时支持 Portable Review，
+用于离线审校和人工决策回传。
+
 ## DBabel 基于什么实现
 
 DBabel 本质上是一个基于仓库分发的 **Agent Skill**，不是独立的机器翻译引擎，也不是
@@ -90,26 +113,6 @@ DBabel Core 仍然保持 Python 3.9+ 和仓库基础验证依赖即可运行。
 - **可确定的地方确定化，需要语义的地方保留语义判断**：机械完整性检查可重复，含义判断仍需上下文和证据。
 - **可审计**：finding、evidence、coverage、repair、QA 都通过显式契约记录，而不是只靠 Agent 自述。
 - **供应商无关**：解析器、搜索工具、MT 和 LLM 可以辅助，但不拥有最终术语裁决权。
-
-## Review Workbench 预览
-
-<p align="center">
-  <img src="assets/dbabel-review-workbench-preview.png"
-       alt="DBabel Review Workbench——双语人工确认审校界面。"
-       width="100%">
-</p>
-
-`feature/v1.5-review-workbench` 开发线在 DBabel 现有 finding、确定性 QA、证据与修订门禁之上，
-增加本地 human-in-the-loop 审校界面。Workbench 固定采用当前已确认的 DBabel 视觉模板：
-左侧为品牌、导航和过滤器，中间为双语 segment grid，右侧为当前 segment 的审查与决策区域。
-
-参考/demo 界面的 reviewer 显示为 `clay`，不绘制任何模拟的 Windows/macOS 最小化、最大化或
-退出按钮；DBabel logo 使用透明背景资产，与 Workbench 自身背景自然融合。界面继续支持
-**浅色 / 深色 / 跟随系统** 三种显示模式。
-
-这是开发预览，不代表所有“可识别格式”都已经具备原格式写回能力。当前 native write-back adapter
-仅严格支持 DOCX，并继续受到原文件哈希、精确 anchor 校验、Export Gate 授权和 round-trip
-verification 约束。详见 [Review Workbench contract](docs/REVIEW_WORKBENCH.md)。
 
 ## 安装和使用
 

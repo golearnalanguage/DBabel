@@ -49,6 +49,10 @@ These rules always apply, including when a routed reference is not loaded:
 7. `REVIEW` is the correct decision when required context or evidence is missing.
 8. Never describe an unrun check, partial extraction, proposed repair, or failed
    output as verified.
+9. AI/MT suggestions, deterministic issues, and semantic findings are not human
+   approval. When a requested bilingual change or native export requires human
+   approval, materialize a Review Session and never fabricate an accepted review
+   state on the user's behalf.
 
 ## Progressive execution
 
@@ -115,7 +119,27 @@ When aligned source/target units exist, run applicable deterministic checks and 
 semantic QA. Mechanical mismatch detection must never be promoted directly to
 `REPLACE`.
 
-### 7. Repair only through the repair gate
+### 7. Route approval-required changes through Review Workbench
+
+When `BILINGUAL_REVIEW`, `TRANSLATE`, or `REPAIR` produces proposed target changes
+that require user approval, or when native document export is requested after
+review, materialize a `.dbreview` Review Session with
+`scripts/create_review_session.py`.
+
+The Agent may populate aligned units, findings, deterministic issues, evidence, and
+suggested targets. Only the human reviewer may create the review decisions
+`ACCEPT_SUGGESTION`, `KEEP_CURRENT`, `USER_EDITED`, `DEFERRED`, `BLOCKED`, or
+`WAIVED`.
+
+For local native export, start `scripts/start_review_workbench.py` with both
+`--original` and `--output`. Review-only or Portable Review may omit a native output
+path, but that mode must remain explicit. Never claim that native export is available
+when the output path is not configured.
+
+Portable decisions must be imported into the matching session and receive fresh QA
+before native export.
+
+### 8. Repair only through the repair gate
 
 Apply a repair only when it is authorized and the finding is a located `REPLACE`
 with HIGH confidence, adequate opened current evidence or an explicit scoped

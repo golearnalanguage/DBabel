@@ -130,6 +130,7 @@ class Handler(BaseHTTPRequestHandler):
                     "decisions": data["decisions"],
                     "progress": progress(data),
                     "export_available": bool(self.state.original and self.state.output),
+                    "output_name": self.state.output.name if self.state.output else None,
                 })
             return
         if parsed.path == "/api/progress":

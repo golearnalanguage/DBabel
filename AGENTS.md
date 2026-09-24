@@ -42,6 +42,24 @@ semantic verdict, or repair authorization.
 The decision vocabulary is `KEEP`, `REPLACE`, `PROTECT`, `REVIEW`, and
 `OUT_OF_SCOPE_CLAIM`.
 
+## Review Workbench handoff
+
+For `BILINGUAL_REVIEW`, `TRANSLATE`, or `REPAIR`, use the Review Workbench when
+proposed target changes require human approval or when reviewed content is intended
+for native-format export.
+
+The Agent may prepare review units, findings, deterministic issues, evidence, and
+suggestions. It must not fabricate human acceptance, keep, edit, defer, block, or
+waiver decisions.
+
+Create sessions with `scripts/create_review_session.py`. For native DOCX export,
+start `scripts/start_review_workbench.py` with both `--original` and `--output`.
+Review-only and Portable Review are allowed, but must not be represented as native
+export sessions.
+
+Portable decisions must be imported into the matching `.dbreview` session and
+rechecked before export.
+
 ## Repository maintenance
 
 For changes to the Skill, schemas, routing, format preflight, or validation tools:

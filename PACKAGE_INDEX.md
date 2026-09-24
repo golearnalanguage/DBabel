@@ -36,6 +36,19 @@
 - [Bilingual integrity checker](scripts/check_bilingual_integrity.py)
 - [Accuracy Core regression tests](tests/test_accuracy_core.py)
 
+## Review Workbench
+
+- [Review Workbench contract](docs/REVIEW_WORKBENCH.md)
+- [Local Workbench server](scripts/start_review_workbench.py)
+- [Review Session builder](scripts/create_review_session.py)
+- [Portable Review builder](scripts/build_portable_review.py)
+- [Portable decision importer](scripts/import_review_decisions.py)
+- [DOCX bilingual-unit extractor](scripts/extract_docx_bilingual_units.py)
+- [DOCX native exporter](scripts/export_reviewed_document.py)
+- [Review bundle validator](scripts/validate_review_bundle.py)
+- [Review schemas](schemas/)
+- [Review Workbench regression tests](tests/)
+
 ## Workflow resources
 
 - [Review policies](references/)

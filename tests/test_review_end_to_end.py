@@ -15,7 +15,10 @@ from review_model import load_bundle,normalize_decision,save_decisions
 
 
 def make_docx(path,text):
-    doc=ET.Element('{%s}document'%W_NS);body=ET.SubElement(doc,'{%s}body'%W_NS);p=ET.SubElement(body,'{%s}p'%W_NS);r=ET.SubElement(p,'{%s}r'%W_NS);t=ET.SubElement(r,'{%s}t'%W_NS);t.text=text
+    texts=[text] if isinstance(text,str) else list(text)
+    doc=ET.Element('{%s}document'%W_NS);body=ET.SubElement(doc,'{%s}body'%W_NS)
+    for value in texts:
+        p=ET.SubElement(body,'{%s}p'%W_NS);r=ET.SubElement(p,'{%s}r'%W_NS);t=ET.SubElement(r,'{%s}t'%W_NS);t.text=value
     with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as z:
         z.writestr('[Content_Types].xml','<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>')
         z.writestr('word/document.xml',ET.tostring(doc,encoding='utf-8',xml_declaration=True))
@@ -52,5 +55,37 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual(receipt['status'],'BLOCKED')
             self.assertFalse(out.exists())
             self.assertTrue(any('SHA-256' in x for x in receipt['blockers']))
+
+    def test_unequal_docx_alignment_never_silently_truncates(self):
+        with tempfile.TemporaryDirectory() as td:
+            d=Path(td)
+            src=d/'source.docx'
+            tgt=d/'target.docx'
+            out=d/'units.jsonl'
+
+            make_docx(src,['A','B'])
+            make_docx(tgt,['A'])
+
+            result=subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS/'extract_docx_bilingual_units.py'),
+                    str(src),
+                    str(tgt),
+                    '--output',
+                    str(out),
+                    '--allow-structural-mismatch',
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn(
+                'refusing to drop unmatched content',
+                result.stderr,
+            )
+            self.assertFalse(out.exists())
+
 
 if __name__=='__main__':unittest.main()

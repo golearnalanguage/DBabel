@@ -20,6 +20,23 @@ The v1.4 development line adds:
   complete extraction;
 - explicit runtime integration from preflight through QA and repair gates.
 
+## v1.5 — Review Workbench
+
+The v1.5 development line adds:
+
+- a local human-in-the-loop bilingual Review Workbench;
+- `.dbreview` Review Session contracts for units, issues, evidence, decisions,
+  events, anchors, and original-file identity;
+- explicit human review states separated from AI suggestions and deterministic QA;
+- Portable Review with session-bound decision export/import;
+- Export Gate enforcement before native write-back;
+- initial DOCX native write-back with original-hash validation, anchor validation,
+  non-destructive output, and round-trip verification;
+- explicit review-only versus native-export launch modes.
+
+Further hardening remains focused on richer alignment, stronger stable anchors,
+additional native-format adapters, and productized bulk-review interactions.
+
 ## Next optional adapters
 
 - TBX terminology interchange adapter;
@@ -32,7 +49,6 @@ The v1.4 development line adds:
 ## Longer-term workflow tooling
 
 - browser/source retrieval helpers;
-- local desktop/web workbench;
 - team glossary approval and review workflows;
 - project-level evidence and decision history;
 - reusable benchmark corpora built only from redistributable or synthetic data.

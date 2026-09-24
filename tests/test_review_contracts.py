@@ -20,4 +20,25 @@ class ContractTests(unittest.TestCase):
         for p in paths:
             with self.subTest(path=p.name):ast.parse(p.read_text(encoding='utf-8'),filename=str(p),feature_version=9)
 
+    def test_workbench_human_approval_is_runtime_contract(self):
+        skill=(ROOT/'SKILL.md').read_text(encoding='utf-8')
+        agents=(ROOT/'AGENTS.md').read_text(encoding='utf-8')
+        openai=(ROOT/'agents/openai.yaml').read_text(encoding='utf-8')
+        server=(ROOT/'scripts/start_review_workbench.py').read_text(encoding='utf-8')
+        app=(ROOT/'review_workbench/static/app.js').read_text(encoding='utf-8')
+
+        self.assertIn('Review Workbench',skill)
+        self.assertIn('scripts/create_review_session.py',skill)
+        self.assertIn('--original',skill)
+        self.assertIn('--output',skill)
+        self.assertIn('never fabricate',skill.lower())
+
+        self.assertIn('Review Workbench handoff',agents)
+        self.assertIn('Review Session',openai)
+        self.assertIn('Never',openai)
+
+        self.assertIn('"output_name"',server)
+        self.assertIn('Review-only mode.',app)
+
+
 if __name__=='__main__':unittest.main()

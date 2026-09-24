@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — 1.5.0
+
+- Added DBabel Review Workbench for explicit human-in-the-loop bilingual review.
+- Added `.dbreview` Review Sessions, review schemas, evidence/issues/decision
+  contracts, and local/portable review surfaces.
+- Added DOCX native export with Export Gate, original-file hashing, anchor checks,
+  non-destructive output, and round-trip verification.
+- Bound Portable Review decision exports to their originating Review Session and
+  made malformed or cross-session imports fail closed.
+- Prevented bilingual DOCX extraction from silently dropping unmatched paragraphs
+  when source/target paragraph counts differ.
+- Added an Agent-to-Workbench handoff contract so suggestions and findings never
+  become fabricated human approval.
+- Added explicit review-only versus native-export mode feedback.
+
 ## 1.4.0 — 2026-09-24
 
 - Added a scope-aware project glossary layer with JSON/CSV normalization,
