@@ -85,38 +85,50 @@ def main():
         p.error(message)
 
     saved = []
+    staged_events = []
 
-    for unit in data["units"]:
-        uid = unit["id"]
-        previous = data["decisions_by_id"][uid]
-        incoming_row = incoming[uid]
+    # Validate and normalize the complete portable payload before mutating
+    # either decisions.json or events.jsonl. A later invalid row must not
+    # leave audit events for decisions that were never committed.
+    try:
+        for unit in data["units"]:
+            uid = unit["id"]
+            previous = data["decisions_by_id"][uid]
+            incoming_row = incoming[uid]
 
-        # Portable revision is transport evidence only. normalize_decision
-        # increments the local revision and invalidates QA so imported edits
-        # must receive a fresh local recheck before native export.
-        current = normalize_decision(unit, incoming_row, previous)
-        saved.append(current)
+            # Portable revision is transport evidence only. normalize_decision
+            # increments the local revision and invalidates QA so imported edits
+            # must receive a fresh local recheck before native export.
+            current = normalize_decision(unit, incoming_row, previous)
+            saved.append(current)
 
-        if (
-            current["status"] != previous["status"]
-            or current.get("approved_target")
-            != previous.get("approved_target")
-        ):
-            append_event(
-                bundle / "events.jsonl",
-                {
-                    "event": "DECISION_CHANGED",
-                    "unit_id": uid,
-                    "at": utc_now(),
-                    "revision": current["revision"],
-                    "actor": "HUMAN",
-                    "from_status": previous["status"],
-                    "to_status": current["status"],
-                    "detail": "Imported from portable review",
-                },
-            )
+            if (
+                current["status"] != previous["status"]
+                or current.get("approved_target")
+                != previous.get("approved_target")
+            ):
+                staged_events.append(
+                    {
+                        "event": "DECISION_CHANGED",
+                        "unit_id": uid,
+                        "at": utc_now(),
+                        "revision": current["revision"],
+                        "actor": "HUMAN",
+                        "from_status": previous["status"],
+                        "to_status": current["status"],
+                        "detail": "Imported from portable review",
+                    }
+                )
+    except ValueError as exc:
+        p.error(str(exc))
 
     save_decisions(bundle, saved)
+
+    for event in staged_events:
+        append_event(
+            bundle / "events.jsonl",
+            event,
+        )
     print("Imported {} decisions".format(len(saved)))
     return 0
 
