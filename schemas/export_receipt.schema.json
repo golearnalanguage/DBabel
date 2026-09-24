@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Review Export Receipt",
+  "type": "object",
+  "required": [
+    "format_version", "session_id", "status", "checked_at", "source_sha256",
+    "decision_digest", "blockers", "waivers", "qa_summary", "round_trip"
+  ],
+  "properties": {
+    "format_version": {"const": "1.0"},
+    "session_id": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["BLOCKED", "AUTHORIZED", "EXPORTED", "VERIFIED", "FAILED"]},
+    "checked_at": {"type": "string", "minLength": 1},
+    "source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "decision_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "waivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["unit_id", "fingerprint", "reason"],
+        "properties": {
+          "unit_id": {"type": "string", "minLength": 1},
+          "fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "reason": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "qa_summary": {
+      "type": "object",
+      "required": ["units_checked", "error_count", "warning_count"],
+      "properties": {
+        "units_checked": {"type": "integer", "minimum": 0},
+        "error_count": {"type": "integer", "minimum": 0},
+        "warning_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "output": {
+      "type": "object",
+      "required": ["path", "sha256", "format"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "format": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "round_trip": {
+      "type": "object",
+      "required": ["status", "checks"],
+      "properties": {
+        "status": {"type": "string", "enum": ["NOT_RUN", "PASS", "FAIL"]},
+        "checks": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

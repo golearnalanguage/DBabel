@@ -1,0 +1,32 @@
+{
+  "format_version": "1.0",
+  "session_id": "RS_WORKBENCH_DEMO_V4",
+  "created_at": "2026-09-24T03:30:00Z",
+  "dbabel_version": "1.5.0-dev",
+  "mode": "BILINGUAL_REVIEW",
+  "title": "Product_Manual_ZH-EN",
+  "bundle_files": {
+    "units": "units.jsonl",
+    "issues": "issues.json",
+    "evidence": "evidence.json",
+    "decisions": "decisions.json",
+    "events": "events.jsonl",
+    "anchors": "anchors.json"
+  },
+  "original": {
+    "filename": "Product_Manual_ZH-EN.docx",
+    "format": "docx",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "counts": {
+    "units": 16,
+    "issues": 15,
+    "evidence": 4
+  },
+  "export_policy": {
+    "require_all_confirmed": true,
+    "block_unwaived_errors": true,
+    "require_user_edit_recheck": true,
+    "never_overwrite_original": true
+  }
+}

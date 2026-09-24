@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Review Session",
+  "type": "object",
+  "required": [
+    "format_version", "session_id", "created_at", "dbabel_version", "mode",
+    "bundle_files", "original", "counts", "export_policy"
+  ],
+  "properties": {
+    "format_version": {"const": "1.0"},
+    "session_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
+    "created_at": {"type": "string", "minLength": 1},
+    "dbabel_version": {"type": "string", "minLength": 1},
+    "mode": {"type": "string", "enum": ["BILINGUAL_REVIEW", "TRANSLATE", "AUDIT", "REPAIR"]},
+    "title": {"type": "string"},
+    "source_document": {"type": "string"},
+    "target_document": {"type": "string"},
+    "bundle_files": {
+      "type": "object",
+      "required": ["units", "issues", "evidence", "decisions", "events", "anchors"],
+      "properties": {
+        "units": {"const": "units.jsonl"},
+        "issues": {"const": "issues.json"},
+        "evidence": {"const": "evidence.json"},
+        "decisions": {"const": "decisions.json"},
+        "events": {"const": "events.jsonl"},
+        "anchors": {"const": "anchors.json"}
+      },
+      "additionalProperties": false
+    },
+    "original": {
+      "type": "object",
+      "required": ["filename", "format", "sha256"],
+      "properties": {
+        "filename": {"type": "string", "minLength": 1},
+        "format": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "path_hint": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "counts": {
+      "type": "object",
+      "required": ["units", "issues", "evidence"],
+      "properties": {
+        "units": {"type": "integer", "minimum": 0},
+        "issues": {"type": "integer", "minimum": 0},
+        "evidence": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "export_policy": {
+      "type": "object",
+      "required": ["require_all_confirmed", "block_unwaived_errors", "require_user_edit_recheck", "never_overwrite_original"],
+      "properties": {
+        "require_all_confirmed": {"const": true},
+        "block_unwaived_errors": {"const": true},
+        "require_user_edit_recheck": {"const": true},
+        "never_overwrite_original": {"const": true}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

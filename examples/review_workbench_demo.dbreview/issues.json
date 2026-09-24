@@ -1,0 +1,198 @@
+[
+  {
+    "id": "F0001",
+    "unit_id": "U0001",
+    "kind": "SEMANTIC",
+    "label": "TERM",
+    "severity": "WARNING",
+    "classification": "VENDOR_CONCEPT",
+    "message": "Role assignment conflicts with the reviewed source context.",
+    "evidence_refs": [
+      "E001"
+    ],
+    "blocking": false,
+    "fingerprint": "63d386f2cccec258b845aad7de66d316380fc7206906076af951d7d5b863e8aa",
+    "suggestion": "The primary database sends archived logs to the standby database."
+  },
+  {
+    "id": "Q0002",
+    "unit_id": "U0002",
+    "kind": "DETERMINISTIC",
+    "label": "NUMBER_UNIT_INTEGRITY",
+    "severity": "ERROR",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "Source and target do not preserve equivalent number-unit pairs.",
+    "evidence_refs": [],
+    "blocking": true,
+    "fingerprint": "7c63f6b97a8baa31351c9f0455194915684566bb2b1a174f798aedefe04d14b9"
+  },
+  {
+    "id": "F0004",
+    "unit_id": "U0004",
+    "kind": "SEMANTIC",
+    "label": "EVIDENCE",
+    "severity": "INFO",
+    "classification": "STANDARD_GENERAL",
+    "message": "Approved project evidence prefers a more specific verb.",
+    "evidence_refs": [
+      "E002"
+    ],
+    "blocking": false,
+    "fingerprint": "bec968745631a6594fc24083daf7362c45fd532cd8d81e1b799b9a6a51135f7c",
+    "suggestion": "Administrators can manually initiate a full backup."
+  },
+  {
+    "id": "Q0005",
+    "unit_id": "U0005",
+    "kind": "DETERMINISTIC",
+    "label": "PATH_INTEGRITY",
+    "severity": "ERROR",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "Source and target do not preserve the same path items.",
+    "evidence_refs": [],
+    "blocking": true,
+    "fingerprint": "20699ab5608459e4eae0921224d57cdb90b52c3ceda6f7cd0b54396ce4df3ce5"
+  },
+  {
+    "id": "Q0006",
+    "unit_id": "U0006",
+    "kind": "DETERMINISTIC",
+    "label": "VERSION_INTEGRITY",
+    "severity": "WARNING",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "Source and target contain different product version values.",
+    "evidence_refs": [],
+    "blocking": false,
+    "fingerprint": "a0cc254cf53af2d79b5b0077f4fd169de1b97f9bb08d43b4200654131a806431"
+  },
+  {
+    "id": "Q0007A",
+    "unit_id": "U0007",
+    "kind": "DETERMINISTIC",
+    "label": "PLACEHOLDER_INTEGRITY",
+    "severity": "ERROR",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "Source and target do not preserve the same placeholder items.",
+    "evidence_refs": [],
+    "blocking": true,
+    "fingerprint": "d54bf23ec2f78711556a24b48ab6573feb95314ff082262fee080f88a09b615d"
+  },
+  {
+    "id": "Q0007B",
+    "unit_id": "U0007",
+    "kind": "DETERMINISTIC",
+    "label": "ENV_VAR_INTEGRITY",
+    "severity": "ERROR",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "Source and target do not preserve the same environment variables.",
+    "evidence_refs": [],
+    "blocking": true,
+    "fingerprint": "678ccde7933b6efe6b79f443ca9252bec3d83106a0ea73c7e652b88dfac4ef9f"
+  },
+  {
+    "id": "F0008",
+    "unit_id": "U0008",
+    "kind": "SEMANTIC",
+    "label": "PREFERRED_TERM",
+    "severity": "WARNING",
+    "classification": "VENDOR_CONCEPT",
+    "message": "The target does not use the project-approved preferred designation.",
+    "evidence_refs": [
+      "E003"
+    ],
+    "blocking": false,
+    "fingerprint": "7ccd0b6a4e982335f3c9c43b83f11d569c383d20a009f26c8a4ecdc2a87d3449",
+    "suggestion": "It is recommended to use \"Data Guard\" for this high-availability mechanism."
+  },
+  {
+    "id": "Q0009",
+    "unit_id": "U0009",
+    "kind": "DETERMINISTIC",
+    "label": "URL_INTEGRITY",
+    "severity": "ERROR",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "Source and target do not preserve the same URL items.",
+    "evidence_refs": [],
+    "blocking": true,
+    "fingerprint": "258571b261ab365f23c199553801d1f5d64f73fec24ba88a6a0cd10df198e71c"
+  },
+  {
+    "id": "Q0010",
+    "unit_id": "U0010",
+    "kind": "DETERMINISTIC",
+    "label": "CLI_OPTION_INTEGRITY",
+    "severity": "ERROR",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "Source and target do not preserve the same CLI long options.",
+    "evidence_refs": [],
+    "blocking": true,
+    "fingerprint": "e49ee019e4c32940c99914c3e9745790b16b23e544059a3a66a996873b99ad7f",
+    "suggestion": "Use --enable-archive to enable archiving."
+  },
+  {
+    "id": "Q0011",
+    "unit_id": "U0011",
+    "kind": "DETERMINISTIC",
+    "label": "ENV_VAR_INTEGRITY",
+    "severity": "ERROR",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "Source and target do not preserve the same environment variables.",
+    "evidence_refs": [
+      "E004"
+    ],
+    "blocking": true,
+    "fingerprint": "13f5558757bae7b446719716c78dcddd16b92ecd36c9d1f55fbb1883571377ba",
+    "suggestion": "The DM_HOME environment variable points to the installation directory."
+  },
+  {
+    "id": "Q0012",
+    "unit_id": "U0012",
+    "kind": "DETERMINISTIC",
+    "label": "NUMBER_INTEGRITY",
+    "severity": "WARNING",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "Numeric formatting differs; review locale-equivalent value.",
+    "evidence_refs": [],
+    "blocking": false,
+    "fingerprint": "e22563a3a451fc37b82ee53dc77b295a6346cab754b6142fa2608546802583db"
+  },
+  {
+    "id": "Q0013",
+    "unit_id": "U0013",
+    "kind": "DETERMINISTIC",
+    "label": "PROTECTED_LITERAL",
+    "severity": "ERROR",
+    "classification": "POTENTIAL_ISSUE",
+    "message": "A protected technical literal must remain unchanged.",
+    "evidence_refs": [],
+    "blocking": true,
+    "fingerprint": "764310a5c87027f1894009ad9e7227292da965e1b27f50c4038dbbc032508999"
+  },
+  {
+    "id": "F0014",
+    "unit_id": "U0014",
+    "kind": "SEMANTIC",
+    "label": "TECHNICAL_CLAIM",
+    "severity": "WARNING",
+    "classification": "TECHNICAL_CLAIM",
+    "message": "Performance claim requires separate source verification.",
+    "evidence_refs": [],
+    "blocking": false,
+    "fingerprint": "96792c712d4e6d7a57898489df3d340132a073f2e70fec5fb1131eb3a72998a4"
+  },
+  {
+    "id": "F0015",
+    "unit_id": "U0015",
+    "kind": "SEMANTIC",
+    "label": "EVIDENCE_CONFLICT",
+    "severity": "WARNING",
+    "classification": "AMBIGUOUS_HIGH_RISK",
+    "message": "Two approved references use conflicting designations; human adjudication is required.",
+    "evidence_refs": [
+      "E002",
+      "E003"
+    ],
+    "blocking": false,
+    "fingerprint": "2f60f20d7830bcd6d1e53fa56892f84d78fa0ac865c8148b778f3066651631e8"
+  }
+]

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Review Decision",
+  "type": "object",
+  "required": [
+    "unit_id", "status", "revision", "updated_at", "reviewer_note",
+    "waived_issue_fingerprints", "recheck"
+  ],
+  "properties": {
+    "unit_id": {"type": "string", "minLength": 1},
+    "status": {
+      "type": "string",
+      "enum": [
+        "UNREVIEWED", "ACCEPT_SUGGESTION", "KEEP_CURRENT", "USER_EDITED",
+        "DEFERRED", "BLOCKED", "WAIVED"
+      ]
+    },
+    "approved_target": {"type": "string"},
+    "revision": {"type": "integer", "minimum": 0},
+    "updated_at": {"type": "string", "minLength": 1},
+    "reviewer_note": {"type": "string"},
+    "waiver_reason": {"type": "string", "minLength": 1},
+    "waived_issue_fingerprints": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "uniqueItems": true
+    },
+    "recheck": {
+      "type": "object",
+      "required": ["status", "error_count", "warning_count", "issue_fingerprints"],
+      "properties": {
+        "status": {"type": "string", "enum": ["NOT_RUN", "PASS", "FAIL"]},
+        "error_count": {"type": "integer", "minimum": 0},
+        "warning_count": {"type": "integer", "minimum": 0},
+        "issue_fingerprints": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"enum": ["ACCEPT_SUGGESTION", "KEEP_CURRENT", "USER_EDITED", "WAIVED"]}}},
+      "then": {"required": ["approved_target"]}
+    },
+    {
+      "if": {"properties": {"status": {"const": "WAIVED"}}},
+      "then": {"required": ["waiver_reason"]}
+    }
+  ]
+}

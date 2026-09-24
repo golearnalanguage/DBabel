@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" data-theme-pref="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'">
+<title>DBabel Portable Review</title>
+<style>__DBABEL_CSS__</style>
+</head>
+<body>
+<svg class="icon-sprite" aria-hidden="true">
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5"/><path d="M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-review" viewBox="0 0 24 24"><path d="M6 2h9l3 3v17H6z"/><path d="M9 10h6M9 14h6M9 18h4"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a4 4 0 0 1 4-2h4v17H8a4 4 0 0 0-4 2z"/><path d="M20 5a4 4 0 0 0-4-2h-4v17h4a4 4 0 0 1 4 2z"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.6 2.7L16.5 9"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20V7M2 20h22"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A7 7 0 0 0 15 6l-.3-2.6h-4L10.4 6A7 7 0 0 0 8.8 7L6.4 6l-2 3.4 2 1.5a7 7 0 0 0 0 2L4.4 14.5l2 3.4 2.4-1A7 7 0 0 0 10.4 18l.3 2.6h4L15 18a7 7 0 0 0 1.6-1.1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3z"/><path d="M10 20h4"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-comment" viewBox="0 0 24 24"><path d="M4 4h16v12H8l-4 4z"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></symbol>
+  <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 5h10l-2 4 2 4H6"/></symbol>
+</svg>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand-lockup"><img src="data:image/png;base64,__DBABEL_LOGO__" alt="DBabel Review Workbench"></div>
+    <nav class="main-nav" aria-label="Workbench sections">
+      <button class="nav-item active"><svg><use href="#i-review"></use></svg><span>Review</span></button>
+      <button class="nav-item"><svg><use href="#i-book"></use></svg><span>Terminology</span></button>
+      <button class="nav-item"><svg><use href="#i-db"></use></svg><span>Evidence</span></button>
+      <button class="nav-item"><svg><use href="#i-check"></use></svg><span>Quality Check</span></button>
+      <button class="nav-item"><svg><use href="#i-chart"></use></svg><span>Reports</span></button>
+      <button class="nav-item"><svg><use href="#i-gear"></use></svg><span>Project Settings</span></button>
+    </nav>
+    <section class="filters-panel">
+      <div class="filters-title"><strong>Filters</strong><button id="clearFilters" class="link-button">Clear all</button></div>
+      <div class="filter-group">
+        <div class="filter-heading">Review Status <span>⌃</span></div>
+        <label class="filter-row"><input type="checkbox" data-review-filter="TO_REVIEW"><span class="dot gray"></span><span>To Review</span><b id="countToReview">0</b></label>
+        <label class="filter-row"><input type="checkbox" data-review-filter="REVIEWED"><span class="dot green"></span><span>Reviewed</span><b id="countReviewed">0</b></label>
+        <label class="filter-row"><input type="checkbox" data-review-filter="WITH_ISSUES"><span class="dot orange"></span><span>With Issues</span><b id="countWithIssues">0</b></label>
+      </div>
+      <div class="filter-group">
+        <div class="filter-heading">Issue Type <span>⌃</span></div>
+        <div id="issueFilterList"></div>
+      </div>
+      <button class="filter-collapsed">Section <span>⌄</span></button>
+      <button class="filter-collapsed">File <span>⌄</span></button>
+      <button class="filter-collapsed">Tag <span>⌄</span></button>
+      <button class="filter-collapsed">Status <span>⌄</span></button>
+    </section>
+  </aside>
+
+  <section class="workspace">
+    <header class="document-bar">
+      <div class="document-identity">
+        <svg class="doc-icon"><use href="#i-doc"></use></svg>
+        <div><div class="document-title-row"><strong id="documentTitle">DBabel Review</strong><span>⌄</span></div><div id="documentMeta" class="document-meta">Technical Documentation</div></div>
+      </div>
+      <label class="global-search"><svg><use href="#i-search"></use></svg><input id="searchBox" type="search" placeholder="Search source, target, term, or issue..."></label>
+      <div class="reviewer-zone">
+        <label class="theme-control" title="Appearance"><span>Theme</span><select id="themeSelect" aria-label="Appearance theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+        <button class="icon-only" title="Notifications" aria-label="Notifications"><svg><use href="#i-bell"></use></svg></button><span class="divider"></span><span class="avatar">CL</span><strong>clay</strong><span>⌄</span>
+      </div>
+    </header>
+
+    <section class="metrics-strip">
+      <div class="metric-card"><span class="metric-icon blue"><svg><use href="#i-doc"></use></svg></span><div><span>Total Segments</span><strong id="metricTotal">0</strong></div></div>
+      <div class="metric-card reviewed"><span class="metric-icon green"><svg><use href="#i-check"></use></svg></span><div><span>Reviewed</span><strong id="metricReviewed">0</strong></div></div>
+      <div class="metric-card"><span class="metric-icon coral">!</span><div><span>With Issues</span><strong id="metricIssues">0</strong></div></div>
+      <div class="metric-card"><span class="metric-icon slate">○</span><div><span>To Review</span><strong id="metricPending">0</strong></div></div>
+      <div class="export-summary"><button id="exportButton"><svg><use href="#i-doc"></use></svg><span>Export decisions.json</span></button><small id="exportHint">Portable review · decisions only</small></div>
+    </section>
+
+    <div class="review-area">
+      <section class="segment-panel">
+        <div class="table-toolbar">
+          <select id="quickFilter" aria-label="Segment filter"><option value="ALL">All Segments</option><option value="TO_REVIEW">To Review</option><option value="REVIEWED">Reviewed</option><option value="WITH_ISSUES">With Issues</option></select>
+          <div class="pager-buttons"><button id="pagePrev" title="Previous page"><svg><use href="#i-left"></use></svg></button><button id="pageNext" title="Next page"><svg><use href="#i-right"></use></svg></button></div>
+          <span id="pageInfo" class="page-info">0–0 of 0</span>
+          <div class="toolbar-spacer"></div>
+          <select id="sortSelect"><option value="DOCUMENT">Sort: Document Order</option><option value="STATUS">Sort: Review Status</option><option value="ISSUES">Sort: Issues</option></select>
+          <button class="view-button active" title="Table view">▤</button><button class="view-button" title="Compact view">≡</button>
+        </div>
+        <div class="table-wrap">
+          <table class="segment-table">
+            <thead><tr><th class="check-col"><input id="selectPage" type="checkbox" aria-label="Select page"></th><th class="num-col">#</th><th>Source <span id="sourceLanguage">(Source)</span> ↕</th><th>Target <span id="targetLanguage">(Target)</span> ↕</th><th class="status-col">Status</th><th class="issues-col">Issues</th><th class="comment-col"><svg><use href="#i-comment"></use></svg></th></tr></thead>
+            <tbody id="segmentRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="inspector" id="inspector">
+        <div class="inspector-head"><strong id="segmentCounter">Segment 0 of 0</strong><div><button id="unitPrev"><svg><use href="#i-left"></use></svg></button><button id="unitNext"><svg><use href="#i-right"></use></svg></button><button class="close-inspector" title="Keep inspector open">×</button></div></div>
+        <section class="inspector-block"><div class="field-head"><strong id="sourceLabel">Source</strong><button class="copy-button" data-copy="sourceText" title="Copy source">▣</button></div><div id="sourceText" class="readonly-text"></div></section>
+        <section class="inspector-block"><div class="field-head"><strong id="targetLabel">Target</strong><button id="editToggle" class="mini-edit"><svg><use href="#i-edit"></use></svg>Edit</button></div><textarea id="targetText" class="target-editor" spellcheck="false" readonly></textarea></section>
+        <div class="status-issues-row"><label><strong>Status</strong><select id="decisionSelect"></select></label><div><strong>Issues</strong><div id="issueChips" class="issue-chips"></div></div></div>
+        <div class="tabs" role="tablist"><button data-tab="suggestion" class="active">Suggested Translation</button><button data-tab="evidence">Evidence <span id="evidenceTabCount"></span></button><button data-tab="terminology">Terminology <span id="termTabCount"></span></button></div>
+        <div id="tabSuggestion" class="tab-panel active"><div class="suggestion-head"><strong>DBabel Suggestion</strong><span>Human confirmation required</span></div><div id="suggestionBox" class="suggestion-box"></div><div id="reasonBox" class="reason-box"></div><div class="inline-evidence"><div class="evidence-heading"><strong>Evidence from Reference Documents</strong><span id="suggestionEvidenceCount"></span></div><div id="suggestionEvidenceList"></div></div></div>
+        <div id="tabEvidence" class="tab-panel"><div class="evidence-heading"><strong>Evidence from Reference Documents</strong><span id="evidenceCountText"></span></div><div id="evidenceList"></div></div>
+        <div id="tabTerminology" class="tab-panel"><div class="evidence-heading"><strong>Terminology & QA labels</strong></div><div id="terminologyList"></div></div>
+        <details class="review-note review-note-details"><summary>Reviewer note</summary><textarea id="reviewerNote" placeholder="Optional note"></textarea></details>
+        <div id="waiverField" class="waiver-panel hidden"><label>Waiver reason<textarea id="waiverReason" placeholder="Required when waiving unresolved ERROR"></textarea></label><button id="confirmWaiver">Confirm waiver</button></div>
+        <div class="primary-actions"><button id="acceptButton" class="accept"><span>✓</span>Accept Suggestion</button><button id="keepButton"><span>⊗</span>Keep Current</button></div>
+        <div class="secondary-actions"><button id="editAction"><svg><use href="#i-edit"></use></svg>Edit</button><button id="deferButton"><svg><use href="#i-clock"></use></svg>Defer</button><button id="blockButton" class="danger"><svg><use href="#i-ban"></use></svg>Block</button><button id="waiveButton"><svg><use href="#i-flag"></use></svg>Waive</button></div>
+        <details class="gate-box"><summary>Portable review</summary><pre id="gateStatus">Native document export runs after decisions are imported into DBabel.</pre></details>
+      </aside>
+    </div>
+  </section>
+</div>
+<script id="dbabel-data" type="application/octet-stream">__DBABEL_DATA__</script>
+<script>__DBABEL_PORTABLE_JS__</script>
+</body>
+</html>

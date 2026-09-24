@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Review Event",
+  "type": "object",
+  "required": ["event", "at", "revision", "actor"],
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "SESSION_CREATED", "DECISION_CHANGED", "TARGET_EDITED", "QA_RECHECKED",
+        "WAIVER_ADDED", "WAIVER_REMOVED", "EXPORT_REQUESTED", "EXPORT_BLOCKED",
+        "EXPORT_AUTHORIZED", "EXPORT_COMPLETED", "ROUND_TRIP_VERIFIED"
+      ]
+    },
+    "unit_id": {"type": "string", "minLength": 1},
+    "at": {"type": "string", "minLength": 1},
+    "revision": {"type": "integer", "minimum": 0},
+    "actor": {"type": "string", "enum": ["HUMAN", "SYSTEM"]},
+    "from_status": {"type": "string"},
+    "to_status": {"type": "string"},
+    "detail": {"type": "string"}
+  },
+  "additionalProperties": false
+}

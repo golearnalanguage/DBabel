@@ -91,6 +91,26 @@ DBabel Core 仍然保持 Python 3.9+ 和仓库基础验证依赖即可运行。
 - **可审计**：finding、evidence、coverage、repair、QA 都通过显式契约记录，而不是只靠 Agent 自述。
 - **供应商无关**：解析器、搜索工具、MT 和 LLM 可以辅助，但不拥有最终术语裁决权。
 
+## Review Workbench 预览
+
+<p align="center">
+  <img src="assets/dbabel-review-workbench-preview.png"
+       alt="DBabel Review Workbench——双语人工确认审校界面。"
+       width="100%">
+</p>
+
+`feature/v1.5-review-workbench` 开发线在 DBabel 现有 finding、确定性 QA、证据与修订门禁之上，
+增加本地 human-in-the-loop 审校界面。Workbench 固定采用当前已确认的 DBabel 视觉模板：
+左侧为品牌、导航和过滤器，中间为双语 segment grid，右侧为当前 segment 的审查与决策区域。
+
+参考/demo 界面的 reviewer 显示为 `clay`，不绘制任何模拟的 Windows/macOS 最小化、最大化或
+退出按钮；DBabel logo 使用透明背景资产，与 Workbench 自身背景自然融合。界面继续支持
+**浅色 / 深色 / 跟随系统** 三种显示模式。
+
+这是开发预览，不代表所有“可识别格式”都已经具备原格式写回能力。当前 native write-back adapter
+仅严格支持 DOCX，并继续受到原文件哈希、精确 anchor 校验、Export Gate 授权和 round-trip
+verification 约束。详见 [Review Workbench contract](docs/REVIEW_WORKBENCH.md)。
+
 ## 安装和使用
 
 ### Codex

@@ -1,0 +1,54 @@
+[
+  {
+    "id": "E001",
+    "source_title": "DB Operations Guide v2.3",
+    "source_type": "user_supplied_approved_resource",
+    "locator": "project://ops-guide#archive-role",
+    "retrieved_at": "2026-09-24",
+    "evidence_state": "CURRENT",
+    "source_opened": true,
+    "support_note": "The primary database is documented as the sender of archived logs.",
+    "authority_match": "HIGH",
+    "context_match": "HIGH",
+    "version_match": "EXACT"
+  },
+  {
+    "id": "E002",
+    "source_title": "Administration Guide",
+    "source_type": "user_supplied_approved_resource",
+    "locator": "project://admin-guide#backup",
+    "retrieved_at": "2026-09-24",
+    "evidence_state": "CURRENT",
+    "source_opened": true,
+    "support_note": "The approved wording uses initiate for manually starting a full backup.",
+    "authority_match": "HIGH",
+    "context_match": "HIGH",
+    "version_match": "EXACT"
+  },
+  {
+    "id": "E003",
+    "source_title": "Project Terminology Baseline",
+    "source_type": "user_supplied_approved_resource",
+    "locator": "project://terminology#data-guard",
+    "retrieved_at": "2026-09-24",
+    "evidence_state": "CURRENT",
+    "source_opened": true,
+    "support_note": "The project-approved preferred designation is Data Guard.",
+    "authority_match": "HIGH",
+    "context_match": "HIGH",
+    "version_match": "NOT_APPLICABLE"
+  },
+  {
+    "id": "E004",
+    "source_title": "Installation Guide",
+    "source_type": "official_vendor_same_product_version",
+    "locator": "project://install-guide#environment",
+    "retrieved_at": "2026-09-24",
+    "evidence_state": "CURRENT",
+    "source_opened": true,
+    "support_note": "DM_HOME identifies the product installation directory.",
+    "authority_match": "HIGH",
+    "context_match": "HIGH",
+    "version_match": "EXACT"
+  }
+]

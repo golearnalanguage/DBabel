@@ -1,0 +1,238 @@
+[
+  {
+    "unit_id": "U0001",
+    "status": "UNREVIEWED",
+    "revision": 0,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "NOT_RUN",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    }
+  },
+  {
+    "unit_id": "U0002",
+    "status": "UNREVIEWED",
+    "revision": 0,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "NOT_RUN",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    }
+  },
+  {
+    "unit_id": "U0003",
+    "status": "KEEP_CURRENT",
+    "revision": 1,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "PASS",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    },
+    "approved_target": "Backup files are stored in the specified directory."
+  },
+  {
+    "unit_id": "U0004",
+    "status": "KEEP_CURRENT",
+    "revision": 1,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "PASS",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    },
+    "approved_target": "Administrators can manually initiate a full backup."
+  },
+  {
+    "unit_id": "U0005",
+    "status": "UNREVIEWED",
+    "revision": 0,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "NOT_RUN",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    }
+  },
+  {
+    "unit_id": "U0006",
+    "status": "KEEP_CURRENT",
+    "revision": 1,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "PASS",
+      "error_count": 0,
+      "warning_count": 1,
+      "issue_fingerprints": [
+        "46c8bc360836f1875e1b3085a8bcc20a974f55733ed469ce6ca47bc69ca04811"
+      ]
+    },
+    "approved_target": "This feature applies to DM8 8.1.2."
+  },
+  {
+    "unit_id": "U0007",
+    "status": "UNREVIEWED",
+    "revision": 0,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "NOT_RUN",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    }
+  },
+  {
+    "unit_id": "U0008",
+    "status": "ACCEPT_SUGGESTION",
+    "revision": 1,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "PASS",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    },
+    "approved_target": "It is recommended to use \"Data Guard\" for this high-availability mechanism."
+  },
+  {
+    "unit_id": "U0009",
+    "status": "UNREVIEWED",
+    "revision": 0,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "NOT_RUN",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    }
+  },
+  {
+    "unit_id": "U0010",
+    "status": "USER_EDITED",
+    "revision": 1,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "PASS",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    },
+    "approved_target": "Use --enable-archive to enable archiving."
+  },
+  {
+    "unit_id": "U0011",
+    "status": "UNREVIEWED",
+    "revision": 0,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "NOT_RUN",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    }
+  },
+  {
+    "unit_id": "U0012",
+    "status": "KEEP_CURRENT",
+    "revision": 1,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "PASS",
+      "error_count": 0,
+      "warning_count": 1,
+      "issue_fingerprints": [
+        "33038767f1bafeb79143e234730a511b237457f0ca13b1115f4cee09f9a8c5db"
+      ]
+    },
+    "approved_target": "The maximum number of connections is 1000."
+  },
+  {
+    "unit_id": "U0013",
+    "status": "UNREVIEWED",
+    "revision": 0,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "NOT_RUN",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    }
+  },
+  {
+    "unit_id": "U0014",
+    "status": "KEEP_CURRENT",
+    "revision": 1,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "PASS",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    },
+    "approved_target": "This mode can improve throughput by 50%."
+  },
+  {
+    "unit_id": "U0015",
+    "status": "UNREVIEWED",
+    "revision": 0,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "NOT_RUN",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    }
+  },
+  {
+    "unit_id": "U0016",
+    "status": "KEEP_CURRENT",
+    "revision": 1,
+    "updated_at": "2026-09-24T03:30:00Z",
+    "reviewer_note": "",
+    "waived_issue_fingerprints": [],
+    "recheck": {
+      "status": "PASS",
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_fingerprints": []
+    },
+    "approved_target": "Before restoring data, verify the integrity of the backup file."
+  }
+]
