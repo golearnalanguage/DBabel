@@ -31,11 +31,11 @@
     <div class="brand-lockup"><img src="/dbabel-workbench-logo.png" alt="DBabel Review Workbench"></div>
     <nav class="main-nav" aria-label="Workbench sections">
       <button class="nav-item active"><svg><use href="#i-review"></use></svg><span>Review</span></button>
-      <button class="nav-item"><svg><use href="#i-book"></use></svg><span>Terminology</span></button>
-      <button class="nav-item"><svg><use href="#i-db"></use></svg><span>Evidence</span></button>
-      <button class="nav-item"><svg><use href="#i-check"></use></svg><span>Quality Check</span></button>
-      <button class="nav-item"><svg><use href="#i-chart"></use></svg><span>Reports</span></button>
-      <button class="nav-item"><svg><use href="#i-gear"></use></svg><span>Project Settings</span></button>
+      <button class="nav-item" disabled title="Planned Workbench view"><svg><use href="#i-book"></use></svg><span>Terminology</span><small class="nav-soon">Soon</small></button>
+      <button class="nav-item" disabled title="Planned Workbench view"><svg><use href="#i-db"></use></svg><span>Evidence</span><small class="nav-soon">Soon</small></button>
+      <button class="nav-item" disabled title="Planned Workbench view"><svg><use href="#i-check"></use></svg><span>Quality Check</span><small class="nav-soon">Soon</small></button>
+      <button class="nav-item" disabled title="Planned Workbench view"><svg><use href="#i-chart"></use></svg><span>Reports</span><small class="nav-soon">Soon</small></button>
+      <button class="nav-item" disabled title="Planned Workbench view"><svg><use href="#i-gear"></use></svg><span>Project Settings</span><small class="nav-soon">Soon</small></button>
     </nav>
     <section class="filters-panel">
       <div class="filters-title"><strong>Filters</strong><button id="clearFilters" class="link-button">Clear all</button></div>
@@ -49,10 +49,10 @@
         <div class="filter-heading">Issue Type <span>⌃</span></div>
         <div id="issueFilterList"></div>
       </div>
-      <button class="filter-collapsed">Section <span>⌄</span></button>
-      <button class="filter-collapsed">File <span>⌄</span></button>
-      <button class="filter-collapsed">Tag <span>⌄</span></button>
-      <button class="filter-collapsed">Status <span>⌄</span></button>
+      <button class="filter-collapsed" disabled title="Planned filter">Section <span class="filter-soon">Soon</span></button>
+      <button class="filter-collapsed" disabled title="Planned filter">File <span class="filter-soon">Soon</span></button>
+      <button class="filter-collapsed" disabled title="Planned filter">Tag <span class="filter-soon">Soon</span></button>
+      <button class="filter-collapsed" disabled title="Use Review Status above">Status <span class="filter-soon">Use above</span></button>
     </section>
   </aside>
 
@@ -85,7 +85,7 @@
           <span id="pageInfo" class="page-info">0–0 of 0</span>
           <div class="toolbar-spacer"></div>
           <select id="sortSelect"><option value="DOCUMENT">Sort: Document Order</option><option value="STATUS">Sort: Review Status</option><option value="ISSUES">Sort: Issues</option></select>
-          <button class="view-button active" title="Table view">▤</button><button class="view-button" title="Compact view">≡</button>
+          <button class="view-button active" title="Table view">▤</button><button class="view-button" disabled title="Compact view is planned">≡</button>
         </div>
         <div class="table-wrap">
           <table class="segment-table">

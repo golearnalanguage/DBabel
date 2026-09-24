@@ -126,5 +126,47 @@ class VisualContractTests(unittest.TestCase):
         self.assertIn('fake operating-system window chrome', doc)
         self.assertIn('`clay`', doc)
 
+
+    def test_unimplemented_controls_are_explicitly_disabled(self):
+        desktop=(ROOT/'review_workbench/static/index.html').read_text(encoding='utf-8')
+        portable=(ROOT/'review_workbench/portable_template.html').read_text(encoding='utf-8')
+        css=(ROOT/'review_workbench/static/style.css').read_text(encoding='utf-8')
+
+        for content in (desktop,portable):
+            self.assertEqual(
+                content.count('title="Planned Workbench view"'),
+                5,
+            )
+            self.assertEqual(
+                content.count('class="nav-soon">Soon</small>'),
+                5,
+            )
+            self.assertEqual(
+                content.count('title="Planned filter"'),
+                3,
+            )
+            self.assertIn(
+                'title="Use Review Status above"',
+                content,
+            )
+            self.assertIn(
+                'disabled title="Compact view is planned"',
+                content,
+            )
+
+        self.assertIn(
+            'explicit capability-state controls',
+            css,
+        )
+        self.assertIn(
+            '.nav-item:disabled',
+            css,
+        )
+        self.assertIn(
+            '.filter-collapsed:disabled',
+            css,
+        )
+
+
 if __name__=='__main__':
     unittest.main()

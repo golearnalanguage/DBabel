@@ -58,3 +58,49 @@ button,input,select,textarea{font:inherit;color:inherit}button,select,input,text
 @media (max-width:680px){.metrics-strip{grid-template-columns:1fr 1fr}.metric-card{padding:8px 9px}.table-toolbar{flex-wrap:wrap;height:auto}.toolbar-spacer{display:none}.table-toolbar select{min-width:150px;flex:1}.segment-table{min-width:800px}.reviewer-zone .divider,.reviewer-zone .avatar,.reviewer-zone strong,.reviewer-zone>span:last-child,.icon-only{display:none}.document-identity{max-width:64%}}
 .inline-evidence{margin-top:13px}.inline-evidence .evidence-card{margin-bottom:0}
 .review-note-details{margin:6px 0 8px}.review-note-details summary,.gate-box summary{cursor:pointer;color:var(--muted);font-size:10.5px;font-weight:650;list-style:none}.review-note-details summary::-webkit-details-marker,.gate-box summary::-webkit-details-marker{display:none}.review-note-details summary::before,.gate-box summary::before{content:'›';display:inline-block;margin-right:6px;transition:transform .12s}.review-note-details[open] summary::before,.gate-box[open] summary::before{transform:rotate(90deg)}.review-note-details textarea{min-height:54px;margin-top:6px}.gate-box{margin-top:9px;padding-top:8px}.gate-box>strong{display:none}
+
+
+/* v1.5 explicit capability-state controls */
+.nav-item:disabled,
+.filter-collapsed:disabled,
+.view-button:disabled{
+  cursor:not-allowed;
+  opacity:.52;
+}
+
+.nav-item:disabled:hover,
+.filter-collapsed:disabled:hover,
+.view-button:disabled:hover{
+  background:transparent;
+  color:inherit;
+}
+
+.nav-soon{
+  margin-left:auto;
+  padding:2px 5px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  color:var(--muted);
+  background:var(--surface-2);
+  font-size:8.5px;
+  font-weight:700;
+  line-height:1.2;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+}
+
+.filter-soon{
+  color:var(--muted);
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:.02em;
+}
+
+.filter-collapsed:disabled{
+  color:var(--muted);
+}
+
+.view-button:disabled{
+  color:var(--muted);
+  background:var(--surface);
+}
