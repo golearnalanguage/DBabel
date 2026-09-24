@@ -4,13 +4,15 @@ from xml.etree import ElementTree as ET
 
 ROOT=Path(__file__).resolve().parents[1];SCRIPTS=ROOT/'scripts'
 if str(SCRIPTS) not in sys.path:sys.path.insert(0,str(SCRIPTS))
-from docx_review_adapter import build_anchors,apply_reviewed_docx,extract_paragraphs,round_trip_verify,verify_non_target_text_unchanged,DocxExportError,W_NS
+from docx_review_adapter import build_anchors,apply_reviewed_docx,extract_paragraphs,round_trip_verify,verify_non_target_text_unchanged,DocxExportError,W_NS,W14_PARA_ID
 
-def make_docx(path, paragraphs):
+def make_docx(path, paragraphs, para_ids=None):
     ns=W_NS
     doc=ET.Element('{%s}document'%ns);body=ET.SubElement(doc,'{%s}body'%ns)
-    for runs in paragraphs:
+    for index,runs in enumerate(paragraphs):
         p=ET.SubElement(body,'{%s}p'%ns)
+        if para_ids:
+            p.set(W14_PARA_ID,para_ids[index])
         for text,bold in runs:
             r=ET.SubElement(p,'{%s}r'%ns)
             if bold:
@@ -46,6 +48,87 @@ class DocxAdapterTests(unittest.TestCase):
             units=[{'id':'U1','location':'unknown','current_target':'Same'}];anchors=build_anchors(orig,units)
             self.assertEqual(anchors['U1']['status'],'AMBIGUOUS')
             with self.assertRaises(DocxExportError):apply_reviewed_docx(orig,out,units,{'U1':{'status':'USER_EDITED','approved_target':'Changed'}},anchors)
+
+    def test_anchor_prefers_word_para_id(self):
+        with tempfile.TemporaryDirectory() as td:
+            orig=Path(td)/'in.docx'
+            out=Path(td)/'out.docx'
+
+            make_docx(
+                orig,
+                [
+                    [('First paragraph.',False)],
+                    [('Second paragraph.',False)],
+                ],
+                para_ids=[
+                    '00112233',
+                    '44556677',
+                ],
+            )
+
+            units=[
+                {
+                    'id':'U1',
+                    'location':'docx:word/document.xml:p=0',
+                    'current_target':'First paragraph.',
+                }
+            ]
+
+            anchors=build_anchors(orig,units)
+
+            self.assertEqual(
+                anchors['U1']['para_id'],
+                '00112233',
+            )
+
+            # Make the fallback ordinal deliberately wrong.
+            # Export must still resolve the paragraph through w14:paraId.
+            anchors['U1']['paragraph_ordinal']=1
+
+            decisions={
+                'U1':{
+                    'status':'USER_EDITED',
+                    'approved_target':'Updated first paragraph.',
+                }
+            }
+
+            apply_reviewed_docx(
+                orig,
+                out,
+                units,
+                decisions,
+                anchors,
+            )
+
+            rows=extract_paragraphs(out)
+
+            self.assertEqual(
+                rows[0]['text'],
+                'Updated first paragraph.',
+            )
+            self.assertEqual(
+                rows[1]['text'],
+                'Second paragraph.',
+            )
+
+            self.assertTrue(
+                round_trip_verify(
+                    out,
+                    units,
+                    decisions,
+                    anchors,
+                )
+            )
+
+            self.assertTrue(
+                verify_non_target_text_unchanged(
+                    orig,
+                    out,
+                    anchors,
+                    decisions,
+                    units,
+                )
+            )
 
     def test_never_overwrite_original(self):
         with tempfile.TemporaryDirectory() as td:

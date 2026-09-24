@@ -19,6 +19,8 @@ from xml.etree import ElementTree as ET
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
+W14_NS = "http://schemas.microsoft.com/office/word/2010/wordml"
+W14_PARA_ID = "{%s}paraId" % W14_NS
 W_P = "{%s}p" % W_NS
 W_T = "{%s}t" % W_NS
 
@@ -75,6 +77,7 @@ def extract_paragraphs(path: Path) -> List[Dict[str, Any]]:
                 rows.append({
                     "part": part,
                     "paragraph_ordinal": ordinal,
+                    "para_id": paragraph.get(W14_PARA_ID),
                     "text": text,
                     "text_sha256": _sha_text(text),
                     "text_node_count": len(_paragraph_text_nodes(paragraph)),
@@ -119,6 +122,7 @@ def build_anchors(path: Path, units: Sequence[Dict[str, Any]]) -> Dict[str, Dict
                 "status": "RESOLVED",
                 "part": row["part"],
                 "paragraph_ordinal": row["paragraph_ordinal"],
+                "para_id": row.get("para_id"),
                 "original_text": target,
                 "original_text_sha256": row["text_sha256"],
                 "text_node_count": row["text_node_count"],
@@ -218,9 +222,69 @@ def _paragraph_by_ordinal(root: ET.Element, ordinal: int) -> ET.Element:
     raise DocxExportError("paragraph ordinal {} no longer exists".format(ordinal))
 
 
+def _paragraph_by_anchor(
+    root: ET.Element,
+    anchor: Dict[str, Any],
+) -> ET.Element:
+    para_id = anchor.get("para_id")
+
+    if para_id:
+        matches = [
+            paragraph
+            for paragraph in root.iter(W_P)
+            if paragraph.get(W14_PARA_ID) == para_id
+        ]
+
+        if len(matches) == 1:
+            return matches[0]
+
+        if len(matches) > 1:
+            raise DocxExportError(
+                "duplicate w14:paraId in DOCX part: {}".format(
+                    para_id
+                )
+            )
+
+    return _paragraph_by_ordinal(
+        root,
+        int(anchor["paragraph_ordinal"]),
+    )
+
+
+def _paragraph_identity(row: Dict[str, Any]) -> Tuple[str, str]:
+    para_id = row.get("para_id")
+
+    if para_id:
+        return (
+            row["part"],
+            "paraId:{}".format(para_id),
+        )
+
+    return (
+        row["part"],
+        "ordinal:{}".format(row["paragraph_ordinal"]),
+    )
+
+
+def _anchor_identity(anchor: Dict[str, Any]) -> Tuple[str, str]:
+    para_id = anchor.get("para_id")
+
+    if para_id:
+        return (
+            anchor["part"],
+            "paraId:{}".format(para_id),
+        )
+
+    return (
+        anchor["part"],
+        "ordinal:{}".format(anchor["paragraph_ordinal"]),
+    )
+
+
 def _serialize_xml(root: ET.Element) -> bytes:
-    # Register common namespace to avoid ns0 for WordprocessingML.
+    # Keep familiar namespace prefixes in rewritten OOXML parts.
     ET.register_namespace("w", W_NS)
+    ET.register_namespace("w14", W14_NS)
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
@@ -257,13 +321,20 @@ def apply_reviewed_docx(
             if part not in zin.namelist():
                 raise DocxExportError("OOXML part disappeared: {}".format(part))
             root = _parse_part(zin.read(part))
-            seen_ordinals = set()
+            seen_anchors = set()
             for anchor, current, final in part_edits:
                 ordinal = int(anchor["paragraph_ordinal"])
-                if ordinal in seen_ordinals:
-                    raise DocxExportError("multiple review units target the same paragraph: {}#{}".format(part, ordinal))
-                seen_ordinals.add(ordinal)
-                paragraph = _paragraph_by_ordinal(root, ordinal)
+                anchor_key = _anchor_identity(anchor)
+
+                if anchor_key in seen_anchors:
+                    raise DocxExportError(
+                        "multiple review units target the same paragraph: {}".format(
+                            anchor_key
+                        )
+                    )
+
+                seen_anchors.add(anchor_key)
+                paragraph = _paragraph_by_anchor(root, anchor)
                 actual = _visible_text(paragraph)
                 if _sha_text(actual) != anchor["original_text_sha256"] or actual != current:
                     raise DocxExportError("DOCX anchor changed for {}#{}".format(part, ordinal))
@@ -303,7 +374,10 @@ def round_trip_verify(
             part = anchor["part"]
             if part not in cache:
                 cache[part] = _parse_part(zf.read(part))
-            paragraph = _paragraph_by_ordinal(cache[part], int(anchor["paragraph_ordinal"]))
+            paragraph = _paragraph_by_anchor(
+                cache[part],
+                anchor,
+            )
             actual = _visible_text(paragraph)
             if actual != final:
                 raise DocxExportError("round-trip target mismatch for {}".format(unit_id))
@@ -319,8 +393,14 @@ def verify_non_target_text_unchanged(
     decisions_by_id: Dict[str, Dict[str, Any]],
     units: Sequence[Dict[str, Any]],
 ) -> List[str]:
-    before = {(x["part"], x["paragraph_ordinal"]): x["text"] for x in extract_paragraphs(original)}
-    after = {(x["part"], x["paragraph_ordinal"]): x["text"] for x in extract_paragraphs(output)}
+    before = {
+        _paragraph_identity(x): x["text"]
+        for x in extract_paragraphs(original)
+    }
+    after = {
+        _paragraph_identity(x): x["text"]
+        for x in extract_paragraphs(output)
+    }
     if set(before) != set(after):
         raise DocxExportError("DOCX paragraph structure changed during export")
     changed_keys = set()
@@ -332,12 +412,17 @@ def verify_non_target_text_unchanged(
             continue
         anchor = anchors.get(unit["id"]) or {}
         if anchor.get("status") == "RESOLVED":
-            changed_keys.add((anchor["part"], int(anchor["paragraph_ordinal"])))
+            changed_keys.add(_anchor_identity(anchor))
     for key in sorted(before):
         if key in changed_keys:
             continue
         if before[key] != after[key]:
-            raise DocxExportError("non-target paragraph text changed at {}#{}".format(key[0], key[1]))
+            raise DocxExportError(
+                "non-target paragraph text changed at {}#{}".format(
+                    key[0],
+                    key[1],
+                )
+            )
     return ["non-target DOCX paragraph text remained unchanged"]
 
 def main() -> None:
