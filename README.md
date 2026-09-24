@@ -21,6 +21,31 @@ inputs owned or supplied by the user.
 
 [中文说明](README.zh-CN.md) · [Skill kernel](SKILL.md) · [Package index](PACKAGE_INDEX.md) · [Examples](examples/)
 
+## Review Workbench preview
+
+<p align="center">
+  <img src="assets/dbabel-review-workbench-preview.png"
+       alt="DBabel Review Workbench — bilingual human-in-the-loop review interface."
+       width="100%">
+</p>
+
+The `feature/v1.5-review-workbench` development line adds a local human-in-the-loop
+review surface on top of DBabel's existing findings, deterministic QA, evidence, and
+repair gates. The Workbench uses the fixed DBabel visual template: integrated
+Tower-of-Babel/handwritten-wordmark branding, navigation and filters on the left, a
+bilingual segment grid in the center, and a selected-segment inspector on the right.
+
+The reference/demo shell uses reviewer identity `clay`, contains no simulated
+operating-system window controls, and exposes **Light / Dark / System** appearance
+modes. Its logo asset has a transparent background so the DBabel lockup blends into
+the Workbench surface instead of appearing as a white image rectangle.
+
+This is a development preview, not a claim that every recognized document format is
+natively editable. The initial native write-back adapter is intentionally limited to
+DOCX and remains subject to original-file hashing, exact anchor validation, export-gate
+authorization, and round-trip verification. See the
+[Review Workbench contract](docs/REVIEW_WORKBENCH.md).
+
 ## What DBabel is built on
 
 DBabel is a repository-based **Agent Skill**, not a standalone machine-translation
@@ -110,31 +135,6 @@ validation dependencies only.
   represented as explicit contracts rather than implicit Agent claims.
 - **Provider-independent** — optional parsers, search tools, MT systems, and LLMs can
   assist the workflow without owning the final terminology decision.
-
-## Review Workbench preview
-
-<p align="center">
-  <img src="assets/dbabel-review-workbench-preview.png"
-       alt="DBabel Review Workbench — bilingual human-in-the-loop review interface."
-       width="100%">
-</p>
-
-The `feature/v1.5-review-workbench` development line adds a local human-in-the-loop
-review surface on top of DBabel's existing findings, deterministic QA, evidence, and
-repair gates. The Workbench uses the fixed DBabel visual template: integrated
-Tower-of-Babel/handwritten-wordmark branding, navigation and filters on the left, a
-bilingual segment grid in the center, and a selected-segment inspector on the right.
-
-The reference/demo shell uses reviewer identity `clay`, contains no simulated
-operating-system window controls, and exposes **Light / Dark / System** appearance
-modes. Its logo asset has a transparent background so the DBabel lockup blends into
-the Workbench surface instead of appearing as a white image rectangle.
-
-This is a development preview, not a claim that every recognized document format is
-natively editable. The initial native write-back adapter is intentionally limited to
-DOCX and remains subject to original-file hashing, exact anchor validation, export-gate
-authorization, and round-trip verification. See the
-[Review Workbench contract](docs/REVIEW_WORKBENCH.md).
 
 ## How to use
 
