@@ -414,6 +414,140 @@ class SurfaceSignalExtractionTests(
                 self.rules,
             )
 
+    def test_must_not_suppresses_nested_must(self):
+        unit = {
+            "id": "OVERLAP_EN",
+            "source": "You must not delete the backup.",
+            "target": "Keep the backup.",
+            "source_language": "en",
+            "target_language": "en",
+            "alignment": "ALIGNED",
+            "context": {
+                "text_role": "PROCEDURE"
+            },
+        }
+
+        result = extract_signal_observations(
+            [
+                unit
+            ],
+            "BILINGUAL_REVIEW",
+            self.rules,
+        )
+
+        observation = result[
+            "observations"
+        ][0]
+
+        self.assertIn(
+            "must_not",
+            observation[
+                "observed_signals"
+            ],
+        )
+
+        self.assertNotIn(
+            "must",
+            observation[
+                "observed_signals"
+            ],
+        )
+
+        lexical = [
+            detail
+            for detail
+            in observation[
+                "signal_details"
+            ]
+            if detail[
+                "side"
+            ]
+            == "SOURCE"
+            and detail[
+                "signal"
+            ]
+            in {
+                "must",
+                "must_not",
+            }
+        ]
+
+        self.assertEqual(
+            [
+                (
+                    detail[
+                        "signal"
+                    ],
+                    detail[
+                        "matched_text"
+                    ],
+                )
+                for detail
+                in lexical
+            ],
+            [
+                (
+                    "must_not",
+                    "must not",
+                )
+            ],
+        )
+
+    def test_longer_chinese_scope_marker_wins_provenance(self):
+        unit = {
+            "id": "OVERLAP_ZH",
+            "source": "仅限当前节点执行。",
+            "target": "Run this only on the current node.",
+            "source_language": "zh-CN",
+            "target_language": "en",
+            "alignment": "ALIGNED",
+            "context": {
+                "text_role": "PROCEDURE"
+            },
+        }
+
+        result = extract_signal_observations(
+            [
+                unit
+            ],
+            "BILINGUAL_REVIEW",
+            self.rules,
+        )
+
+        observation = result[
+            "observations"
+        ][0]
+
+        source_only_details = [
+            detail
+            for detail
+            in observation[
+                "signal_details"
+            ]
+            if detail[
+                "side"
+            ]
+            == "SOURCE"
+            and detail[
+                "signal"
+            ]
+            == "only"
+        ]
+
+        self.assertEqual(
+            [
+                detail[
+                    "matched_text"
+                ]
+                for detail
+                in source_only_details
+            ],
+            [
+                "仅限"
+            ],
+        )
+
+
     def test_policy_is_explicitly_non_authoritative(self):
         result = extract_signal_observations(
             self.units,

@@ -462,6 +462,9 @@ def _extract_lexical_details(
     if language is None:
         return
 
+    matches = []
+    sequence = 0
+
     for detector in (
         rules.get(
             "lexical_detectors"
@@ -481,6 +484,8 @@ def _extract_lexical_details(
         for value in detector[
             "values"
         ]:
+            spans = []
+
             if (
                 detector[
                     "match"
@@ -491,48 +496,128 @@ def _extract_lexical_details(
                     text,
                     value,
                 ):
-                    _append_detail(
-                        details,
-                        seen,
-                        detector[
-                            "signal"
-                        ],
-                        side,
-                        detector[
-                            "id"
-                        ],
-                        match.group(
-                            0
-                        ),
-                        match.start(),
-                        match.end(),
+                    spans.append(
+                        (
+                            match.start(),
+                            match.end(),
+                            match.group(0),
+                        )
                     )
 
             else:
                 for (
-                    start,
-                    end,
+                    match_start,
+                    match_end,
                 ) in _substring_matches(
                     text,
                     value,
                 ):
-                    _append_detail(
-                        details,
-                        seen,
-                        detector[
-                            "signal"
-                        ],
-                        side,
-                        detector[
-                            "id"
-                        ],
-                        text[
-                            start:end
-                        ],
-                        start,
-                        end,
+                    spans.append(
+                        (
+                            match_start,
+                            match_end,
+                            text[
+                                match_start:match_end
+                            ],
+                        )
                     )
 
+            for (
+                match_start,
+                match_end,
+                matched_text,
+            ) in spans:
+                matches.append(
+                    {
+                        "signal": detector[
+                            "signal"
+                        ],
+                        "detector_id": detector[
+                            "id"
+                        ],
+                        "matched_text": matched_text,
+                        "start": match_start,
+                        "end": match_end,
+                        "sequence": sequence,
+                    }
+                )
+
+                sequence += 1
+
+    # Prefer the longest directly observed lexical cue when one match is fully
+    # contained inside another. This prevents compound markers such as
+    # "must not" from also emitting the weaker "must", and prevents "仅限"
+    # from producing a second provenance record for its internal "仅".
+    accepted = []
+
+    for item in sorted(
+        matches,
+        key=lambda value: (
+            -(
+                value[
+                    "end"
+                ]
+                - value[
+                    "start"
+                ]
+            ),
+            value[
+                "start"
+            ],
+            value[
+                "sequence"
+            ],
+        ),
+    ):
+        contained = any(
+            existing[
+                "start"
+            ]
+            <= item[
+                "start"
+            ]
+            and item[
+                "end"
+            ]
+            <= existing[
+                "end"
+            ]
+            for existing in accepted
+        )
+
+        if contained:
+            continue
+
+        accepted.append(
+            item
+        )
+
+    for item in sorted(
+        accepted,
+        key=lambda value: value[
+            "sequence"
+        ],
+    ):
+        _append_detail(
+            details,
+            seen,
+            item[
+                "signal"
+            ],
+            side,
+            item[
+                "detector_id"
+            ],
+            item[
+                "matched_text"
+            ],
+            item[
+                "start"
+            ],
+            item[
+                "end"
+            ],
+        )
 
 def _extract_context_details(
     text_role: str,
