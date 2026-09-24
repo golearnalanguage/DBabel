@@ -331,6 +331,43 @@ class TechniqueCandidateRoutingTests(
             errors,
         )
 
+    def test_cross_contract_rejects_duplicate_report_unit_id(self):
+        report = route_candidates(
+            self.value,
+            self.registry,
+        )
+
+        report = copy.deepcopy(
+            report
+        )
+
+        report[
+            "units"
+        ].append(
+            copy.deepcopy(
+                report[
+                    "units"
+                ][0]
+            )
+        )
+
+        errors = (
+            candidate_report_cross_errors(
+                report,
+                self.registry,
+            )
+        )
+
+        self.assertTrue(
+            any(
+                "duplicate unit_id"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+
+
     def test_cross_contract_detects_signal_coverage_drift(self):
         report = route_candidates(
             self.value,

@@ -504,6 +504,72 @@ def cross_contract_errors(root=ROOT):
     return errors
 
 
+def example_report_errors(root=ROOT):
+    """Validate report-like examples through their registered contracts."""
+
+    errors = []
+
+    for path in sorted(
+        (root / 'examples').glob('*report.json')
+    ):
+        value = _read_json(path)
+
+        if path.name == 'audit_report.json':
+            errors.extend(
+                '{}: {}'.format(
+                    path.name,
+                    error,
+                )
+                for error in validate_report(
+                    value
+                )
+            )
+            continue
+
+        if path.name == 'technique_candidate_report.json':
+            schema_errors = (
+                validate_candidate_report_schema(
+                    value
+                )
+            )
+
+            errors.extend(
+                '{}: schema {}'.format(
+                    path.name,
+                    error,
+                )
+                for error in schema_errors
+            )
+
+            if not schema_errors:
+                technique_registry = (
+                    load_translation_registry(
+                        root
+                    )
+                )
+
+                errors.extend(
+                    '{}: {}'.format(
+                        path.name,
+                        error,
+                    )
+                    for error in candidate_report_cross_errors(
+                        value,
+                        technique_registry,
+                    )
+                )
+
+            continue
+
+        errors.append(
+            '{}: report-like example has no registered validator'.format(
+                path.name
+            )
+        )
+
+    return errors
+
+
 def check_package(write_manifest=False):
     errors = []
     paths = package_paths()
@@ -571,65 +637,11 @@ def check_package(write_manifest=False):
         except (ValueError, yaml.YAMLError) as exc:
             errors.append(f'{path_name}: {exc}')
 
-    # Report-like examples use distinct machine contracts. Do not assume every
-    # *report.json file is an audit report.
-    for path in sorted(
-        (ROOT / 'examples').glob('*report.json')
-    ):
-        value = _read_json(path)
-
-        if path.name == 'audit_report.json':
-            errors.extend(
-                '{}: {}'.format(
-                    path.name,
-                    error,
-                )
-                for error in validate_report(
-                    value
-                )
-            )
-            continue
-
-        if path.name == 'technique_candidate_report.json':
-            schema_errors = (
-                validate_candidate_report_schema(
-                    value
-                )
-            )
-
-            errors.extend(
-                '{}: schema {}'.format(
-                    path.name,
-                    error,
-                )
-                for error in schema_errors
-            )
-
-            if not schema_errors:
-                technique_registry = (
-                    load_translation_registry(
-                        ROOT
-                    )
-                )
-
-                errors.extend(
-                    '{}: {}'.format(
-                        path.name,
-                        error,
-                    )
-                    for error in candidate_report_cross_errors(
-                        value,
-                        technique_registry,
-                    )
-                )
-
-            continue
-
-        errors.append(
-            '{}: report-like example has no registered validator'.format(
-                path.name
-            )
+    errors.extend(
+        example_report_errors(
+            ROOT
         )
+    )
 
     try:
         errors.extend(cross_contract_errors(ROOT))

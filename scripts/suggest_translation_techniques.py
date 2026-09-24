@@ -95,6 +95,8 @@ def candidate_report_cross_errors(
         and item.get("id")
     }
 
+    seen_unit_ids = set()
+
     for unit in report.get(
         "units",
         [],
@@ -102,6 +104,17 @@ def candidate_report_cross_errors(
         unit_id = unit.get(
             "unit_id"
         )
+
+        if unit_id in seen_unit_ids:
+            errors.append(
+                "duplicate unit_id: {}".format(
+                    unit_id
+                )
+            )
+        else:
+            seen_unit_ids.add(
+                unit_id
+            )
 
         role = unit.get(
             "text_role"

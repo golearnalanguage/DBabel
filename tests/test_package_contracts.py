@@ -13,6 +13,7 @@ from check_package import (
     PACKAGE_VERSION,
     REVIEW_WORKBENCH_VERSION,
     cross_contract_errors,
+    example_report_errors,
 )
 
 
@@ -32,6 +33,51 @@ class PackageContractTests(unittest.TestCase):
             transform(path)
             errors = cross_contract_errors(copy_root)
             self.assertTrue(any(fragment in error for error in errors), errors)
+
+    def test_registered_report_examples_validate_cleanly(self):
+        self.assertEqual(
+            example_report_errors(
+                ROOT
+            ),
+            [],
+        )
+
+    def test_unknown_report_like_example_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+
+            examples = (
+                root
+                / "examples"
+            )
+
+            examples.mkdir(
+                parents=True
+            )
+
+            (
+                examples
+                / "future_report.json"
+            ).write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+
+            errors = (
+                example_report_errors(
+                    root
+                )
+            )
+
+            self.assertTrue(
+                any(
+                    "no registered validator"
+                    in error
+                    for error in errors
+                ),
+                errors,
+            )
+
 
     def test_package_version_constant(self):
         self.assertEqual(PACKAGE_VERSION, '1.5.0')
