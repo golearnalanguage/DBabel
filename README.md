@@ -29,22 +29,21 @@ inputs owned or supplied by the user.
        width="100%">
 </p>
 
-The `feature/v1.5-review-workbench` development line adds a local human-in-the-loop
-review surface on top of DBabel's existing findings, deterministic QA, evidence, and
-repair gates. The Workbench uses the fixed DBabel visual template: integrated
-Tower-of-Babel/handwritten-wordmark branding, navigation and filters on the left, a
-bilingual segment grid in the center, and a selected-segment inspector on the right.
+The DBabel Review Workbench provides a local human-in-the-loop interface for bilingual
+technical review. It brings aligned source/target segments, terminology findings,
+deterministic QA issues, supporting evidence, and suggested translations into a
+single review surface.
 
-The reference/demo shell uses reviewer identity `clay`, contains no simulated
-operating-system window controls, and exposes **Light / Dark / System** appearance
-modes. Its logo asset has a transparent background so the DBabel lockup blends into
-the Workbench surface instead of appearing as a white image rectangle.
+Reviewers can inspect each segment, compare evidence and terminology context, and
+record explicit decisions such as **Accept Suggestion**, **Keep Current**, **Edit**,
+**Defer**, **Block**, or **Waive**. Review state, issue state, and QA state remain
+separate so that an AI suggestion or detected issue is never treated as automatic
+approval.
 
-This is a development preview, not a claim that every recognized document format is
-natively editable. The initial native write-back adapter is intentionally limited to
-DOCX and remains subject to original-file hashing, exact anchor validation, export-gate
-authorization, and round-trip verification. See the
-[Review Workbench contract](docs/REVIEW_WORKBENCH.md).
+Before native export, the Workbench runs DBabel's export gate and fresh deterministic
+QA. The current native write-back adapter supports **DOCX**, with original-file hash
+validation, anchor checks, non-destructive output, and round-trip verification.
+Portable review is also available for offline review and decision transfer.
 
 ## What DBabel is built on
 
