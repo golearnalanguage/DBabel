@@ -28,6 +28,12 @@ inputs owned or supplied by the user.
 
 [中文说明](README.zh-CN.md) · [Skill kernel](SKILL.md) · [Package index](PACKAGE_INDEX.md) · [Examples](examples/)
 
+<p align="center">
+  <img alt="macOS" src="https://img.shields.io/badge/macOS-validated-000000?logo=apple&logoColor=white">
+  <img alt="Ubuntu" src="https://img.shields.io/badge/Ubuntu-validated-E95420?logo=ubuntu&logoColor=white">
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-validated-0078D4?logo=windows11&logoColor=white">
+</p>
+
 ## Review Workbench preview
 
 <p align="center">
