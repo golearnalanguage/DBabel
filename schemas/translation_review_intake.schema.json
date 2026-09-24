@@ -311,6 +311,38 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "BILINGUAL_REVIEW"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "mode": {
+            "const": "BILINGUAL_REVIEW"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "POST_TRANSLATION"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "mode": {
+            "const": "TRANSLATE"
+          }
+        }
+      }
     }
   ]
 }

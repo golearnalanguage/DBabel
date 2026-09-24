@@ -350,6 +350,217 @@ class TranslationReviewIntakeTests(
             errors,
         )
 
+    def test_schema_rejects_bilingual_phase_with_translate_mode(self):
+        value = build_translation_review_intake(
+            [
+                unit(
+                    "U1",
+                    "Keep this.",
+                    "Keep this.",
+                )
+            ],
+            "BILINGUAL_REVIEW",
+        )
+
+        value = copy.deepcopy(
+            value
+        )
+
+        value[
+            "mode"
+        ] = "TRANSLATE"
+
+        errors = (
+            validate_translation_review_intake(
+                value
+            )
+        )
+
+        self.assertTrue(
+            errors
+        )
+
+    def test_schema_rejects_post_translation_phase_with_review_mode(self):
+        value = build_translation_review_intake(
+            [
+                unit(
+                    "U1",
+                    "Keep this.",
+                    "Keep this.",
+                )
+            ],
+            "TRANSLATE",
+        )
+
+        value = copy.deepcopy(
+            value
+        )
+
+        value[
+            "mode"
+        ] = "BILINGUAL_REVIEW"
+
+        errors = (
+            validate_translation_review_intake(
+                value
+            )
+        )
+
+        self.assertTrue(
+            errors
+        )
+
+    def test_cross_contract_detects_target_readiness_drift(self):
+        value = build_translation_review_intake(
+            [
+                unit(
+                    "U1",
+                    "Keep this.",
+                    "",
+                )
+            ],
+            "TRANSLATE",
+        )
+
+        value = copy.deepcopy(
+            value
+        )
+
+        value[
+            "units"
+        ][0][
+            "target"
+        ] = "Unexpected target"
+
+        errors = intake_cross_errors(
+            value
+        )
+
+        self.assertTrue(
+            any(
+                "every target to be empty"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_cross_contract_detects_observation_detail_drift(self):
+        value = build_translation_review_intake(
+            [
+                unit(
+                    "U1",
+                    "You must keep all files.",
+                    "You must keep all files.",
+                )
+            ],
+            "BILINGUAL_REVIEW",
+        )
+
+        value = copy.deepcopy(
+            value
+        )
+
+        value[
+            "surface_observations"
+        ][
+            "observations"
+        ][0][
+            "observed_signals"
+        ] = [
+            "must"
+        ]
+
+        errors = intake_cross_errors(
+            value
+        )
+
+        self.assertTrue(
+            any(
+                "observed signal/detail drift"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_cross_contract_detects_candidate_report_drift(self):
+        value = build_translation_review_intake(
+            [
+                unit(
+                    "U1",
+                    "You must keep all files.",
+                    "You must keep all files.",
+                )
+            ],
+            "BILINGUAL_REVIEW",
+        )
+
+        value = copy.deepcopy(
+            value
+        )
+
+        value[
+            "technique_candidates"
+        ][
+            "units"
+        ][0][
+            "candidates"
+        ] = []
+
+        errors = intake_cross_errors(
+            value
+        )
+
+        self.assertTrue(
+            any(
+                "technique candidate report drift"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_cross_contract_detects_qa_summary_drift(self):
+        value = build_translation_review_intake(
+            [
+                unit(
+                    "U1",
+                    "Keep {id}.",
+                    "Keep id.",
+                )
+            ],
+            "BILINGUAL_REVIEW",
+        )
+
+        value = copy.deepcopy(
+            value
+        )
+
+        value[
+            "deterministic_qa"
+        ][
+            "report"
+        ][
+            "summary"
+        ][
+            "error_count"
+        ] = 0
+
+        errors = intake_cross_errors(
+            value
+        )
+
+        self.assertTrue(
+            any(
+                "error_count drift"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+
+
     def test_policy_is_non_authoritative(self):
         value = build_translation_review_intake(
             [

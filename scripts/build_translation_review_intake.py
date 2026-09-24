@@ -255,6 +255,65 @@ def intake_cross_errors(
         "units"
     ) or []
 
+    if (
+        phase == "BILINGUAL_REVIEW"
+        and mode != "BILINGUAL_REVIEW"
+    ):
+        errors.append(
+            "BILINGUAL_REVIEW phase requires BILINGUAL_REVIEW mode"
+        )
+
+    if (
+        phase in {
+            "PRE_TRANSLATION",
+            "POST_TRANSLATION",
+        }
+        and mode != "TRANSLATE"
+    ):
+        errors.append(
+            "{} phase requires TRANSLATE mode".format(
+                phase
+            )
+        )
+
+    target_populated = [
+        bool(
+            str(
+                unit.get(
+                    "target"
+                )
+                or ""
+            ).strip()
+        )
+        for unit in units
+    ]
+
+    if (
+        phase == "PRE_TRANSLATION"
+        and any(
+            target_populated
+        )
+    ):
+        errors.append(
+            "PRE_TRANSLATION requires every target to be empty"
+        )
+
+    if (
+        phase in {
+            "BILINGUAL_REVIEW",
+            "POST_TRANSLATION",
+        }
+        and target_populated
+        and not all(
+            target_populated
+        )
+    ):
+        errors.append(
+            "{} requires every target to be populated".format(
+                phase
+            )
+        )
+
     unit_ids = [
         unit.get(
             "id"
@@ -299,15 +358,73 @@ def intake_cross_errors(
             "technique candidate mode drift"
         )
 
+    observations = surface.get(
+        "observations",
+        [],
+    )
+
     observation_ids = [
         item.get(
             "unit_id"
         )
-        for item in surface.get(
-            "observations",
-            [],
-        )
+        for item in observations
     ]
+
+    if len(
+        observation_ids
+    ) != len(
+        set(
+            observation_ids
+        )
+    ):
+        errors.append(
+            "duplicate surface observation unit"
+        )
+
+    for observation in observations:
+        unit_id = observation.get(
+            "unit_id"
+        )
+
+        details = observation.get(
+            "signal_details"
+        )
+
+        if not isinstance(
+            details,
+            list,
+        ) or not details:
+            errors.append(
+                "{}: intake surface observation requires provenance details".format(
+                    unit_id
+                )
+            )
+
+            continue
+
+        derived_signals = _unique(
+            [
+                detail.get(
+                    "signal"
+                )
+                for detail in details
+                if detail.get(
+                    "signal"
+                )
+            ]
+        )
+
+        if (
+            observation.get(
+                "observed_signals"
+            )
+            != derived_signals
+        ):
+            errors.append(
+                "{}: observed signal/detail drift".format(
+                    unit_id
+                )
+            )
 
     candidate_ids = [
         item.get(
@@ -332,6 +449,28 @@ def intake_cross_errors(
         errors.append(
             "technique candidate unit sequence drift"
         )
+
+    try:
+        expected_candidates = (
+            route_candidates(
+                surface
+            )
+        )
+    except ValueError as exc:
+        errors.append(
+            "cannot recompute technique candidates: {}".format(
+                exc
+            )
+        )
+
+    else:
+        if (
+            candidates
+            != expected_candidates
+        ):
+            errors.append(
+                "technique candidate report drift"
+            )
 
     contrast_items = value.get(
         "signal_contrasts"
@@ -433,10 +572,87 @@ def intake_cross_errors(
             )
 
         else:
-            for issue in report.get(
+            summary = (
+                report.get(
+                    "summary"
+                )
+                or {}
+            )
+
+            issues = report.get(
                 "issues",
                 [],
+            )
+
+            if (
+                summary.get(
+                    "units_checked"
+                )
+                != len(
+                    units
+                )
             ):
+                errors.append(
+                    "deterministic QA units_checked drift"
+                )
+
+            expected_error_count = sum(
+                1
+                for issue in issues
+                if issue.get(
+                    "severity"
+                )
+                == "ERROR"
+            )
+
+            expected_warning_count = sum(
+                1
+                for issue in issues
+                if issue.get(
+                    "severity"
+                )
+                == "WARNING"
+            )
+
+            if (
+                summary.get(
+                    "error_count"
+                )
+                != expected_error_count
+            ):
+                errors.append(
+                    "deterministic QA error_count drift"
+                )
+
+            if (
+                summary.get(
+                    "warning_count"
+                )
+                != expected_warning_count
+            ):
+                errors.append(
+                    "deterministic QA warning_count drift"
+                )
+
+            issue_ids = [
+                issue.get(
+                    "id"
+                )
+                for issue in issues
+            ]
+
+            if len(
+                issue_ids
+            ) != len(
+                set(
+                    issue_ids
+                )
+            ):
+                errors.append(
+                    "duplicate deterministic QA issue id"
+                )
+
+            for issue in issues:
                 if issue.get(
                     "unit_id"
                 ) not in unit_id_set:
