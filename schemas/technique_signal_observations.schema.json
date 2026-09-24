@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Translation Technique Signal Observations",
+  "type": "object",
+  "required": [
+    "format_version",
+    "mode",
+    "observations"
+  ],
+  "properties": {
+    "format_version": {
+      "const": "1.0"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "BILINGUAL_REVIEW",
+        "TRANSLATE"
+      ]
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "unit_id",
+          "text_role",
+          "observed_signals"
+        ],
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text_role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "observed_signals": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

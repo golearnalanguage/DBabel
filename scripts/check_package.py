@@ -11,6 +11,11 @@ import subprocess
 import yaml
 from jsonschema import Draft202012Validator
 from validate_report import ROOT, validate_report
+from suggest_translation_techniques import (
+    candidate_report_cross_errors,
+    validate_candidate_report_schema,
+)
+from technique_contract import load_translation_registry
 from version_info import PACKAGE_VERSION, REVIEW_WORKBENCH_VERSION
 
 LEGACY_REPORT_VERSIONS = {'1.3.0', '1.4.0'}
@@ -566,9 +571,65 @@ def check_package(write_manifest=False):
         except (ValueError, yaml.YAMLError) as exc:
             errors.append(f'{path_name}: {exc}')
 
-    for path in (ROOT / 'examples').glob('*report.json'):
-        errors.extend(f'{path.name}: {error}'
-                      for error in validate_report(_read_json(path)))
+    # Report-like examples use distinct machine contracts. Do not assume every
+    # *report.json file is an audit report.
+    for path in sorted(
+        (ROOT / 'examples').glob('*report.json')
+    ):
+        value = _read_json(path)
+
+        if path.name == 'audit_report.json':
+            errors.extend(
+                '{}: {}'.format(
+                    path.name,
+                    error,
+                )
+                for error in validate_report(
+                    value
+                )
+            )
+            continue
+
+        if path.name == 'technique_candidate_report.json':
+            schema_errors = (
+                validate_candidate_report_schema(
+                    value
+                )
+            )
+
+            errors.extend(
+                '{}: schema {}'.format(
+                    path.name,
+                    error,
+                )
+                for error in schema_errors
+            )
+
+            if not schema_errors:
+                technique_registry = (
+                    load_translation_registry(
+                        ROOT
+                    )
+                )
+
+                errors.extend(
+                    '{}: {}'.format(
+                        path.name,
+                        error,
+                    )
+                    for error in candidate_report_cross_errors(
+                        value,
+                        technique_registry,
+                    )
+                )
+
+            continue
+
+        errors.append(
+            '{}: report-like example has no registered validator'.format(
+                path.name
+            )
+        )
 
     try:
         errors.extend(cross_contract_errors(ROOT))

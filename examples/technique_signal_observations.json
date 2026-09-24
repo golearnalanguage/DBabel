@@ -1,0 +1,30 @@
+{
+  "format_version": "1.0",
+  "mode": "BILINGUAL_REVIEW",
+  "observations": [
+    {
+      "unit_id": "U0001",
+      "text_role": "PROCEDURE",
+      "observed_signals": [
+        "must",
+        "precondition",
+        "selected"
+      ]
+    },
+    {
+      "unit_id": "U0002",
+      "text_role": "UI_LABEL",
+      "observed_signals": [
+        "exact_ui_label",
+        "button_name"
+      ]
+    },
+    {
+      "unit_id": "U0003",
+      "text_role": "PROSE",
+      "observed_signals": [
+        "synthetic_unmatched_signal"
+      ]
+    }
+  ]
+}

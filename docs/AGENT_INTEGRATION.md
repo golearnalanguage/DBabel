@@ -58,6 +58,14 @@ file result.
 Deterministic bilingual QA is optional tooling for already aligned units. It cannot
 replace semantic review or evidence assessment.
 
+## Technique candidate routing
+
+When the agent has already identified explicit translation signals for aligned or translatable units, it may route those signals against the Technical Translation Playbook catalog with `scripts/suggest_translation_techniques.py`.
+
+The router performs exact trigger matching and filters by task mode and concrete text role. It does not inspect raw source text, perform fuzzy semantic matching, or turn a signal into a finding. Unmatched signals remain visible in the candidate report.
+
+Candidate output guides semantic adjudication only. A candidate does not authorize `KEEP`, `REPLACE`, `PROTECT`, `REVIEW`, repair, or human approval. Only an adjudicated semantic finding may carry formal `technique` metadata.
+
 For structured DBabel reports, load `schemas/audit_report.schema.json` and its local
 references. Run `scripts/validate_report.py` with dependencies from
 `requirements-dev.txt` when Python is available. The validator checks recorded

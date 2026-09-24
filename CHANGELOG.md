@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added catalog-driven Technique Candidate Routing for explicit unit-level translation signals, with exact trigger matching, mode/text-role filtering, unmatched-signal reporting, and machine-enforced non-authoritative boundaries.
+
 - Added technique-aware semantic review findings and Desktop/Portable Workbench explainability for technique risk, controlled transformations, quality dimensions, and trigger reasons without changing human decision semantics.
 
 - Added a routed Technical Translation Playbook with 15 maintainable database and

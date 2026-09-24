@@ -113,6 +113,8 @@ The decision vocabulary is:
 
 Confidence is `HIGH`, `MEDIUM`, `LOW`, or `REVIEW_REQUIRED`.
 
+For `BILINGUAL_REVIEW` and `TRANSLATE`, explicit observed translation signals may be routed to candidate techniques with `scripts/suggest_translation_techniques.py`. Candidate routing uses exact catalog triggers plus applicable mode and concrete text role. A candidate is diagnostic routing metadata only: it is not evidence, a finding, a semantic decision, repair authorization, or human approval. Confirm the failure mode semantically before attaching a technique annotation to a finding.
+
 ### 6. Run bilingual QA only after alignment
 
 When aligned source/target units exist, run applicable deterministic checks and then

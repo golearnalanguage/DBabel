@@ -1,0 +1,99 @@
+{
+  "format_version": "1.0",
+  "registry_version": "1.5.0",
+  "mode": "BILINGUAL_REVIEW",
+  "policy": {
+    "observations_are_evidence": false,
+    "candidates_are_findings": false,
+    "candidates_are_decisions": false,
+    "candidates_authorize_repair": false,
+    "candidates_are_human_approval": false
+  },
+  "units": [
+    {
+      "unit_id": "U0001",
+      "text_role": "PROCEDURE",
+      "observed_signals": [
+        "must",
+        "precondition",
+        "selected"
+      ],
+      "candidates": [
+        {
+          "technique_id": "MODAL_STRENGTH_PRESERVATION",
+          "category": "SEMANTIC_FIDELITY",
+          "risk": "HIGH",
+          "matched_triggers": [
+            "must"
+          ],
+          "quality_dimensions": [
+            "ACCURACY"
+          ],
+          "on_uncertainty": "REVIEW"
+        },
+        {
+          "technique_id": "CONDITION_ACTION_RESULT_PRESERVATION",
+          "category": "SEMANTIC_FIDELITY",
+          "risk": "HIGH",
+          "matched_triggers": [
+            "precondition"
+          ],
+          "quality_dimensions": [
+            "ACCURACY"
+          ],
+          "on_uncertainty": "REVIEW"
+        },
+        {
+          "technique_id": "SCOPE_PRESERVATION",
+          "category": "SEMANTIC_FIDELITY",
+          "risk": "HIGH",
+          "matched_triggers": [
+            "selected"
+          ],
+          "quality_dimensions": [
+            "ACCURACY"
+          ],
+          "on_uncertainty": "REVIEW"
+        }
+      ],
+      "unmatched_signals": []
+    },
+    {
+      "unit_id": "U0002",
+      "text_role": "UI_LABEL",
+      "observed_signals": [
+        "exact_ui_label",
+        "button_name"
+      ],
+      "candidates": [
+        {
+          "technique_id": "UI_LABEL_ANCHORING",
+          "category": "TEXT_ROLE",
+          "risk": "HIGH",
+          "matched_triggers": [
+            "exact_ui_label",
+            "button_name"
+          ],
+          "quality_dimensions": [
+            "TERMINOLOGY",
+            "ACCURACY",
+            "DESIGN_AND_MARKUP"
+          ],
+          "on_uncertainty": "REVIEW"
+        }
+      ],
+      "unmatched_signals": []
+    },
+    {
+      "unit_id": "U0003",
+      "text_role": "PROSE",
+      "observed_signals": [
+        "synthetic_unmatched_signal"
+      ],
+      "candidates": [],
+      "unmatched_signals": [
+        "synthetic_unmatched_signal"
+      ]
+    }
+  ]
+}

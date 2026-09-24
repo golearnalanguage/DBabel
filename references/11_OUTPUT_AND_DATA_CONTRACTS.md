@@ -59,6 +59,8 @@ These contracts serve different stages and must remain distinct:
   translation technique and controlled-transformation registry.
 - `schemas/technique_annotation.schema.json` — optional semantic-finding metadata that records the
   technique, risk, controlled transformations, quality dimensions, and human-readable trigger reason.
+- `schemas/technique_signal_observations.schema.json` — explicit unit-level signals observed before semantic adjudication;
+- `schemas/technique_candidate_report.schema.json` — catalog-routed candidate techniques that remain non-authoritative.
 
 A successful preflight does not imply successful ingest. A clean deterministic QA
 report does not establish semantic correctness. A deterministic issue does not by
@@ -68,6 +70,8 @@ A semantic finding may carry a technique annotation. That annotation explains th
 translation failure mode; it is not a second decision vocabulary, human approval,
 or repair authorization. Deterministic issues remain `POTENTIAL_ISSUE` and do not
 receive technique annotations by default.
+
+Technique candidate reports are one stage earlier than semantic findings. Their observed signals are not evidence, and their candidates are not findings or decisions. Candidate routing uses exact catalog trigger matches only. Unmatched signals stay explicit so a missing catalog rule is not silently converted into a guess.
 
 ## Validate
 

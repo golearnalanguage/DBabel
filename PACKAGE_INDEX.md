@@ -30,6 +30,10 @@
 - [Machine-readable technique registry](config/translation_techniques.yaml)
 - [Technique registry schema](schemas/translation_techniques.schema.json)
 - [Technique annotation schema](schemas/technique_annotation.schema.json)
+- [Technique signal observation schema](schemas/technique_signal_observations.schema.json)
+- [Technique candidate report schema](schemas/technique_candidate_report.schema.json)
+- [Technique candidate router](scripts/suggest_translation_techniques.py)
+- [Candidate-routing example](examples/technique_signal_observations.json)
 
 ## Accuracy Core
 
