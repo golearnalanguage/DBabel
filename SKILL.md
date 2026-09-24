@@ -117,6 +117,8 @@ For `BILINGUAL_REVIEW` and `TRANSLATE`, explicit observed translation signals ma
 
 `scripts/extract_translation_signals.py` may produce those observations from an allowlisted set of deterministic surface cues such as protected literals, explicit modal/scope markers, explicit condition or causal connectors, and declared text roles. The extractor records source/target/context provenance and never infers semantic-only triggers such as source conflicts, omitted antecedents, role reversal, polysemy, or cross-product equivalence. Missing language or text-role context must not be guessed.
 
+`scripts/build_translation_review_intake.py` composes surface extraction, technique candidate routing, signal contrasts, and applicable deterministic bilingual QA into one bounded intake contract. PRE_TRANSLATION intake stops before deterministic QA and hands off to TRANSLATION; bilingual review and post-translation intake hand off to semantic ADJUDICATION. Intake output is not a semantic finding, repair authorization, or human approval.
+
 ### 6. Run bilingual QA only after alignment
 
 When aligned source/target units exist, run applicable deterministic checks and then

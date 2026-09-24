@@ -62,6 +62,7 @@ These contracts serve different stages and must remain distinct:
 - `schemas/technique_signal_observations.schema.json` — explicit unit-level signals observed before semantic adjudication;
 - `schemas/surface_signal_rules.schema.json` — contract for the deterministic raw-text signal allowlist and detector configuration;
 - `schemas/technique_candidate_report.schema.json` — catalog-routed candidate techniques that remain non-authoritative.
+- `schemas/translation_review_intake.schema.json` — composed pre-semantic handoff containing bilingual units, surface observations, mechanical signal contrasts, technique candidates, and applicable deterministic QA.
 
 A successful preflight does not imply successful ingest. A clean deterministic QA
 report does not establish semantic correctness. A deterministic issue does not by

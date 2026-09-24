@@ -68,6 +68,8 @@ Candidate output guides semantic adjudication only. A candidate does not authori
 
 For aligned bilingual units, `scripts/extract_translation_signals.py` can create candidate-routing observations from a deliberately narrow allowlist of surface-detectable cues. Each generated signal records its side, detector ID, matched text, and span when available. Language-aware lexical rules are skipped rather than guessed when language metadata is missing. Semantic-only playbook triggers remain outside this deterministic extractor and require agent adjudication.
 
+For an integrated machine handoff, `scripts/build_translation_review_intake.py` composes surface observations, source/target signal contrasts, technique candidates, and deterministic QA. In TRANSLATE mode with empty targets it produces a PRE_TRANSLATION intake and deliberately does not run bilingual QA. Once targets exist, or in BILINGUAL_REVIEW mode, the intake terminates at semantic adjudication rather than creating findings automatically.
+
 For structured DBabel reports, load `schemas/audit_report.schema.json` and its local
 references. Run `scripts/validate_report.py` with dependencies from
 `requirements-dev.txt` when Python is available. The validator checks recorded

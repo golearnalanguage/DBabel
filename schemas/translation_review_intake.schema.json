@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Translation Review Intake",
+  "type": "object",
+  "required": [
+    "format_version",
+    "mode",
+    "phase",
+    "policy",
+    "units",
+    "surface_observations",
+    "technique_candidates",
+    "deterministic_qa",
+    "signal_contrasts",
+    "handoff"
+  ],
+  "properties": {
+    "format_version": {
+      "const": "1.0"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "BILINGUAL_REVIEW",
+        "TRANSLATE"
+      ]
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "BILINGUAL_REVIEW",
+        "PRE_TRANSLATION",
+        "POST_TRANSLATION"
+      ]
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "surface_signals_are_evidence",
+        "surface_signals_are_findings",
+        "technique_candidates_are_findings",
+        "deterministic_qa_is_semantic_verdict",
+        "intake_authorizes_repair",
+        "intake_is_human_approval"
+      ],
+      "properties": {
+        "surface_signals_are_evidence": {
+          "const": false
+        },
+        "surface_signals_are_findings": {
+          "const": false
+        },
+        "technique_candidates_are_findings": {
+          "const": false
+        },
+        "deterministic_qa_is_semantic_verdict": {
+          "const": false
+        },
+        "intake_authorizes_repair": {
+          "const": false
+        },
+        "intake_is_human_approval": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "bilingual_unit.schema.json"
+      }
+    },
+    "surface_observations": {
+      "$ref": "technique_signal_observations.schema.json"
+    },
+    "technique_candidates": {
+      "$ref": "technique_candidate_report.schema.json"
+    },
+    "deterministic_qa": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "report"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "RUN",
+            "NOT_RUN"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "report": {
+          "anyOf": [
+            {
+              "$ref": "deterministic_qa_report.schema.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "RUN"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "report": {
+                "$ref": "deterministic_qa_report.schema.json"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "NOT_RUN"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "report": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "signal_contrasts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "unit_id",
+          "source_signals",
+          "target_signals",
+          "context_signals",
+          "shared",
+          "source_only",
+          "target_only"
+        ],
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_signals": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "target_signals": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "context_signals": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "shared": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "source_only": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "target_only": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "required": [
+        "status",
+        "next_state",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "READY_FOR_TRANSLATION",
+            "READY_FOR_SEMANTIC_ADJUDICATION"
+          ]
+        },
+        "next_state": {
+          "type": "string",
+          "enum": [
+            "TRANSLATION",
+            "ADJUDICATION"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "PRE_TRANSLATION"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "mode": {
+            "const": "TRANSLATE"
+          },
+          "deterministic_qa": {
+            "properties": {
+              "status": {
+                "const": "NOT_RUN"
+              }
+            }
+          },
+          "handoff": {
+            "properties": {
+              "status": {
+                "const": "READY_FOR_TRANSLATION"
+              },
+              "next_state": {
+                "const": "TRANSLATION"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "enum": [
+              "BILINGUAL_REVIEW",
+              "POST_TRANSLATION"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "deterministic_qa": {
+            "properties": {
+              "status": {
+                "const": "RUN"
+              }
+            }
+          },
+          "handoff": {
+            "properties": {
+              "status": {
+                "const": "READY_FOR_SEMANTIC_ADJUDICATION"
+              },
+              "next_state": {
+                "const": "ADJUDICATION"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

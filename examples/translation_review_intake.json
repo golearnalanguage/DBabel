@@ -1,0 +1,606 @@
+{
+  "format_version": "1.0",
+  "mode": "BILINGUAL_REVIEW",
+  "phase": "BILINGUAL_REVIEW",
+  "policy": {
+    "surface_signals_are_evidence": false,
+    "surface_signals_are_findings": false,
+    "technique_candidates_are_findings": false,
+    "deterministic_qa_is_semantic_verdict": false,
+    "intake_authorizes_repair": false,
+    "intake_is_human_approval": false
+  },
+  "units": [
+    {
+      "id": "U0001",
+      "source": "必须仅删除当前已选中的日志文件。保留 {job_id}，使用 /opt/db/conf/db.ini 和文件 dm.ini，变量 $DB_HOME，版本 v2.1。参见 https://example.invalid/manual。",
+      "target": "Delete only the selected log file in the current scope. Keep {job_id}, use /opt/db/conf/db.ini and dm.ini, preserve $DB_HOME, version v2.1, and see https://example.invalid/manual.",
+      "source_language": "zh-CN",
+      "target_language": "en",
+      "alignment": "ALIGNED",
+      "context": {
+        "text_role": "PROCEDURE"
+      }
+    },
+    {
+      "id": "U0002",
+      "source": "启动服务",
+      "target": "Start Service",
+      "source_language": "zh-CN",
+      "target_language": "en",
+      "alignment": "ALIGNED",
+      "context": {
+        "text_role": "UI_LABEL"
+      }
+    },
+    {
+      "id": "U0003",
+      "source": "If validation fails because the checksum is required, keep all backup files.",
+      "target": "If validation fails because the checksum is required, keep all backup files.",
+      "source_language": "en",
+      "target_language": "en",
+      "alignment": "ALIGNED",
+      "context": {
+        "text_role": "PROSE"
+      }
+    }
+  ],
+  "surface_observations": {
+    "format_version": "1.0",
+    "producer": "DETERMINISTIC_SURFACE_V1",
+    "mode": "BILINGUAL_REVIEW",
+    "policy": {
+      "surface_only": true,
+      "semantic_inference_allowed": false,
+      "signals_are_evidence": false,
+      "signals_are_findings": false,
+      "signals_authorize_repair": false,
+      "signals_are_human_approval": false
+    },
+    "warnings": [],
+    "observations": [
+      {
+        "unit_id": "U0001",
+        "text_role": "PROCEDURE",
+        "observed_signals": [
+          "placeholder",
+          "url",
+          "path",
+          "filename",
+          "environment_variable",
+          "version_literal",
+          "must",
+          "only",
+          "current",
+          "selected"
+        ],
+        "signal_details": [
+          {
+            "signal": "placeholder",
+            "side": "SOURCE",
+            "detector_id": "PLACEHOLDER_LITERAL",
+            "matched_text": "{job_id}",
+            "start": 19,
+            "end": 27
+          },
+          {
+            "signal": "url",
+            "side": "SOURCE",
+            "detector_id": "URL_LITERAL",
+            "matched_text": "https://example.invalid/manual",
+            "start": 85,
+            "end": 115
+          },
+          {
+            "signal": "path",
+            "side": "SOURCE",
+            "detector_id": "PATH_LITERAL",
+            "matched_text": "/opt/db/conf/db.ini",
+            "start": 31,
+            "end": 50
+          },
+          {
+            "signal": "filename",
+            "side": "SOURCE",
+            "detector_id": "FILENAME_LITERAL",
+            "matched_text": "dm.ini",
+            "start": 55,
+            "end": 61
+          },
+          {
+            "signal": "environment_variable",
+            "side": "SOURCE",
+            "detector_id": "ENVIRONMENT_VARIABLE_LITERAL",
+            "matched_text": "$DB_HOME",
+            "start": 65,
+            "end": 73
+          },
+          {
+            "signal": "version_literal",
+            "side": "SOURCE",
+            "detector_id": "VERSION_LITERAL",
+            "matched_text": "2.1",
+            "start": 78,
+            "end": 81
+          },
+          {
+            "signal": "placeholder",
+            "side": "TARGET",
+            "detector_id": "PLACEHOLDER_LITERAL",
+            "matched_text": "{job_id}",
+            "start": 61,
+            "end": 69
+          },
+          {
+            "signal": "url",
+            "side": "TARGET",
+            "detector_id": "URL_LITERAL",
+            "matched_text": "https://example.invalid/manual",
+            "start": 148,
+            "end": 178
+          },
+          {
+            "signal": "path",
+            "side": "TARGET",
+            "detector_id": "PATH_LITERAL",
+            "matched_text": "/opt/db/conf/db.ini",
+            "start": 75,
+            "end": 94
+          },
+          {
+            "signal": "filename",
+            "side": "TARGET",
+            "detector_id": "FILENAME_LITERAL",
+            "matched_text": "dm.ini",
+            "start": 99,
+            "end": 105
+          },
+          {
+            "signal": "environment_variable",
+            "side": "TARGET",
+            "detector_id": "ENVIRONMENT_VARIABLE_LITERAL",
+            "matched_text": "$DB_HOME",
+            "start": 116,
+            "end": 124
+          },
+          {
+            "signal": "version_literal",
+            "side": "TARGET",
+            "detector_id": "VERSION_LITERAL",
+            "matched_text": "2.1",
+            "start": 135,
+            "end": 138
+          },
+          {
+            "signal": "must",
+            "side": "SOURCE",
+            "detector_id": "MODAL_MUST_ZH",
+            "matched_text": "必须",
+            "start": 0,
+            "end": 2
+          },
+          {
+            "signal": "only",
+            "side": "SOURCE",
+            "detector_id": "SCOPE_ONLY_ZH",
+            "matched_text": "仅",
+            "start": 2,
+            "end": 3
+          },
+          {
+            "signal": "current",
+            "side": "SOURCE",
+            "detector_id": "SCOPE_CURRENT_ZH",
+            "matched_text": "当前",
+            "start": 5,
+            "end": 7
+          },
+          {
+            "signal": "selected",
+            "side": "SOURCE",
+            "detector_id": "SCOPE_SELECTED_ZH",
+            "matched_text": "选中",
+            "start": 8,
+            "end": 10
+          },
+          {
+            "signal": "selected",
+            "side": "SOURCE",
+            "detector_id": "SCOPE_SELECTED_ZH",
+            "matched_text": "已选",
+            "start": 7,
+            "end": 9
+          },
+          {
+            "signal": "only",
+            "side": "TARGET",
+            "detector_id": "SCOPE_ONLY_EN",
+            "matched_text": "only",
+            "start": 7,
+            "end": 11
+          },
+          {
+            "signal": "current",
+            "side": "TARGET",
+            "detector_id": "SCOPE_CURRENT_EN",
+            "matched_text": "current",
+            "start": 41,
+            "end": 48
+          },
+          {
+            "signal": "selected",
+            "side": "TARGET",
+            "detector_id": "SCOPE_SELECTED_EN",
+            "matched_text": "selected",
+            "start": 16,
+            "end": 24
+          }
+        ]
+      },
+      {
+        "unit_id": "U0002",
+        "text_role": "UI_LABEL",
+        "observed_signals": [
+          "ui_text"
+        ],
+        "signal_details": [
+          {
+            "signal": "ui_text",
+            "side": "CONTEXT",
+            "detector_id": "TEXT_ROLE_UI_LABEL",
+            "matched_text": "UI_LABEL"
+          }
+        ]
+      },
+      {
+        "unit_id": "U0003",
+        "text_role": "PROSE",
+        "observed_signals": [
+          "required",
+          "all",
+          "conditional_clause",
+          "because"
+        ],
+        "signal_details": [
+          {
+            "signal": "required",
+            "side": "SOURCE",
+            "detector_id": "MODAL_REQUIRED_EN",
+            "matched_text": "required",
+            "start": 44,
+            "end": 52
+          },
+          {
+            "signal": "all",
+            "side": "SOURCE",
+            "detector_id": "SCOPE_ALL_EN",
+            "matched_text": "all",
+            "start": 59,
+            "end": 62
+          },
+          {
+            "signal": "conditional_clause",
+            "side": "SOURCE",
+            "detector_id": "CONDITION_IF_EN",
+            "matched_text": "If",
+            "start": 0,
+            "end": 2
+          },
+          {
+            "signal": "because",
+            "side": "SOURCE",
+            "detector_id": "CAUSAL_BECAUSE_EN",
+            "matched_text": "because",
+            "start": 20,
+            "end": 27
+          },
+          {
+            "signal": "required",
+            "side": "TARGET",
+            "detector_id": "MODAL_REQUIRED_EN",
+            "matched_text": "required",
+            "start": 44,
+            "end": 52
+          },
+          {
+            "signal": "all",
+            "side": "TARGET",
+            "detector_id": "SCOPE_ALL_EN",
+            "matched_text": "all",
+            "start": 59,
+            "end": 62
+          },
+          {
+            "signal": "conditional_clause",
+            "side": "TARGET",
+            "detector_id": "CONDITION_IF_EN",
+            "matched_text": "If",
+            "start": 0,
+            "end": 2
+          },
+          {
+            "signal": "because",
+            "side": "TARGET",
+            "detector_id": "CAUSAL_BECAUSE_EN",
+            "matched_text": "because",
+            "start": 20,
+            "end": 27
+          }
+        ]
+      }
+    ]
+  },
+  "technique_candidates": {
+    "format_version": "1.0",
+    "registry_version": "1.5.0",
+    "mode": "BILINGUAL_REVIEW",
+    "policy": {
+      "observations_are_evidence": false,
+      "candidates_are_findings": false,
+      "candidates_are_decisions": false,
+      "candidates_authorize_repair": false,
+      "candidates_are_human_approval": false
+    },
+    "units": [
+      {
+        "unit_id": "U0001",
+        "text_role": "PROCEDURE",
+        "observed_signals": [
+          "placeholder",
+          "url",
+          "path",
+          "filename",
+          "environment_variable",
+          "version_literal",
+          "must",
+          "only",
+          "current",
+          "selected"
+        ],
+        "candidates": [
+          {
+            "technique_id": "TECHNICAL_TOKEN_SHIELDING",
+            "category": "PROTECTION",
+            "risk": "HIGH",
+            "matched_triggers": [
+              "placeholder",
+              "url",
+              "path",
+              "filename",
+              "environment_variable",
+              "version_literal"
+            ],
+            "quality_dimensions": [
+              "ACCURACY",
+              "DESIGN_AND_MARKUP"
+            ],
+            "on_uncertainty": "REVIEW"
+          },
+          {
+            "technique_id": "MODAL_STRENGTH_PRESERVATION",
+            "category": "SEMANTIC_FIDELITY",
+            "risk": "HIGH",
+            "matched_triggers": [
+              "must"
+            ],
+            "quality_dimensions": [
+              "ACCURACY"
+            ],
+            "on_uncertainty": "REVIEW"
+          },
+          {
+            "technique_id": "SCOPE_PRESERVATION",
+            "category": "SEMANTIC_FIDELITY",
+            "risk": "HIGH",
+            "matched_triggers": [
+              "only",
+              "current",
+              "selected"
+            ],
+            "quality_dimensions": [
+              "ACCURACY"
+            ],
+            "on_uncertainty": "REVIEW"
+          }
+        ],
+        "unmatched_signals": []
+      },
+      {
+        "unit_id": "U0002",
+        "text_role": "UI_LABEL",
+        "observed_signals": [
+          "ui_text"
+        ],
+        "candidates": [
+          {
+            "technique_id": "TEXT_ROLE_TRANSLATION",
+            "category": "TEXT_ROLE",
+            "risk": "MEDIUM",
+            "matched_triggers": [
+              "ui_text"
+            ],
+            "quality_dimensions": [
+              "TERMINOLOGY",
+              "STYLE",
+              "LINGUISTIC_CONVENTIONS"
+            ],
+            "on_uncertainty": "REVIEW"
+          }
+        ],
+        "unmatched_signals": []
+      },
+      {
+        "unit_id": "U0003",
+        "text_role": "PROSE",
+        "observed_signals": [
+          "required",
+          "all",
+          "conditional_clause",
+          "because"
+        ],
+        "candidates": [
+          {
+            "technique_id": "MODAL_STRENGTH_PRESERVATION",
+            "category": "SEMANTIC_FIDELITY",
+            "risk": "HIGH",
+            "matched_triggers": [
+              "required"
+            ],
+            "quality_dimensions": [
+              "ACCURACY"
+            ],
+            "on_uncertainty": "REVIEW"
+          },
+          {
+            "technique_id": "CONDITION_ACTION_RESULT_PRESERVATION",
+            "category": "SEMANTIC_FIDELITY",
+            "risk": "HIGH",
+            "matched_triggers": [
+              "conditional_clause"
+            ],
+            "quality_dimensions": [
+              "ACCURACY"
+            ],
+            "on_uncertainty": "REVIEW"
+          },
+          {
+            "technique_id": "SCOPE_PRESERVATION",
+            "category": "SEMANTIC_FIDELITY",
+            "risk": "HIGH",
+            "matched_triggers": [
+              "all"
+            ],
+            "quality_dimensions": [
+              "ACCURACY"
+            ],
+            "on_uncertainty": "REVIEW"
+          },
+          {
+            "technique_id": "NO_INVENTED_CAUSALITY",
+            "category": "SEMANTIC_FIDELITY",
+            "risk": "HIGH",
+            "matched_triggers": [
+              "because"
+            ],
+            "quality_dimensions": [
+              "ACCURACY"
+            ],
+            "on_uncertainty": "REVIEW"
+          }
+        ],
+        "unmatched_signals": []
+      }
+    ]
+  },
+  "deterministic_qa": {
+    "status": "RUN",
+    "reason": "Aligned source and target text are available for deterministic bilingual integrity checks.",
+    "report": {
+      "format_version": "1.0",
+      "summary": {
+        "units_checked": 3,
+        "error_count": 0,
+        "warning_count": 0
+      },
+      "checks_run": [
+        "PLACEHOLDER_INTEGRITY",
+        "URL_INTEGRITY",
+        "PATH_INTEGRITY",
+        "FILENAME_INTEGRITY",
+        "CLI_OPTION_INTEGRITY",
+        "ENV_VAR_INTEGRITY",
+        "VERSION_INTEGRITY",
+        "NUMBER_INTEGRITY",
+        "NUMBER_UNIT_INTEGRITY",
+        "PROTECTED_LITERAL",
+        "FORBIDDEN_TERM",
+        "PREFERRED_TERM"
+      ],
+      "issues": []
+    }
+  },
+  "signal_contrasts": [
+    {
+      "unit_id": "U0001",
+      "source_signals": [
+        "placeholder",
+        "url",
+        "path",
+        "filename",
+        "environment_variable",
+        "version_literal",
+        "must",
+        "only",
+        "current",
+        "selected"
+      ],
+      "target_signals": [
+        "placeholder",
+        "url",
+        "path",
+        "filename",
+        "environment_variable",
+        "version_literal",
+        "only",
+        "current",
+        "selected"
+      ],
+      "context_signals": [],
+      "shared": [
+        "placeholder",
+        "url",
+        "path",
+        "filename",
+        "environment_variable",
+        "version_literal",
+        "only",
+        "current",
+        "selected"
+      ],
+      "source_only": [
+        "must"
+      ],
+      "target_only": []
+    },
+    {
+      "unit_id": "U0002",
+      "source_signals": [],
+      "target_signals": [],
+      "context_signals": [
+        "ui_text"
+      ],
+      "shared": [],
+      "source_only": [],
+      "target_only": []
+    },
+    {
+      "unit_id": "U0003",
+      "source_signals": [
+        "required",
+        "all",
+        "conditional_clause",
+        "because"
+      ],
+      "target_signals": [
+        "required",
+        "all",
+        "conditional_clause",
+        "because"
+      ],
+      "context_signals": [],
+      "shared": [
+        "required",
+        "all",
+        "conditional_clause",
+        "because"
+      ],
+      "source_only": [],
+      "target_only": []
+    }
+  ],
+  "handoff": {
+    "status": "READY_FOR_SEMANTIC_ADJUDICATION",
+    "next_state": "ADJUDICATION",
+    "reason": "Surface observations, technique candidates, signal contrasts, and deterministic QA are ready for semantic review."
+  }
+}

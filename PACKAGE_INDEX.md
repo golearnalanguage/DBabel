@@ -36,6 +36,9 @@
 - [Deterministic surface signal rules](config/surface_signal_rules.yaml)
 - [Surface signal rule schema](schemas/surface_signal_rules.schema.json)
 - [Raw-text surface signal extractor](scripts/extract_translation_signals.py)
+- [Translation review intake schema](schemas/translation_review_intake.schema.json)
+- [Translation review intake builder](scripts/build_translation_review_intake.py)
+- [Translation review intake example](examples/translation_review_intake.json)
 - [Candidate-routing example](examples/technique_signal_observations.json)
 
 ## Accuracy Core

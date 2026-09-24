@@ -19,6 +19,10 @@ from technique_contract import load_translation_registry
 from extract_translation_signals import (
     surface_rule_cross_errors,
 )
+from build_translation_review_intake import (
+    intake_cross_errors,
+    validate_translation_review_intake,
+)
 from version_info import PACKAGE_VERSION, REVIEW_WORKBENCH_VERSION
 
 LEGACY_REPORT_VERSIONS = {'1.3.0', '1.4.0'}
@@ -500,6 +504,33 @@ def cross_contract_errors(root=ROOT):
             for error in surface_rule_cross_errors(
                 surface_rules,
                 translation_registry,
+            )
+        )
+
+    intake_example = _read_json(
+        root / 'examples/translation_review_intake.json'
+    )
+
+    intake_schema_errors = (
+        validate_translation_review_intake(
+            intake_example
+        )
+    )
+
+    errors.extend(
+        'examples/translation_review_intake.json: schema {}'.format(
+            error
+        )
+        for error in intake_schema_errors
+    )
+
+    if not intake_schema_errors:
+        errors.extend(
+            'examples/translation_review_intake.json: {}'.format(
+                error
+            )
+            for error in intake_cross_errors(
+                intake_example
             )
         )
 
