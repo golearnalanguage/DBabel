@@ -364,6 +364,20 @@ def evaluate_export_gate(
     for unit_id, unit in units_by_id.items():
         decision = decisions_by_id[unit_id]
         status = decision["status"]
+
+        alignment = str(
+            unit.get("alignment") or "ALIGNED"
+        )
+
+        if alignment != "ALIGNED":
+            blockers.append(
+                "{} alignment is {}; native export requires "
+                "ALIGNED".format(
+                    unit_id,
+                    alignment,
+                )
+            )
+
         if unit.get("requires_confirmation", True) and status in BLOCKING_STATUSES:
             blockers.append("{} is {}".format(unit_id, status))
             continue

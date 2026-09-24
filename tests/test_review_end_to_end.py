@@ -44,6 +44,97 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual(extract_paragraphs(out)[0]['text'],'The primary database is ready.')
             self.assertTrue(receipt['round_trip']['checks'])
 
+    def test_ambiguous_alignment_blocks_native_export(self):
+        with tempfile.TemporaryDirectory() as td:
+            d=Path(td)
+            orig=d/'target.docx'
+            make_docx(
+                orig,
+                'Target paragraph.',
+            )
+
+            units=d/'units.jsonl'
+            units.write_text(
+                json.dumps(
+                    {
+                        'id':'U0001',
+                        'source':'源段落。',
+                        'target':'Target paragraph.',
+                        'location':'docx:word/document.xml:p=0',
+                        'alignment':'AMBIGUOUS',
+                    },
+                    ensure_ascii=False,
+                )+'\n',
+                encoding='utf-8',
+            )
+
+            bundle=d/'ambiguous.dbreview'
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS/'create_review_session.py'),
+                    str(units),
+                    '--original',
+                    str(orig),
+                    '--output',
+                    str(bundle),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            data=load_bundle(bundle)
+
+            self.assertEqual(
+                data['units'][0]['alignment'],
+                'AMBIGUOUS',
+            )
+
+            self.assertEqual(
+                data['anchors']['U0001']['status'],
+                'BLOCKED',
+            )
+
+            decision=normalize_decision(
+                data['units'][0],
+                {'status':'KEEP_CURRENT'},
+                data['decisions'][0],
+            )
+
+            save_decisions(
+                bundle,
+                [decision],
+            )
+
+            out=d/'reviewed.docx'
+
+            receipt=export_bundle(
+                bundle,
+                ROOT,
+                orig,
+                out,
+                qa_runner=qa_pass,
+            )
+
+            self.assertEqual(
+                receipt['status'],
+                'BLOCKED',
+            )
+
+            self.assertTrue(
+                any(
+                    'alignment is AMBIGUOUS'
+                    in blocker
+                    for blocker in receipt['blockers']
+                )
+            )
+
+            self.assertFalse(
+                out.exists()
+            )
+
     def test_original_hash_change_blocks_export(self):
         with tempfile.TemporaryDirectory() as td:
             d=Path(td);orig=d/'target.docx';make_docx(orig,'A')

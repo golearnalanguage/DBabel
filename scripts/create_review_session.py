@@ -65,6 +65,29 @@ def _load_units(path: Path) -> List[Dict[str, Any]]:
             "evidence_refs": [],
             "requires_confirmation": True,
         }
+
+        alignment = str(
+            unit.get("alignment") or "ALIGNED"
+        ).upper()
+
+        allowed_alignments = {
+            "ALIGNED",
+            "AMBIGUOUS",
+            "SPLIT",
+            "MERGED",
+            "UNALIGNED",
+        }
+
+        if alignment not in allowed_alignments:
+            raise ValueError(
+                "unit {} has unsupported alignment {}".format(
+                    unit_id,
+                    alignment,
+                )
+            )
+
+        review["alignment"] = alignment
+
         for key in ("source_language", "target_language"):
             if unit.get(key):
                 review[key] = str(unit[key])
@@ -191,7 +214,33 @@ def main() -> int:
             if args.include_path_hint:
                 original_info["path_hint"] = str(original)
             if original.suffix.lower() == ".docx":
-                anchors = build_anchors(original, units)
+                anchorable_units = [
+                    unit
+                    for unit in units
+                    if unit.get("alignment", "ALIGNED") == "ALIGNED"
+                ]
+
+                anchors = build_anchors(
+                    original,
+                    anchorable_units,
+                )
+
+                for unit in units:
+                    if unit.get("alignment", "ALIGNED") == "ALIGNED":
+                        continue
+
+                    anchors[unit["id"]] = {
+                        "id": "A_{}".format(unit["id"]),
+                        "unit_id": unit["id"],
+                        "status": "BLOCKED",
+                        "reason": (
+                            "native DOCX anchor disabled because "
+                            "alignment is {}".format(
+                                unit["alignment"]
+                            )
+                        ),
+                        "original_text": unit["current_target"],
+                    }
             else:
                 anchors = {}
         else:

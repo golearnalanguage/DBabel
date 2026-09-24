@@ -21,6 +21,9 @@ native-format repair. It is intentionally not a full CAT platform.
   `WAIVED`, records a non-empty reason, and the waiver matches the current stable issue
   fingerprint.
 - The original document SHA-256 must still match the review session before native export.
+- Native export requires every review unit to have `ALIGNED` bilingual alignment.
+  `AMBIGUOUS`, `SPLIT`, `MERGED`, and `UNALIGNED` units remain reviewable but
+  block native write-back until a dedicated alignment/write-back path exists.
 - The original document is never overwritten.
 - A written output is not `VERIFIED` until round-trip checks pass.
 

@@ -39,6 +39,16 @@
       "type": "string",
       "minLength": 1
     },
+    "alignment": {
+      "type": "string",
+      "enum": [
+        "ALIGNED",
+        "AMBIGUOUS",
+        "SPLIT",
+        "MERGED",
+        "UNALIGNED"
+      ]
+    },
     "text_role": {
       "type": "string"
     },
