@@ -1,0 +1,4 @@
+entry_id,source_language,source_term,behavior,approval,target_language,preferred_target,admitted_targets,forbidden_targets,vendor,product,version,domain,text_roles,match_mode,case_sensitive,notes
+TERM_SYNC,en,sync point,TRANSLATE,PROJECT_APPROVED,zh-CN,同步点,同步位置,同步节点,Example Vendor,Product A,3,replication,prose;operator_note,token,true,Synthetic translate entry
+LIT_MODE,en,EXAMPLE_MODE,PROTECT,PROJECT_APPROVED,,,,,Example Vendor,Product A,3,configuration,code;prose,token,true,Synthetic protected literal
+TERM_REVIEW_ONLY,en,checkpoint window,TRANSLATE,USER_REVIEW,zh-CN,检查点窗口,,,,,,,,token,true,Not enforceable by deterministic QA

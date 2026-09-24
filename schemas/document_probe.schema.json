@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Document Probe",
+  "type": "object",
+  "required": [
+    "format_version",
+    "path",
+    "file_size",
+    "declared_format",
+    "detected_format",
+    "effective_format",
+    "task_context_format",
+    "family",
+    "confidence",
+    "status",
+    "container",
+    "macro_enabled",
+    "risk_flags",
+    "evidence"
+  ],
+  "properties": {
+    "format_version": {"const": "1.0"},
+    "path": {"type": "string", "minLength": 1},
+    "file_size": {"type": "integer", "minimum": 0},
+    "declared_format": {
+      "anyOf": [
+        {"type": "null"},
+        {"type": "string", "minLength": 1}
+      ]
+    },
+    "detected_format": {"type": "string", "minLength": 1},
+    "effective_format": {"type": "string", "minLength": 1},
+    "task_context_format": {"type": "string", "minLength": 1},
+    "family": {"type": "string", "minLength": 1},
+    "confidence": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW", "NONE"]},
+    "status": {
+      "type": "string",
+      "enum": ["MATCH", "CONTENT_ONLY", "EXTENSION_ONLY", "CONTAINER_MATCH", "CONFLICT", "UNKNOWN"]
+    },
+    "container": {
+      "anyOf": [
+        {"type": "null"},
+        {"type": "string", "enum": ["zip", "ole"]}
+      ]
+    },
+    "macro_enabled": {"type": "boolean"},
+    "risk_flags": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "evidence": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,114 @@
+version: 1.4.0
+schema_version: 1
+
+policy:
+  progressive_loading: true
+  deny_full_reference_sweep: true
+  load_only_routed_resources: true
+  examples_are_evidence: false
+  max_example_sections: 3
+
+kernel:
+  - SKILL.md
+  - config/resource_router.yaml
+
+input_resources:
+  file:
+    - references/17_RUNTIME_PREFLIGHT_AND_INGEST_VALIDATION.md
+  inline_text: []
+  none: []
+
+mode_resources:
+  LOOKUP:
+    - references/03_TERMINOLOGY_CLASSIFICATION.md
+  AUDIT:
+    - references/03_TERMINOLOGY_CLASSIFICATION.md
+  BILINGUAL_REVIEW:
+    - references/03_TERMINOLOGY_CLASSIFICATION.md
+    - references/07_TRANSLATION_AND_MT_POLICY.md
+  TRANSLATE:
+    - references/07_TRANSLATION_AND_MT_POLICY.md
+  REPAIR: []
+  SOURCE_RESEARCH:
+    - references/04_SOURCE_AND_EVIDENCE_POLICY.md
+  CLAIM_ROUTE:
+    - references/10_TECHNICAL_CLAIM_BOUNDARY.md
+  GOVERNANCE:
+    - references/09_GOVERNANCE_SECURITY_COPYRIGHT.md
+
+structured_formats:
+  - docx
+  - docm
+  - pptx
+  - pptm
+  - xlsx
+  - xlsm
+  - pdf
+  - html
+  - md
+  - image
+  - json
+  - csv
+  - xml
+  - odt
+  - ods
+  - odp
+  - epub
+  - zip
+  - ole
+  - doc
+  - xls
+  - ppt
+
+format_resource:
+  reference: references/06_FILE_STRUCTURE_AND_FORMAT_POLICY.md
+
+signal_resources:
+  has_project_glossary:
+    - references/14_PROJECT_TERMINOLOGY_RESOLUTION.md
+  structured_output:
+    - references/11_OUTPUT_AND_DATA_CONTRACTS.md
+  repair_authorized:
+    - references/08_QA_AND_RELEASE_GATES.md
+
+aligned_qa:
+  modes:
+    - BILINGUAL_REVIEW
+    - TRANSLATE
+    - REPAIR
+  resource: references/15_DETERMINISTIC_BILINGUAL_QA.md
+
+risk_resources:
+  technical_claim:
+    - references/10_TECHNICAL_CLAIM_BOUNDARY.md
+  cross_product_mapping:
+    - references/05_PRODUCT_SCOPE_AND_CONCEPT_MAPPING.md
+  version_sensitive:
+    - references/04_SOURCE_AND_EVIDENCE_POLICY.md
+  ui_label:
+    - references/03_TERMINOLOGY_CLASSIFICATION.md
+
+example_routes:
+  title_operation_mismatch: A1
+  execution_scope: A2
+  ui_object_mismatch: A3
+  negation_exception_all: B1
+  precondition_order: B2
+  number_unit_scope: B3
+  terminology_claim_split: B4
+  null_empty_unknown: B5
+  cross_product_mapping: C1
+  renamed_parameter_version: C2
+  project_wording_vs_ui: C3
+  same_token_different_role: D1
+  ocr_ambiguity: D2
+  placeholder_position: D3
+  pdf_reading_order: E1
+  merged_table_formula: E2
+  diagram_role_swap: E3
+  html_attribute_binding: E4
+
+research:
+  evidence_resource: references/04_SOURCE_AND_EVIDENCE_POLICY.md
+  search_resource: references/13_SEARCH_AND_RETRIEVAL_STRATEGY.md
+  source_research_mode: SOURCE_RESEARCH

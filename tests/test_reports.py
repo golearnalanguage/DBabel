@@ -193,6 +193,14 @@ class ReportTests(unittest.TestCase):
         self.report['qa']['status'] = 'NOT_RUN'
         self.rejected('contradicts performed')
 
+    def test_report_13_remains_compatible(self):
+        self.report['dbabel_version'] = '1.3.0'
+        self.assertEqual(validate_report(self.report), [])
+
+    def test_unsupported_report_version_rejected(self):
+        self.report['dbabel_version'] = '1.2.0'
+        self.rejected('dbabel_version')
+
     def test_package(self):
         self.assertEqual(check_package(), [])
 

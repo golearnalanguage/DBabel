@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Bilingual Unit",
+  "type": "object",
+  "required": [
+    "id",
+    "source",
+    "target"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+    },
+    "source": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_language": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_language": {
+      "type": "string",
+      "minLength": 1
+    },
+    "alignment": {
+      "type": "string",
+      "enum": [
+        "ALIGNED",
+        "AMBIGUOUS"
+      ]
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "vendor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "product": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text_role": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

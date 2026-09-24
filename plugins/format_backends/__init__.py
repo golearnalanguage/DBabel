@@ -1,0 +1,1 @@
+"""Optional format-detector adapters."""

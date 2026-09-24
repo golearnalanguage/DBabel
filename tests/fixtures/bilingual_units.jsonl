@@ -1,0 +1,2 @@
+{"id":"U001","source":"Run dbtool --check and keep {0} for version 3.1.","target":"运行 dbtool --check，并保留 {0}，适用于 version 3.1。","location":"manual.md:10","source_language":"en","target_language":"zh-CN","alignment":"ALIGNED","context":{"product":"Product A","version":"3","text_role":"body"}}
+{"id":"U002","source":"Wait 500 ms before setting EXAMPLE_MODE.","target":"设置 EXAMPLE_MODE 前等待 500 ms。","location":"manual.md:11","source_language":"en","target_language":"zh-CN","alignment":"ALIGNED","context":{"product":"Product A","version":"3","text_role":"body"}}

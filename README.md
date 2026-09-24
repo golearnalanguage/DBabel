@@ -6,17 +6,20 @@
 
 # DBabel
 
-**Database terminology review for AI agents.**
+**Database terminology review and technical-localization QA for AI agents.**
 
-DBabel helps translators, technical writers, and database teams use the right term
-for the right product, version, and context. Its name combines **DB** (Database)
-with **Babel** (the Tower of Babel), reflecting the work of connecting languages.
+DBabel helps translators, technical writers, database teams, and AI agents use the
+right term for the right product, version, text role, and context. Its name combines
+**DB** (Database) with **Babel** (the Tower of Babel), reflecting the work of
+connecting technical concepts across languages without flattening product-specific
+meaning.
 
-Use it to check a term, review a document or translation, translate with consistent
-terminology, or produce a corrected copy. Each material change is tied to its
-location and supporting evidence, so you can see what changed and why.
+DBabel is deliberately data-light. It ships workflow logic, schemas, validators,
+routing rules, synthetic tests, and optional format adapters; it does **not** ship a
+vendor terminology corpus. Project glossaries and source material remain runtime
+inputs owned or supplied by the user.
 
-[中文说明](README.zh-CN.md) · [Skill instructions](SKILL.md) · [Examples](examples/)
+[中文说明](README.zh-CN.md) · [Skill kernel](SKILL.md) · [Package index](PACKAGE_INDEX.md) · [Examples](examples/)
 
 ## How to use
 
@@ -50,11 +53,7 @@ git clone https://github.com/golearnalanguage/DBabel.git \
   "$HOME/.agents/skills/dbabel-database-terminology-audit"
 ```
 
-Both methods use the same folder; you only need to install once.
-
 ### Claude Code
-
-Run in a terminal:
 
 ```bash
 mkdir -p "$HOME/.claude/skills"
@@ -77,21 +76,114 @@ Use DBabel from https://github.com/golearnalanguage/DBabel to review the
 attached document's database terminology.
 
 First read https://raw.githubusercontent.com/golearnalanguage/DBabel/main/SKILL.md.
-Load the supporting files it references from the same repository as needed.
-Identify the product/version context, verify material changes against appropriate
-sources, and return located findings with evidence and unresolved questions.
+Follow its progressive-loading workflow: build the task context, preflight files
+when applicable, route only the required resources, and avoid loading every
+reference file by default. Return located findings with evidence, coverage, QA
+actually performed, and unresolved questions.
 ```
 
 For a local-only agent, download the [repository ZIP](https://github.com/golearnalanguage/DBabel/archive/refs/heads/main.zip),
-extract it, and give the agent the extracted folder and your document:
+extract it, and provide the complete folder together with your document and approved
+references.
+
+## Progressive runtime
+
+DBabel's runtime is intentionally staged so an agent does not read every instruction
+for every task.
 
 ```text
-Read ./DBabel-main/SKILL.md and use its supporting files to review
-./docs/database-manual.md. Use the supplied glossary and manuals as evidence.
-Return located findings and identify terms that need further verification.
+request
+  -> task context
+  -> file format/capability preflight when needed
+  -> resource router
+  -> load_now only
+  -> ingest + coverage validation
+  -> terminology / translation workflow
+  -> deterministic QA when aligned units exist
+  -> semantic adjudication
+  -> repair gate when authorized
+  -> round-trip QA
+  -> output
 ```
 
-Replace these paths with the actual extracted folder and input document.
+A change in state can trigger re-routing. For example, deterministic bilingual QA is
+not loaded before source/target units are aligned, repair rules are not loaded before
+repair authorization, and public-search strategy is not loaded when an approved
+scoped resource already resolves the question and no external verification was
+requested.
+
+See [agent integration](docs/AGENT_INTEGRATION.md),
+[architecture](docs/ARCHITECTURE.md), and the
+[local tooling guide](docs/LOCAL_TOOLING.md).
+
+## Accuracy Core
+
+The Accuracy Core provides deterministic checks that complement, but never replace,
+semantic review.
+
+It includes:
+
+- a project-glossary schema and CSV template;
+- JSON/CSV glossary validation and normalization;
+- scope-aware enforcement of `PROJECT_APPROVED` entries only;
+- protected-literal, placeholder, URL, path, filename, CLI-option, environment
+  variable, version, number, and number/unit integrity checks;
+- deterministic bilingual QA reports classified as `POTENTIAL_ISSUE`.
+
+Validate a project glossary:
+
+```bash
+python scripts/validate_glossary.py project_glossary.csv
+```
+
+Run deterministic QA on already aligned units:
+
+```bash
+python scripts/check_bilingual_integrity.py \
+  bilingual_units.jsonl \
+  --glossary project_glossary.csv \
+  --output qa_report.json
+```
+
+A deterministic issue is **not** evidence, a semantic error verdict, confidence, or
+repair authorization. DBabel still requires context, evidence, and adjudication for
+material terminology decisions.
+
+## File preflight and optional backends
+
+For file tasks, DBabel separates four claims that are often conflated:
+
+```text
+extension claim
+!= verified content format
+!= parser availability
+!= successful/full ingest
+```
+
+The built-in format probe is standard-library only and performs bounded,
+non-executing inspection. It can distinguish common signatures and containers,
+including OOXML families and macro-enabled Office packages. Extension/content
+conflicts fail closed rather than silently choosing a parser.
+
+Example runtime preflight:
+
+```bash
+python scripts/prepare_runtime.py \
+  --mode AUDIT \
+  --file ./docs/manual.docx \
+  --declare-backend native_agent \
+  --output runtime-plan.json
+```
+
+After actual parsing, validate what was really covered rather than treating
+preflight as ingest success:
+
+```bash
+python scripts/validate_ingest.py ingest-report.json
+```
+
+Optional detector/parser backends are registered but not installed automatically.
+See [format backends](plugins/FORMAT_BACKENDS.md) before adding dependencies.
 
 ## Common tasks
 
@@ -132,8 +224,7 @@ protected tokens and non-target content, and return the file and change log.
 
 ## How review works
 
-Context → classification → source reading → evidence assessment → decision → QA
-→ requested repair and recheck → final report.
+The semantic decision vocabulary remains deliberately small:
 
 | Decision | Result |
 |---|---|
@@ -143,17 +234,17 @@ Context → classification → source reading → evidence assessment → decisi
 | `REVIEW` | Identify the evidence or context still needed |
 | `OUT_OF_SCOPE_CLAIM` | Route a factual claim for separate verification |
 
-DBabel uses your approved references and authoritative sources retrieved during
-the task. Document coverage and repair support depend on the agent's tools.
-See [agent integration](docs/AGENT_INTEGRATION.md) and
-[capabilities](docs/AGENT_CAPABILITY_MATRIX.md).
+DBabel uses approved project resources within their scope and authoritative sources
+retrieved when necessary. It does not infer cross-vendor equivalence from similar
+functionality. Document coverage and repair support depend on the available runtime
+capabilities and the structures actually inspected.
 
 ## Validation
 
-Repository version: **1.3.0**. See [changes](CHANGELOG.md) and
+Repository version: **1.4.0**. See [changes](CHANGELOG.md) and
 [report format](references/11_OUTPUT_AND_DATA_CONTRACTS.md).
 
-To check the package and report contracts locally (Python 3.9+):
+Local validation requires Python 3.9+ and the development dependencies:
 
 ```bash
 python3 -m venv .venv
@@ -161,11 +252,18 @@ python3 -m venv .venv
 .venv/bin/python scripts/check_package.py
 .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python scripts/validate_report.py examples/audit_report.json
+.venv/bin/python scripts/validate_glossary.py tests/fixtures/project_glossary.json
+.venv/bin/python scripts/validate_glossary.py tests/fixtures/project_glossary.csv
+.venv/bin/python scripts/check_bilingual_integrity.py \
+  tests/fixtures/bilingual_units.jsonl \
+  --glossary tests/fixtures/project_glossary.json \
+  --output /tmp/dbabel-qa.json
 ```
 
-These checks cover schema validity, evidence references, repair gates, and package
-integrity. The agent still needs to read sources and inspect document output.
-See [behavioral evaluation](tests/BEHAVIORAL_EVAL.md) for end-to-end cases.
+Package validation checks schemas, links, evidence/repair contracts, regression
+behavior, and package integrity. Passing local validators does not establish source
+truth or complete document coverage; those claims remain part of the agent/runtime
+workflow.
 
 ## License and contributions
 

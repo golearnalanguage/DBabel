@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Resource Plan",
+  "type": "object",
+  "required": [
+    "format_version",
+    "mode",
+    "load_now",
+    "not_loaded",
+    "example_sections",
+    "notes"
+  ],
+  "properties": {
+    "format_version": {
+      "const": "1.0"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "load_now": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "not_loaded": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "example_sections": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-E][1-5]$"
+      },
+      "uniqueItems": true,
+      "maxItems": 3
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

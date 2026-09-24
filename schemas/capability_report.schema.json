@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Capability Report",
+  "type": "object",
+  "required": ["format_version", "python_version", "backends"],
+  "properties": {
+    "format_version": {"const": "1.0"},
+    "python_version": {"type": "string", "minLength": 1},
+    "backends": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["kind", "available", "source"],
+        "properties": {
+          "kind": {"type": "string", "enum": ["detector", "parser"]},
+          "available": {"type": "boolean"},
+          "source": {"type": "string", "enum": ["BUILTIN", "DETECTED", "DECLARED", "UNAVAILABLE"]},
+          "version": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1},
+          "upstream": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

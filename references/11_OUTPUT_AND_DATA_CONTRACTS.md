@@ -1,9 +1,17 @@
 # Output and data contracts
 
 Use concise prose or a table for small lookups. Use the audit report schema when
-JSON is requested or useful for downstream review.
+JSON is requested or useful for downstream review. Runtime plans, ingest reports,
+project glossaries, bilingual units, and deterministic QA reports have separate
+schemas and must not be presented as audit-report findings unless the semantic
+workflow actually adjudicated them.
 
-## Report 1.3.0
+## Audit report 1.4.0
+
+The 1.4 package keeps the 1.3 audit-report structure and repair/evidence gates. The
+`dbabel_version` field records the DBabel package version that produced the report.
+The current validator accepts both `1.3.0` and `1.4.0` reports; new v1.4 examples
+and newly produced reports should use `1.4.0`.
 
 - `mode` identifies the primary task; `secondary_modes` records combined tasks.
 - `status` describes completion, independently of individual terminology decisions.
@@ -34,6 +42,24 @@ Search snippets and unread sources remain insufficient for a replacement.
 A report may be structurally valid while containing a FAILED or BLOCKED task.
 Validation checks the consistency of that outcome; it does not turn it into success.
 
+## Related v1.4 machine contracts
+
+These contracts serve different stages and must remain distinct:
+
+- `schemas/task_context.schema.json` — facts known at routing time;
+- `schemas/resource_plan.schema.json` — instructions selected for progressive load;
+- `schemas/document_probe.schema.json` and `schemas/document_preflight.schema.json`
+  — content format and parser/backend readiness;
+- `schemas/ingest_report.schema.json` — actual extraction coverage after parsing;
+- `schemas/project_glossary.schema.json` — user-controlled project terminology;
+- `schemas/bilingual_unit.schema.json` — already aligned source/target units;
+- `schemas/deterministic_qa_report.schema.json` — mechanical `POTENTIAL_ISSUE`
+  results, not semantic decisions or repair authorization.
+
+A successful preflight does not imply successful ingest. A clean deterministic QA
+report does not establish semantic correctness. A deterministic issue does not by
+itself justify `REPLACE` or authorize editing.
+
 ## Validate
 
 Install `requirements-dev.txt`, then run:
@@ -45,9 +71,23 @@ python scripts/validate_report.py examples/audit_report.json
 The validator resolves schemas locally and checks cross-record invariants. Source
 truth, extraction completeness, and document integrity still require actual review.
 
-## Migrating 1.2 reports
+Package-level validation additionally checks that the report producer version,
+README version, configuration versions, resource/example routers, glossary CSV
+header, workflow safety invariants, and format-backend references remain mutually
+consistent:
 
-Version 1.3 adds required completion, coverage, QA, repair, source records, and
-finding IDs. Upgrade a 1.2 report by recording the work actually performed; do not
-invent evidence or mark skipped checks as passed. Old reports need these additions
-to validate against the 1.3 contract.
+```bash
+python scripts/check_package.py
+```
+
+## Compatibility and migration
+
+Version 1.4 deliberately accepts structurally valid 1.3 audit reports because the
+1.4 release does not require a report-structure migration. Do not rewrite an old
+report's `dbabel_version` merely to make it look current; that field identifies the
+producer version.
+
+Version 1.2 reports still require migration to the 1.3/1.4 structure because 1.3
+added required completion, coverage, QA, repair, source records, and finding IDs.
+Upgrade an older report by recording the work actually performed; do not invent
+evidence or mark skipped checks as passed.

@@ -1,0 +1,306 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Resource Router Configuration",
+  "type": "object",
+  "required": [
+    "version",
+    "schema_version",
+    "policy",
+    "kernel",
+    "input_resources",
+    "mode_resources",
+    "structured_formats",
+    "format_resource",
+    "signal_resources",
+    "aligned_qa",
+    "risk_resources",
+    "example_routes",
+    "research"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "progressive_loading",
+        "deny_full_reference_sweep",
+        "load_only_routed_resources",
+        "examples_are_evidence",
+        "max_example_sections"
+      ],
+      "properties": {
+        "progressive_loading": {
+          "const": true
+        },
+        "deny_full_reference_sweep": {
+          "const": true
+        },
+        "load_only_routed_resources": {
+          "const": true
+        },
+        "examples_are_evidence": {
+          "const": false
+        },
+        "max_example_sections": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        }
+      },
+      "additionalProperties": false
+    },
+    "kernel": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 2,
+      "uniqueItems": true
+    },
+    "input_resources": {
+      "type": "object",
+      "required": [
+        "file",
+        "inline_text",
+        "none"
+      ],
+      "properties": {
+        "file": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "inline_text": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "none": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "mode_resources": {
+      "type": "object",
+      "required": [
+        "LOOKUP",
+        "AUDIT",
+        "BILINGUAL_REVIEW",
+        "TRANSLATE",
+        "REPAIR",
+        "SOURCE_RESEARCH",
+        "CLAIM_ROUTE",
+        "GOVERNANCE"
+      ],
+      "properties": {
+        "LOOKUP": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "AUDIT": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "BILINGUAL_REVIEW": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "TRANSLATE": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "REPAIR": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "SOURCE_RESEARCH": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "CLAIM_ROUTE": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "GOVERNANCE": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "structured_formats": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "format_resource": {
+      "type": "object",
+      "required": [
+        "reference"
+      ],
+      "properties": {
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "signal_resources": {
+      "type": "object",
+      "required": [
+        "has_project_glossary",
+        "structured_output",
+        "repair_authorized"
+      ],
+      "properties": {
+        "has_project_glossary": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "structured_output": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "repair_authorized": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "aligned_qa": {
+      "type": "object",
+      "required": [
+        "modes",
+        "resource"
+      ],
+      "properties": {
+        "modes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "BILINGUAL_REVIEW",
+              "TRANSLATE",
+              "REPAIR"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "resource": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "risk_resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uniqueItems": true
+      }
+    },
+    "example_routes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[A-E][1-5]$"
+      }
+    },
+    "research": {
+      "type": "object",
+      "required": [
+        "evidence_resource",
+        "search_resource",
+        "source_research_mode"
+      ],
+      "properties": {
+        "evidence_resource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "search_resource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_research_mode": {
+          "const": "SOURCE_RESEARCH"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

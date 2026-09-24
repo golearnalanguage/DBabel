@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.4.0 — 2026-09-24
+
+- Added a scope-aware project glossary layer with JSON/CSV normalization,
+  validation, `PROJECT_APPROVED`-only enforcement, and explicit `PROTECT` behavior.
+- Added deterministic bilingual QA for protected literals, placeholders, URLs,
+  paths, filenames, CLI options, environment variables, versions, numbers,
+  number/unit pairs, forbidden terms, and preferred/admitted project terms.
+- Added machine-readable bilingual-unit and deterministic-QA-report contracts plus
+  dedicated regression fixtures.
+- Added semantic routing for the technical-translation worked examples so agents can
+  load only matching sections instead of reading the whole example file.
+- Refactored `SKILL.md` into a compact runtime kernel and added progressive resource
+  routing with validated Task Context and Resource Plan contracts.
+- Added bounded content-based file-format probing, extension/content conflict
+  handling, macro-enabled Office detection, capability probing, and an optional
+  backend registry without making third-party parsers mandatory dependencies.
+- Added runtime-plan preparation and ingest-coverage validation so parser selection,
+  successful extraction, full coverage, semantic QA, and verified repair remain
+  separate claims.
+- Expanded Python 3.9 regression coverage after identifying an API-compatibility gap
+  that Python-3.11-only CI would not have caught.
+- Preserved the data-light architecture: DBabel still ships no vendor termbase or
+  vendor documentation corpus, and deterministic findings still do not authorize
+  semantic replacement or repair.
+
 ## 1.3.0 — 2026-09-23
 
 - Added installation and invocation instructions for Codex, Claude Code, and other agents, with an accompanying Chinese guide.
@@ -17,7 +42,6 @@
 - Added a concise project code of conduct and release notes.
 - Clarified that DBabel is source-available/noncommercial rather than OSI-approved open source.
 - Retained the data-light architecture: DBabel ships workflow and evidence rules, not a terminology database.
-
 
 ## 1.1.0
 - Renamed/reframed the package as DBabel.

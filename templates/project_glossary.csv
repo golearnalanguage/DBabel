@@ -1,0 +1,3 @@
+entry_id,source_language,source_term,behavior,approval,target_language,preferred_target,admitted_targets,forbidden_targets,vendor,product,version,domain,text_roles,match_mode,case_sensitive,notes
+TERM001,en,sync point,TRANSLATE,PROJECT_APPROVED,zh-CN,同步点,,同步节点,Example Vendor,Product A,3,replication,prose;operator_note,token,true,Synthetic example only
+LIT001,en,EXAMPLE_MODE,PROTECT,PROJECT_APPROVED,,,,,Example Vendor,Product A,3,configuration,code;prose,token,true,Synthetic protected literal

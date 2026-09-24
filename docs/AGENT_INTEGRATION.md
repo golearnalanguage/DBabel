@@ -1,37 +1,73 @@
 # Agent integration
 
 Clone the complete repository as a skill folder named
-`dbabel-database-terminology-audit`. Keep the relative directory structure intact:
-`SKILL.md` loads references, worked examples, configuration, schemas, and
-templates as needed.
+`dbabel-database-terminology-audit` and keep the relative directory structure
+intact.
+
+`SKILL.md` is intentionally a small runtime kernel. Supporting references are loaded
+progressively through `config/resource_router.yaml`; do not preload the entire
+`references/` directory.
+
 The [README](../README.md#how-to-use) contains installation and invocation prompts.
 
-For a repository checkout, `AGENTS.md` directs terminology tasks to `SKILL.md`.
-Other maintenance tasks use the repository's validation commands. A standalone
-skill loader discovers the YAML `name` and `description` in `SKILL.md`;
-`agents/openai.yaml` supplies the Codex display name and default prompt.
+## Runtime sequence
 
-A task should supply the input file or text, desired mode/output, and any available
-product/version context and approved references. Infer missing context when
-possible; ask only when it changes the decision.
+For a text-only task, establish a task context and route resources directly.
+
+For a file task:
+
+1. probe content format rather than trusting the extension;
+2. check parser/backend capability;
+3. build the initial task context and minimal resource plan;
+4. load only `load_now`;
+5. ingest with the selected/declared capability;
+6. validate actual ingest coverage;
+7. continue the routed terminology/translation workflow;
+8. re-route whenever material state changes.
+
+A reproducible local preflight can be generated with:
+
+```bash
+python scripts/prepare_runtime.py \
+  --mode AUDIT \
+  --file path/to/document.docx \
+  --declare-backend native_agent \
+  --output runtime-plan.json
+```
+
+The resulting `READY_FOR_INGEST` state is not a statement that ingestion succeeded.
+
+After parsing, a machine-readable ingest report can be validated with:
+
+```bash
+python scripts/validate_ingest.py ingest-report.json
+```
+
+See [runtime preflight and ingest validation](../references/17_RUNTIME_PREFLIGHT_AND_INGEST_VALIDATION.md).
 
 ## Evidence and outputs
 
-Text-only lookup can run from supplied references. Public-source verification
-needs search and source reading. Native document repair additionally needs a
-format-aware writer and suitable QA tools. Check the
-[capability matrix](AGENT_CAPABILITY_MATRIX.md) before promising a file output.
+Text-only lookup can run from supplied references. Public-source verification needs
+search plus opening the original source. Native document repair additionally needs
+a format-aware writer and applicable round-trip QA.
 
-For structured reports, load `schemas/audit_report.schema.json` and its local
-references. Run `scripts/validate_report.py` with the dependencies in
-`requirements-dev.txt` if Python is available. Report generation itself does not
-require Python. The validator does not fetch sources or edit documents.
+Check the [capability matrix](AGENT_CAPABILITY_MATRIX.md) and the
+[format backend registry](../plugins/FORMAT_BACKENDS.md) before promising a native
+file result.
+
+Deterministic bilingual QA is optional tooling for already aligned units. It cannot
+replace semantic review or evidence assessment.
+
+For structured DBabel reports, load `schemas/audit_report.schema.json` and its local
+references. Run `scripts/validate_report.py` with dependencies from
+`requirements-dev.txt` when Python is available. The validator checks recorded
+contract consistency; it does not verify source truth or file integrity.
 
 ## Local updates
 
 For a Git-based installation, run `git -C <installed-skill-folder> pull --ff-only`.
-Preserve any local edits before updating. Keep one installed copy per host to
-avoid duplicate skill entries.
+Preserve local edits before updating. Keep one installed copy per host to avoid
+duplicate skill entries.
 
 ## Installation references
 

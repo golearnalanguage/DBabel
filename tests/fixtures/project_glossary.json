@@ -1,0 +1,97 @@
+{
+  "format_version": "1.0",
+  "project": "Synthetic Accuracy Core",
+  "entries": [
+    {
+      "id": "TERM_SYNC",
+      "source": {
+        "language": "en",
+        "term": "sync point"
+      },
+      "behavior": "TRANSLATE",
+      "approval": "PROJECT_APPROVED",
+      "targets": [
+        {
+          "language": "zh-CN",
+          "term": "同步点",
+          "status": "PREFERRED"
+        },
+        {
+          "language": "zh-CN",
+          "term": "同步位置",
+          "status": "ADMITTED"
+        },
+        {
+          "language": "zh-CN",
+          "term": "同步节点",
+          "status": "FORBIDDEN"
+        }
+      ],
+      "scope": {
+        "vendor": "Example Vendor",
+        "product": "Product A",
+        "version": "3",
+        "domain": "replication",
+        "text_roles": [
+          "prose",
+          "operator_note"
+        ]
+      },
+      "match": {
+        "mode": "token",
+        "case_sensitive": true,
+        "unicode_normalization": "NFC"
+      },
+      "notes": "Synthetic translate entry"
+    },
+    {
+      "id": "LIT_MODE",
+      "source": {
+        "language": "en",
+        "term": "EXAMPLE_MODE"
+      },
+      "behavior": "PROTECT",
+      "approval": "PROJECT_APPROVED",
+      "targets": [],
+      "scope": {
+        "vendor": "Example Vendor",
+        "product": "Product A",
+        "version": "3",
+        "domain": "configuration",
+        "text_roles": [
+          "code",
+          "prose"
+        ]
+      },
+      "match": {
+        "mode": "token",
+        "case_sensitive": true,
+        "unicode_normalization": "NFC"
+      },
+      "notes": "Synthetic protected literal"
+    },
+    {
+      "id": "TERM_REVIEW_ONLY",
+      "source": {
+        "language": "en",
+        "term": "checkpoint window"
+      },
+      "behavior": "TRANSLATE",
+      "approval": "USER_REVIEW",
+      "targets": [
+        {
+          "language": "zh-CN",
+          "term": "检查点窗口",
+          "status": "PREFERRED"
+        }
+      ],
+      "scope": {},
+      "match": {
+        "mode": "token",
+        "case_sensitive": true,
+        "unicode_normalization": "NFC"
+      },
+      "notes": "Not enforceable by deterministic QA"
+    }
+  ]
+}

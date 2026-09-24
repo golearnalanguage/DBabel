@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Document Preflight",
+  "type": "object",
+  "required": ["format_version", "intent", "probe", "capabilities", "selection"],
+  "properties": {
+    "format_version": {"const": "1.0"},
+    "intent": {"type": "string", "enum": ["audit", "repair"]},
+    "probe": {"$ref": "document_probe.schema.json"},
+    "capabilities": {"$ref": "capability_report.schema.json"},
+    "selection": {
+      "type": "object",
+      "required": ["status", "candidates", "selected_backend", "reason"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "READY",
+            "BLOCKED_FORMAT_CONFLICT",
+            "BLOCKED_UNVERIFIED_FORMAT",
+            "NO_BACKEND",
+            "REPAIR_REQUIRES_DEDICATED_WORKFLOW"
+          ]
+        },
+        "candidates": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "selected_backend": {
+          "anyOf": [
+            {"type": "null"},
+            {"type": "string", "minLength": 1}
+          ]
+        },
+        "reason": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Format Registry",
+  "type": "object",
+  "required": ["version", "schema_version", "probe", "extensions", "formats", "backends"],
+  "properties": {
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "schema_version": {"const": 1},
+    "probe": {
+      "type": "object",
+      "required": ["max_header_bytes", "max_text_probe_bytes", "max_zip_members", "max_zip_metadata_bytes"],
+      "properties": {
+        "max_header_bytes": {"type": "integer", "minimum": 1024, "maximum": 1048576},
+        "max_text_probe_bytes": {"type": "integer", "minimum": 4096, "maximum": 8388608},
+        "max_zip_members": {"type": "integer", "minimum": 100, "maximum": 100000},
+        "max_zip_metadata_bytes": {"type": "integer", "minimum": 1024, "maximum": 1048576}
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[A-Za-z0-9]+$"},
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "formats": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["family", "task_context_format", "audit_backends", "repair_backends", "risks"],
+        "properties": {
+          "family": {"type": "string", "minLength": 1},
+          "task_context_format": {"type": "string", "minLength": 1},
+          "audit_backends": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "repair_backends": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "risks": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+        },
+        "additionalProperties": false
+      }
+    },
+    "backends": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["kind"],
+        "properties": {
+          "kind": {"type": "string", "enum": ["detector", "parser"]},
+          "builtin": {"type": "boolean"},
+          "external": {"type": "boolean"},
+          "external_runtime": {"type": "boolean"},
+          "import_name": {"type": "string", "minLength": 1},
+          "distribution": {"type": "string", "minLength": 1},
+          "python_min": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+          "upstream": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

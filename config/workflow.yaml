@@ -1,8 +1,12 @@
-version: 1.3.0
+version: 1.4.0
 states:
   - INTAKE
-  - PREFLIGHT
+  - TASK_CONTEXT
+  - FORMAT_PROBE
+  - CAPABILITY_PROBE
+  - RESOURCE_ROUTING
   - INGEST
+  - INGEST_VALIDATION
   - STRUCTURE
   - CONTEXT
   - EXTRACTION
@@ -12,6 +16,7 @@ states:
   - EVIDENCE_ASSESSMENT
   - ADJUDICATION
   - TRANSLATION
+  - DETERMINISTIC_QA
   - QA
   - REPAIR
   - ROUND_TRIP_QA
@@ -20,19 +25,35 @@ states:
 rules:
   ships_terminology_database: false
   ships_vendor_corpus: false
+  progressive_resource_loading: true
+  full_reference_sweep_allowed: false
   original_read_only_default: true
+  file_extension_is_format_proof: false
+  preflight_ready_is_ingest_success: false
   search_snippet_is_final_evidence: false
+  deterministic_qa_is_semantic_verdict: false
+  deterministic_qa_authorizes_repair: false
   auto_repair_requires_high_confidence: true
   global_auto_approval_of_discovered_terms: false
   technical_claim_verification_separate: true
 conditions:
+  FORMAT_PROBE: file_input
+  CAPABILITY_PROBE: parser_or_writer_capability_needed
+  RESOURCE_ROUTING: task_context_available_or_material_state_changed
+  INGEST: file_input_and_preflight_ready
+  INGEST_VALIDATION: ingest_attempted
   SOURCE_RESEARCH: unresolved_or_requested_and_permitted
   TRANSLATION: translation_requested
+  DETERMINISTIC_QA: aligned_bilingual_units_available
   REPAIR: authorized_and_high_confidence_evidenced_replacement
   ROUND_TRIP_QA: repair_attempted
   PROJECT_GLOSSARY_CANDIDATE: project_governance_requested
 feedback:
-  terminology_qa_failure: CONTEXT
+  format_or_capability_blocker: FORMAT_PROBE_or_CAPABILITY_PROBE_or_BLOCKED
+  ingest_validation_failure: INGEST_or_COMPLETED_WITH_REVIEW_or_BLOCKED
+  material_state_change: RESOURCE_ROUTING
+  deterministic_qa_issue: CONTEXT_or_ADJUDICATION_or_QA
+  terminology_qa_failure: CONTEXT_or_EVIDENCE_ASSESSMENT
   repair_qa_failure: REPAIR_or_FAILED
 terminal_statuses:
   - COMPLETED

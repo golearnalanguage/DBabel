@@ -1,0 +1,65 @@
+version: 1.4.0
+schema_version: 1
+policy:
+  output_classification: POTENTIAL_ISSUE
+  deterministic_output_authorizes_repair: false
+  fail_closed_on_missing_scope: true
+  apply_only_project_approved_glossary_entries: true
+checks:
+  PLACEHOLDER_INTEGRITY:
+    enabled: true
+    severity: ERROR
+  URL_INTEGRITY:
+    enabled: true
+    severity: ERROR
+  PATH_INTEGRITY:
+    enabled: true
+    severity: ERROR
+  FILENAME_INTEGRITY:
+    enabled: true
+    severity: ERROR
+  CLI_OPTION_INTEGRITY:
+    enabled: true
+    severity: ERROR
+  ENV_VAR_INTEGRITY:
+    enabled: true
+    severity: ERROR
+  PROTECTED_LITERAL:
+    enabled: true
+    severity: ERROR
+  FORBIDDEN_TERM:
+    enabled: true
+    severity: ERROR
+  VERSION_INTEGRITY:
+    enabled: true
+    severity: WARNING
+  NUMBER_INTEGRITY:
+    enabled: true
+    severity: WARNING
+  NUMBER_UNIT_INTEGRITY:
+    enabled: true
+    severity: WARNING
+  PREFERRED_TERM:
+    enabled: true
+    severity: WARNING
+unit_allowlist:
+  - ns
+  - us
+  - ms
+  - s
+  - min
+  - h
+  - B
+  - KB
+  - MB
+  - GB
+  - TB
+  - KiB
+  - MiB
+  - GiB
+  - TiB
+  - Hz
+  - kHz
+  - MHz
+  - GHz
+  - "%"

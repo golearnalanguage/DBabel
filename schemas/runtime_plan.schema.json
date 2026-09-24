@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Runtime Plan",
+  "type": "object",
+  "required": [
+    "format_version",
+    "input_kind",
+    "preflight",
+    "task_context",
+    "resource_plan",
+    "runtime"
+  ],
+  "properties": {
+    "format_version": {
+      "const": "1.0"
+    },
+    "input_kind": {
+      "type": "string",
+      "enum": [
+        "inline_text",
+        "file"
+      ]
+    },
+    "preflight": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "document_preflight.schema.json"
+        }
+      ]
+    },
+    "task_context": {
+      "$ref": "task_context.schema.json"
+    },
+    "resource_plan": {
+      "$ref": "resource_plan.schema.json"
+    },
+    "runtime": {
+      "type": "object",
+      "required": [
+        "status",
+        "selected_backend",
+        "next_step",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "READY_FOR_TASK",
+            "READY_FOR_INGEST",
+            "BLOCKED"
+          ]
+        },
+        "selected_backend": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "next_step": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,264 @@
+version: 1.4.0
+schema_version: 1
+
+probe:
+  max_header_bytes: 65536
+  max_text_probe_bytes: 1048576
+  max_zip_members: 20000
+  max_zip_metadata_bytes: 262144
+
+extensions:
+  pdf: pdf
+  docx: docx
+  docm: docm
+  pptx: pptx
+  pptm: pptm
+  xlsx: xlsx
+  xlsm: xlsm
+  doc: doc
+  xls: xls
+  ppt: ppt
+  odt: odt
+  ods: ods
+  odp: odp
+  epub: epub
+  zip: zip
+  png: png
+  jpg: jpeg
+  jpeg: jpeg
+  gif: gif
+  tif: tiff
+  tiff: tiff
+  bmp: bmp
+  htm: html
+  html: html
+  xml: xml
+  json: json
+  csv: csv
+  md: md
+  markdown: md
+  txt: txt
+
+formats:
+  pdf:
+    family: pdf
+    task_context_format: pdf
+    audit_backends: [native_agent, docling, markitdown, pypdf, tika]
+    repair_backends: []
+    risks: [READ_ONLY_DEFAULT]
+  docx:
+    family: ooxml_word
+    task_context_format: docx
+    audit_backends: [python_docx, markitdown, docling, tika, native_agent]
+    repair_backends: [python_docx]
+    risks: []
+  docm:
+    family: ooxml_word
+    task_context_format: docm
+    audit_backends: [markitdown, docling, tika, native_agent]
+    repair_backends: []
+    risks: [MACRO_ENABLED, DEDICATED_REPAIR_REQUIRED]
+  pptx:
+    family: ooxml_powerpoint
+    task_context_format: pptx
+    audit_backends: [python_pptx, markitdown, docling, tika, native_agent]
+    repair_backends: [python_pptx]
+    risks: []
+  pptm:
+    family: ooxml_powerpoint
+    task_context_format: pptm
+    audit_backends: [markitdown, docling, tika, native_agent]
+    repair_backends: []
+    risks: [MACRO_ENABLED, DEDICATED_REPAIR_REQUIRED]
+  xlsx:
+    family: ooxml_excel
+    task_context_format: xlsx
+    audit_backends: [openpyxl, markitdown, docling, tika, native_agent]
+    repair_backends: [openpyxl]
+    risks: [FORMULA_PRESERVATION]
+  xlsm:
+    family: ooxml_excel
+    task_context_format: xlsm
+    audit_backends: [openpyxl, markitdown, docling, tika, native_agent]
+    repair_backends: []
+    risks: [MACRO_ENABLED, FORMULA_PRESERVATION, DEDICATED_REPAIR_REQUIRED]
+  doc:
+    family: legacy_office
+    task_context_format: doc
+    audit_backends: [tika, native_agent]
+    repair_backends: []
+    risks: [LEGACY_CONTAINER, DEDICATED_REPAIR_REQUIRED]
+  xls:
+    family: legacy_office
+    task_context_format: xls
+    audit_backends: [tika, native_agent]
+    repair_backends: []
+    risks: [LEGACY_CONTAINER, DEDICATED_REPAIR_REQUIRED]
+  ppt:
+    family: legacy_office
+    task_context_format: ppt
+    audit_backends: [tika, native_agent]
+    repair_backends: []
+    risks: [LEGACY_CONTAINER, DEDICATED_REPAIR_REQUIRED]
+  ole:
+    family: legacy_office
+    task_context_format: ole
+    audit_backends: [tika, native_agent]
+    repair_backends: []
+    risks: [LEGACY_CONTAINER, SUBTYPE_UNVERIFIED, DEDICATED_REPAIR_REQUIRED]
+  odt:
+    family: odf
+    task_context_format: odt
+    audit_backends: [markitdown, docling, tika, native_agent]
+    repair_backends: []
+    risks: [DEDICATED_REPAIR_REQUIRED]
+  ods:
+    family: odf
+    task_context_format: ods
+    audit_backends: [markitdown, docling, tika, native_agent]
+    repair_backends: []
+    risks: [FORMULA_PRESERVATION, DEDICATED_REPAIR_REQUIRED]
+  odp:
+    family: odf
+    task_context_format: odp
+    audit_backends: [markitdown, docling, tika, native_agent]
+    repair_backends: []
+    risks: [DEDICATED_REPAIR_REQUIRED]
+  epub:
+    family: epub
+    task_context_format: epub
+    audit_backends: [markitdown, tika, native_agent]
+    repair_backends: []
+    risks: [DEDICATED_REPAIR_REQUIRED]
+  zip:
+    family: archive
+    task_context_format: zip
+    audit_backends: []
+    repair_backends: []
+    risks: [GENERIC_ARCHIVE, DEDICATED_REPAIR_REQUIRED]
+  png:
+    family: image
+    task_context_format: image
+    audit_backends: [native_agent, docling]
+    repair_backends: []
+    risks: [VISION_OR_OCR_REQUIRED]
+  jpeg:
+    family: image
+    task_context_format: image
+    audit_backends: [native_agent, docling]
+    repair_backends: []
+    risks: [VISION_OR_OCR_REQUIRED]
+  gif:
+    family: image
+    task_context_format: image
+    audit_backends: [native_agent]
+    repair_backends: []
+    risks: [VISION_OR_OCR_REQUIRED]
+  tiff:
+    family: image
+    task_context_format: image
+    audit_backends: [native_agent, docling]
+    repair_backends: []
+    risks: [VISION_OR_OCR_REQUIRED]
+  bmp:
+    family: image
+    task_context_format: image
+    audit_backends: [native_agent]
+    repair_backends: []
+    risks: [VISION_OR_OCR_REQUIRED]
+  html:
+    family: text_markup
+    task_context_format: html
+    audit_backends: [builtin_text, markitdown, docling, tika, native_agent]
+    repair_backends: []
+    risks: [DOM_AWARE_RECOMMENDED]
+  xml:
+    family: text_markup
+    task_context_format: xml
+    audit_backends: [builtin_text, tika, native_agent]
+    repair_backends: []
+    risks: [STRUCTURE_PRESERVATION]
+  json:
+    family: structured_text
+    task_context_format: json
+    audit_backends: [builtin_text, native_agent]
+    repair_backends: []
+    risks: [STRUCTURE_PRESERVATION]
+  csv:
+    family: structured_text
+    task_context_format: csv
+    audit_backends: [builtin_text, native_agent]
+    repair_backends: []
+    risks: [STRUCTURE_PRESERVATION]
+  md:
+    family: text_markup
+    task_context_format: md
+    audit_backends: [builtin_text, markitdown, native_agent]
+    repair_backends: []
+    risks: [CODE_AND_LINK_PRESERVATION]
+  txt:
+    family: text
+    task_context_format: txt
+    audit_backends: [builtin_text, native_agent]
+    repair_backends: []
+    risks: [LOW_STRUCTURE_CONFIDENCE]
+
+backends:
+  builtin_probe:
+    kind: detector
+    builtin: true
+  builtin_text:
+    kind: parser
+    builtin: true
+  filetype:
+    kind: detector
+    import_name: filetype
+    distribution: filetype
+    upstream: https://github.com/h2non/filetype.py
+  python_magic:
+    kind: detector
+    import_name: magic
+    distribution: python-magic
+    external_runtime: true
+    upstream: https://github.com/ahupp/python-magic
+  python_docx:
+    kind: parser
+    import_name: docx
+    distribution: python-docx
+    upstream: https://github.com/python-openxml/python-docx
+  python_pptx:
+    kind: parser
+    import_name: pptx
+    distribution: python-pptx
+    upstream: https://github.com/scanny/python-pptx
+  openpyxl:
+    kind: parser
+    import_name: openpyxl
+    distribution: openpyxl
+    upstream: https://foss.heptapod.net/openpyxl/openpyxl
+  pypdf:
+    kind: parser
+    import_name: pypdf
+    distribution: pypdf
+    upstream: https://github.com/py-pdf/pypdf
+  markitdown:
+    kind: parser
+    import_name: markitdown
+    distribution: markitdown
+    python_min: '3.10'
+    upstream: https://github.com/microsoft/markitdown
+  docling:
+    kind: parser
+    import_name: docling
+    distribution: docling
+    python_min: '3.10'
+    upstream: https://github.com/docling-project/docling
+  tika:
+    kind: parser
+    import_name: tika
+    distribution: tika
+    external_runtime: true
+    upstream: https://tika.apache.org/
+  native_agent:
+    kind: parser
+    external: true

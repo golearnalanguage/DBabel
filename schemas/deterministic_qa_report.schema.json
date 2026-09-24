@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DBabel Deterministic QA Report",
+  "type": "object",
+  "required": [
+    "format_version",
+    "summary",
+    "checks_run",
+    "issues"
+  ],
+  "properties": {
+    "format_version": {
+      "const": "1.0"
+    },
+    "source": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string"
+    },
+    "glossary": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "units_checked",
+        "error_count",
+        "warning_count"
+      ],
+      "properties": {
+        "units_checked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warning_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "checks_run": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "unit_id",
+          "check_id",
+          "classification",
+          "severity",
+          "message",
+          "source_items",
+          "target_items"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^Q[0-9]{4,}$"
+          },
+          "unit_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1
+          },
+          "check_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "classification": {
+            "const": "POTENTIAL_ISSUE"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "ERROR",
+              "WARNING"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "target_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "glossary_entry_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
