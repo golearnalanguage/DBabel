@@ -130,6 +130,57 @@ class DocxAdapterTests(unittest.TestCase):
                 )
             )
 
+    def test_missing_word_para_id_blocks(self):
+        with tempfile.TemporaryDirectory() as td:
+            orig=Path(td)/'in.docx'
+            out=Path(td)/'out.docx'
+
+            make_docx(
+                orig,
+                [[('Stable paragraph.',False)]],
+                para_ids=['ABCDEF12'],
+            )
+
+            units=[
+                {
+                    'id':'U1',
+                    'location':'docx:word/document.xml:p=0',
+                    'current_target':'Stable paragraph.',
+                }
+            ]
+
+            anchors=build_anchors(orig,units)
+
+            self.assertEqual(
+                anchors['U1']['para_id'],
+                'ABCDEF12',
+            )
+
+            # Simulate structural drift after the anchor was created.
+            make_docx(
+                orig,
+                [[('Stable paragraph.',False)]],
+            )
+
+            decisions={
+                'U1':{
+                    'status':'USER_EDITED',
+                    'approved_target':'Updated paragraph.',
+                }
+            }
+
+            with self.assertRaisesRegex(
+                DocxExportError,
+                'w14:paraId disappeared',
+            ):
+                apply_reviewed_docx(
+                    orig,
+                    out,
+                    units,
+                    decisions,
+                    anchors,
+                )
+
     def test_never_overwrite_original(self):
         with tempfile.TemporaryDirectory() as td:
             orig=Path(td)/'in.docx';make_docx(orig,[[('A',False)]])

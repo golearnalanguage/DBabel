@@ -245,6 +245,12 @@ def _paragraph_by_anchor(
                 )
             )
 
+        raise DocxExportError(
+            "w14:paraId disappeared from DOCX part: {}".format(
+                para_id
+            )
+        )
+
     return _paragraph_by_ordinal(
         root,
         int(anchor["paragraph_ordinal"]),
