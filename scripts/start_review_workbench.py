@@ -207,7 +207,205 @@ class Handler(BaseHTTPRequestHandler):
             return
         parsed = urlparse(self.path)
         try:
-            _ = self._body_json()
+            body = self._body_json()
+
+            if parsed.path == "/api/decisions/bulk":
+                status = str(
+                    body.get("status") or ""
+                )
+
+                if status not in {
+                    "KEEP_CURRENT",
+                    "DEFERRED",
+                }:
+                    raise ValueError(
+                        "bulk decisions support "
+                        "KEEP_CURRENT or DEFERRED only"
+                    )
+
+                raw_ids = body.get("unit_ids")
+
+                if (
+                    not isinstance(raw_ids, list)
+                    or not raw_ids
+                ):
+                    raise ValueError(
+                        "bulk decision requires "
+                        "non-empty unit_ids array"
+                    )
+
+                unit_ids = [
+                    str(value)
+                    for value in raw_ids
+                ]
+
+                if any(
+                    not value
+                    for value in unit_ids
+                ):
+                    raise ValueError(
+                        "bulk unit_ids cannot contain "
+                        "empty values"
+                    )
+
+                if len(unit_ids) != len(
+                    set(unit_ids)
+                ):
+                    raise ValueError(
+                        "bulk unit_ids contain duplicates"
+                    )
+
+                with self.state.lock:
+                    data = self.state.data()
+
+                    missing = [
+                        unit_id
+                        for unit_id in unit_ids
+                        if unit_id
+                        not in data["units_by_id"]
+                    ]
+
+                    if missing:
+                        raise ValueError(
+                            "bulk decision references "
+                            "unknown unit(s): {}".format(
+                                ", ".join(missing)
+                            )
+                        )
+
+                    staged = dict(
+                        data["decisions_by_id"]
+                    )
+                    changes = []
+
+                    # Nothing is persisted until every
+                    # requested unit has normalized and
+                    # rechecked successfully.
+                    for unit_id in unit_ids:
+                        unit = data[
+                            "units_by_id"
+                        ][unit_id]
+
+                        previous = data[
+                            "decisions_by_id"
+                        ][unit_id]
+
+                        incoming = {
+                            "status": status,
+                            "reviewer_note": str(
+                                previous.get(
+                                    "reviewer_note"
+                                )
+                                or ""
+                            ),
+                        }
+
+                        saved = normalize_decision(
+                            unit,
+                            incoming,
+                            previous,
+                        )
+
+                        recheck_issues = []
+
+                        if status == "KEEP_CURRENT":
+                            (
+                                saved,
+                                recheck_issues,
+                            ) = recheck_decision(
+                                self.state.repo_root,
+                                unit,
+                                saved,
+                                self.state.glossary,
+                            )
+
+                        staged[unit_id] = saved
+
+                        changes.append(
+                            (
+                                unit_id,
+                                previous,
+                                saved,
+                                recheck_issues,
+                            )
+                        )
+
+                    decisions = [
+                        staged[
+                            decision["unit_id"]
+                        ]
+                        for decision
+                        in data["decisions"]
+                    ]
+
+                    save_decisions(
+                        self.state.bundle,
+                        decisions,
+                    )
+
+                    results = []
+
+                    for (
+                        unit_id,
+                        previous,
+                        saved,
+                        recheck_issues,
+                    ) in changes:
+                        append_event(
+                            self.state.bundle
+                            / "events.jsonl",
+                            {
+                                "event":
+                                    "DECISION_CHANGED",
+                                "unit_id": unit_id,
+                                "at": utc_now(),
+                                "revision":
+                                    saved["revision"],
+                                "actor": "HUMAN",
+                                "from_status":
+                                    previous["status"],
+                                "to_status":
+                                    saved["status"],
+                            },
+                        )
+
+                        if status == "KEEP_CURRENT":
+                            append_event(
+                                self.state.bundle
+                                / "events.jsonl",
+                                {
+                                    "event":
+                                        "QA_RECHECKED",
+                                    "unit_id":
+                                        unit_id,
+                                    "at": utc_now(),
+                                    "revision":
+                                        saved["revision"],
+                                    "actor": "SYSTEM",
+                                    "detail":
+                                        saved[
+                                            "recheck"
+                                        ]["status"],
+                                },
+                            )
+
+                        results.append(
+                            {
+                                "decision": saved,
+                                "recheck_issues":
+                                    recheck_issues,
+                            }
+                        )
+
+                    self._json(
+                        200,
+                        {
+                            "results": results,
+                        },
+                    )
+
+                return
+
             if parsed.path == "/api/export-gate":
                 with self.state.lock:
                     data = self.state.data()

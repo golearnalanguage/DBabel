@@ -259,7 +259,18 @@ def load_bundle(bundle: Path) -> Dict[str, Any]:
 
 
 def save_decisions(bundle: Path, decisions: Sequence[Dict[str, Any]]) -> None:
-    write_json(bundle / "decisions.json", list(decisions))
+    target = bundle / "decisions.json"
+    temporary = bundle / ".decisions.json.tmp"
+
+    try:
+        write_json(
+            temporary,
+            list(decisions),
+        )
+        temporary.replace(target)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
 
 
 def progress(bundle_data: Dict[str, Any]) -> Dict[str, int]:

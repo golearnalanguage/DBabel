@@ -40,4 +40,78 @@ class ServerTests(unittest.TestCase):
         status,body=self.req('PUT','/api/decisions/U1',{'status':'KEEP_CURRENT'},headers);self.assertEqual(status,200);self.assertEqual(body['decision']['status'],'KEEP_CURRENT');self.assertEqual(body['decision']['recheck']['status'],'PASS')
         status,gate=self.req('POST','/api/export-gate',{},headers);self.assertEqual(status,200);self.assertEqual(gate['status'],'AUTHORIZED')
 
+
+    def test_bulk_decisions_fail_atomically_and_preserve_notes(self):
+        headers={
+            'X-DBabel-Session':self.token,
+            'Origin':self.origin,
+        }
+
+        status,_=self.req(
+            'POST',
+            '/api/decisions/bulk',
+            {
+                'status':'KEEP_CURRENT',
+                'unit_ids':['U1','MISSING'],
+            },
+            headers,
+        )
+
+        self.assertEqual(status,400)
+
+        status,bootstrap=self.req(
+            'GET',
+            '/api/bootstrap',
+            headers=headers,
+        )
+
+        self.assertEqual(status,200)
+
+        self.assertEqual(
+            bootstrap['decisions'][0]['status'],
+            'UNREVIEWED',
+        )
+
+        status,_=self.req(
+            'PUT',
+            '/api/decisions/U1',
+            {
+                'status':'BLOCKED',
+                'reviewer_note':'preserve this note',
+            },
+            headers,
+        )
+
+        self.assertEqual(status,200)
+
+        status,result=self.req(
+            'POST',
+            '/api/decisions/bulk',
+            {
+                'status':'KEEP_CURRENT',
+                'unit_ids':['U1'],
+            },
+            headers,
+        )
+
+        self.assertEqual(status,200)
+
+        decision=result['results'][0]['decision']
+
+        self.assertEqual(
+            decision['status'],
+            'KEEP_CURRENT',
+        )
+
+        self.assertEqual(
+            decision['reviewer_note'],
+            'preserve this note',
+        )
+
+        self.assertEqual(
+            decision['recheck']['status'],
+            'PASS',
+        )
+
+
 if __name__=='__main__':unittest.main()

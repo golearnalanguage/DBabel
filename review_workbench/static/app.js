@@ -31,7 +31,7 @@
   function filterUnits(){const q=el('searchBox').value.trim().toLowerCase(),quick=el('quickFilter').value;let items=state.units.filter(u=>{if(q&&!searchable(u).includes(q))return false;if(quick!=='ALL'&&!reviewMatches(u,quick))return false;if(state.reviewFilters.size&&![...state.reviewFilters].some(k=>reviewMatches(u,k)))return false;if(state.issueFilters.size&&![...state.issueFilters].some(k=>issueFilterMatch(u,k)))return false;return true;});const sort=el('sortSelect').value;if(sort==='STATUS')items=items.slice().sort((a,b)=>decisionFor(a.id).status.localeCompare(decisionFor(b.id).status)||unitIndex(a.id)-unitIndex(b.id));if(sort==='ISSUES')items=items.slice().sort((a,b)=>issuesFor(b.id).length-issuesFor(a.id).length||unitIndex(a.id)-unitIndex(b.id));return items;}
   function metricValue(id,n,total,showPct=true){const root=el(id);root.replaceChildren(document.createTextNode(n.toLocaleString()));if(showPct&&total){const p=node('span',`(${(n*100/total).toFixed(1)}%)`,'metric-pct');root.append(p);}}
   function renderMetrics(){const total=state.units.length,reviewed=state.units.filter(u=>reviewMatches(u,'REVIEWED')).length,withIssues=state.units.filter(u=>reviewMatches(u,'WITH_ISSUES')).length,pending=state.units.filter(u=>reviewMatches(u,'TO_REVIEW')).length;metricValue('metricTotal',total,total,false);metricValue('metricReviewed',reviewed,total);metricValue('metricIssues',withIssues,total);metricValue('metricPending',pending,total);el('countToReview').textContent=pending;el('countReviewed').textContent=reviewed;el('countWithIssues').textContent=withIssues;}
-  function renderIssueFilters(){const root=el('issueFilterList');root.replaceChildren();for(const [key,label,color] of issueFilterDefs){const count=state.units.filter(u=>issueFilterMatch(u,key)).length;if(!count)continue;const row=node('label',undefined,'filter-row'),input=node('input');input.type='checkbox';input.checked=state.issueFilters.has(key);input.addEventListener('change',()=>{input.checked?state.issueFilters.add(key):state.issueFilters.delete(key);state.page=0;renderTable();});const dot=node('span',undefined,'dot '+color),labelNode=node('span',label);labelNode.title=key.endsWith('_GROUP')?label:key;row.append(input,dot,labelNode,node('b',count));root.append(row);}}
+  function renderIssueFilters(){const root=el('issueFilterList');root.replaceChildren();for(const [key,label,color] of issueFilterDefs){const count=state.units.filter(u=>issueFilterMatch(u,key)).length;if(!count)continue;const row=node('label',undefined,'filter-row'),input=node('input');input.type='checkbox';input.checked=state.issueFilters.has(key);input.addEventListener('change',()=>{input.checked?state.issueFilters.add(key):state.issueFilters.delete(key);state.selectedUnits.clear();state.page=0;renderTable();});const dot=node('span',undefined,'dot '+color),labelNode=node('span',label);labelNode.title=key.endsWith('_GROUP')?label:key;row.append(input,dot,labelNode,node('b',count));root.append(row);}}
   function currentPageUnits(){
     const items=filterUnits();
     const maxPage=Math.max(
@@ -289,47 +289,39 @@
     }
 
     try{
-      for(const unitId of ids){
-        const u=state.units.find(
-          x=>x.id===unitId
-        );
-
-        if(!u){
-          continue;
+      const response=await api(
+        '/api/decisions/bulk',
+        {
+          method:'POST',
+          body:JSON.stringify({
+            status,
+            unit_ids:ids
+          })
         }
+      );
 
-        const body={
-          status,
-          reviewer_note:''
-        };
-
-        if(status==='KEEP_CURRENT'){
-          body.approved_target=u.current_target;
-        }
-
-        const saved=await api(
-          `/api/decisions/${encodeURIComponent(unitId)}`,
-          {
-            method:'PUT',
-            body:JSON.stringify(body)
-          }
-        );
+      for(
+        const result
+        of (response.results||[])
+      ){
+        const saved=result.decision;
 
         state.decisions.set(
-          unitId,
-          saved.decision
+          saved.unit_id,
+          saved
         );
 
-        if(saved.recheck_issues){
-          state.issues=state.issues.filter(
-            x=>!(
-              x.unit_id===unitId &&
-              x.kind==='DETERMINISTIC'
-            )
-          );
+        if(result.recheck_issues){
+          state.issues=
+            state.issues.filter(
+              x=>!(
+                x.unit_id===saved.unit_id &&
+                x.kind==='DETERMINISTIC'
+              )
+            );
 
           state.issues.push(
-            ...saved.recheck_issues
+            ...result.recheck_issues
           );
         }
       }
@@ -354,7 +346,7 @@
   async function doExport(){try{const result=await api('/api/export',{method:'POST',body:'{}'});el('gateStatus').textContent=JSON.stringify(result,null,2);if(result.status==='VERIFIED')alert('Export verified: '+result.output.path);}catch(err){alert(err.message);}}
   function moveUnit(delta){if(!state.units.length)return;const idx=unitIndex(state.selected);const next=Math.max(0,Math.min(state.units.length-1,idx+delta));selectUnit(state.units[next].id);}
   async function copyText(id){try{await navigator.clipboard.writeText(el(id).textContent||'');}catch(_){}}
-  function setupControls(){el('themeSelect').addEventListener('change',()=>applyTheme(el('themeSelect').value));for(const s of statusOrder){const o=new Option(statusLabel[s],s);el('decisionSelect').append(o);}el('decisionSelect').addEventListener('change',()=>{const s=el('decisionSelect').value;if(s==='UNREVIEWED')return; if(s==='WAIVED'){el('waiverField').classList.remove('hidden');return;}setDecision(s);});el('searchBox').addEventListener('input',()=>{state.page=0;renderTable();});for(const id of ['quickFilter','sortSelect'])el(id).addEventListener('change',()=>{state.page=0;renderTable();});for(const cb of document.querySelectorAll('[data-review-filter]'))cb.addEventListener('change',()=>{const k=cb.dataset.reviewFilter;cb.checked?state.reviewFilters.add(k):state.reviewFilters.delete(k);state.page=0;renderTable();});el('clearFilters').addEventListener('click',()=>{state.reviewFilters.clear();state.issueFilters.clear();for(const cb of document.querySelectorAll('.filters-panel input[type=checkbox]'))cb.checked=false;el('quickFilter').value='ALL';el('searchBox').value='';state.page=0;renderIssueFilters();renderTable();});el('pagePrev').addEventListener('click',()=>{if(state.page>0){state.page--;renderTable();}});el('pageNext').addEventListener('click',()=>{state.page++;renderTable();});el('unitPrev').addEventListener('click',()=>moveUnit(-1));el('unitNext').addEventListener('click',()=>moveUnit(1));for(const b of document.querySelectorAll('.tabs button'))b.addEventListener('click',()=>setTab(b.dataset.tab));el('editToggle').addEventListener('click',editTarget);el('editAction').addEventListener('click',()=>{if(!state.editing){editTarget();return;}setDecision('USER_EDITED');});el('acceptButton').addEventListener('click',()=>setDecision('ACCEPT_SUGGESTION'));el('keepButton').addEventListener('click',()=>setDecision('KEEP_CURRENT'));el('deferButton').addEventListener('click',()=>setDecision('DEFERRED'));el('blockButton').addEventListener('click',()=>setDecision('BLOCKED'));el('waiveButton').addEventListener('click',()=>{el('waiverField').classList.remove('hidden');el('waiverReason').focus();});el('confirmWaiver').addEventListener('click',()=>setDecision('WAIVED'));for(const b of document.querySelectorAll('[data-copy]'))b.addEventListener('click',()=>copyText(b.dataset.copy));el('exportButton').addEventListener('click',doExport);el('selectPage').addEventListener('change',()=>{for(const u of currentPageUnits()){if(el('selectPage').checked){state.selectedUnits.add(u.id);}else{state.selectedUnits.delete(u.id);}}renderTable();});el('bulkKeep').addEventListener('click',()=>bulkDecision('KEEP_CURRENT'));el('bulkDefer').addEventListener('click',()=>bulkDecision('DEFERRED'));el('bulkClear').addEventListener('click',()=>{state.selectedUnits.clear();renderTable();});}
+  function setupControls(){el('themeSelect').addEventListener('change',()=>applyTheme(el('themeSelect').value));for(const s of statusOrder){const o=new Option(statusLabel[s],s);el('decisionSelect').append(o);}el('decisionSelect').addEventListener('change',()=>{const s=el('decisionSelect').value;if(s==='UNREVIEWED')return; if(s==='WAIVED'){el('waiverField').classList.remove('hidden');return;}setDecision(s);});el('searchBox').addEventListener('input',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const id of ['quickFilter','sortSelect'])el(id).addEventListener('change',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const cb of document.querySelectorAll('[data-review-filter]'))cb.addEventListener('change',()=>{const k=cb.dataset.reviewFilter;cb.checked?state.reviewFilters.add(k):state.reviewFilters.delete(k);state.selectedUnits.clear();state.page=0;renderTable();});el('clearFilters').addEventListener('click',()=>{state.reviewFilters.clear();state.issueFilters.clear();for(const cb of document.querySelectorAll('.filters-panel input[type=checkbox]'))cb.checked=false;el('quickFilter').value='ALL';el('searchBox').value='';state.page=0;renderIssueFilters();renderTable();});el('pagePrev').addEventListener('click',()=>{if(state.page>0){state.selectedUnits.clear();state.page--;renderTable();}});el('pageNext').addEventListener('click',()=>{state.selectedUnits.clear();state.page++;renderTable();});el('unitPrev').addEventListener('click',()=>moveUnit(-1));el('unitNext').addEventListener('click',()=>moveUnit(1));for(const b of document.querySelectorAll('.tabs button'))b.addEventListener('click',()=>setTab(b.dataset.tab));el('editToggle').addEventListener('click',editTarget);el('editAction').addEventListener('click',()=>{if(!state.editing){editTarget();return;}setDecision('USER_EDITED');});el('acceptButton').addEventListener('click',()=>setDecision('ACCEPT_SUGGESTION'));el('keepButton').addEventListener('click',()=>setDecision('KEEP_CURRENT'));el('deferButton').addEventListener('click',()=>setDecision('DEFERRED'));el('blockButton').addEventListener('click',()=>setDecision('BLOCKED'));el('waiveButton').addEventListener('click',()=>{el('waiverField').classList.remove('hidden');el('waiverReason').focus();});el('confirmWaiver').addEventListener('click',()=>setDecision('WAIVED'));for(const b of document.querySelectorAll('[data-copy]'))b.addEventListener('click',()=>copyText(b.dataset.copy));el('exportButton').addEventListener('click',doExport);el('selectPage').addEventListener('change',()=>{for(const u of currentPageUnits()){if(el('selectPage').checked){state.selectedUnits.add(u.id);}else{state.selectedUnits.delete(u.id);}}renderTable();});el('bulkKeep').addEventListener('click',()=>bulkDecision('KEEP_CURRENT'));el('bulkDefer').addEventListener('click',()=>bulkDecision('DEFERRED'));el('bulkClear').addEventListener('click',()=>{state.selectedUnits.clear();renderTable();});}
   function initHeader(){const u=state.units[0]||{},s=languageNames[u.source_language]||u.source_language||'Source',t=languageNames[u.target_language]||u.target_language||'Target';el('documentTitle').textContent=state.session.title||state.session.original.filename||'DBabel Review';el('documentMeta').textContent=`Technical Documentation   |   ${s} → ${t}   |   ${state.session.dbabel_version||'v1.5'}`;el('sourceLanguage').textContent=`(${s})`;el('targetLanguage').textContent=`(${t})`;el('sourceLabel').textContent=`Source (${s})`;el('targetLabel').textContent=`Target (${t})`;}
   async function boot(){initTheme();state.token=tokenFromHash();if(!state.token){document.body.textContent='Missing DBabel session token.';return;}const data=await api('/api/bootstrap');state.session=data.session;state.units=data.units;state.issues=data.issues;state.evidence=data.evidence;for(const d of data.decisions)state.decisions.set(d.unit_id,d);state.exportAvailable=Boolean(data.export_available);state.outputName=data.output_name||null;setupControls();initHeader();renderIssueFilters();renderMetrics();renderTable();if(state.units.length)selectUnit(state.units[0].id);await refreshGate();}
   boot().catch(err=>{document.body.textContent='DBabel Workbench failed: '+err.message;});

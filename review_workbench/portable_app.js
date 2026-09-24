@@ -31,7 +31,7 @@
   function filterUnits(){const q=el('searchBox').value.trim().toLowerCase(),quick=el('quickFilter').value;let items=state.units.filter(u=>{if(q&&!searchable(u).includes(q))return false;if(quick!=='ALL'&&!reviewMatches(u,quick))return false;if(state.reviewFilters.size&&![...state.reviewFilters].some(k=>reviewMatches(u,k)))return false;if(state.issueFilters.size&&![...state.issueFilters].some(k=>issueFilterMatch(u,k)))return false;return true;});const sort=el('sortSelect').value;if(sort==='STATUS')items=items.slice().sort((a,b)=>decisionFor(a.id).status.localeCompare(decisionFor(b.id).status)||unitIndex(a.id)-unitIndex(b.id));if(sort==='ISSUES')items=items.slice().sort((a,b)=>issuesFor(b.id).length-issuesFor(a.id).length||unitIndex(a.id)-unitIndex(b.id));return items;}
   function metricValue(id,n,total,showPct=true){const root=el(id);root.replaceChildren(document.createTextNode(n.toLocaleString()));if(showPct&&total)root.append(node('span',`(${(n*100/total).toFixed(1)}%)`,'metric-pct'));}
   function renderMetrics(){const total=state.units.length,reviewed=state.units.filter(u=>reviewMatches(u,'REVIEWED')).length,withIssues=state.units.filter(u=>reviewMatches(u,'WITH_ISSUES')).length,pending=state.units.filter(u=>reviewMatches(u,'TO_REVIEW')).length;metricValue('metricTotal',total,total,false);metricValue('metricReviewed',reviewed,total);metricValue('metricIssues',withIssues,total);metricValue('metricPending',pending,total);el('countToReview').textContent=pending;el('countReviewed').textContent=reviewed;el('countWithIssues').textContent=withIssues;el('exportHint').textContent=`${reviewed} / ${total} reviewed · portable decisions only`;}
-  function renderIssueFilters(){const root=el('issueFilterList');root.replaceChildren();for(const [key,label,color] of issueFilterDefs){const count=state.units.filter(u=>issueFilterMatch(u,key)).length;if(!count)continue;const row=node('label',undefined,'filter-row'),input=node('input');input.type='checkbox';input.checked=state.issueFilters.has(key);input.addEventListener('change',()=>{input.checked?state.issueFilters.add(key):state.issueFilters.delete(key);state.page=0;renderTable();});const dot=node('span',undefined,'dot '+color),labelNode=node('span',label);labelNode.title=key.endsWith('_GROUP')?label:key;row.append(input,dot,labelNode,node('b',count));root.append(row);}}
+  function renderIssueFilters(){const root=el('issueFilterList');root.replaceChildren();for(const [key,label,color] of issueFilterDefs){const count=state.units.filter(u=>issueFilterMatch(u,key)).length;if(!count)continue;const row=node('label',undefined,'filter-row'),input=node('input');input.type='checkbox';input.checked=state.issueFilters.has(key);input.addEventListener('change',()=>{input.checked?state.issueFilters.add(key):state.issueFilters.delete(key);state.selectedUnits.clear();state.page=0;renderTable();});const dot=node('span',undefined,'dot '+color),labelNode=node('span',label);labelNode.title=key.endsWith('_GROUP')?label:key;row.append(input,dot,labelNode,node('b',count));root.append(row);}}
   function currentPageUnits(){
     const items=filterUnits();
     const maxPage=Math.max(
@@ -312,6 +312,10 @@
       return;
     }
 
+    const staged=new Map(
+      state.decisions
+    );
+
     for(const unitId of ids){
       const u=state.units.find(
         x=>x.id===unitId
@@ -321,34 +325,42 @@
         continue;
       }
 
-      const d=decisionFor(unitId);
+      const previous=decisionFor(unitId);
 
-      d.status=status;
-      d.revision=(d.revision||0)+1;
-      d.updated_at=new Date().toISOString();
-      d.reviewer_note='';
-      d.waived_issue_fingerprints=[];
-      d.recheck={
-        status:'NOT_RUN',
-        error_count:0,
-        warning_count:0,
-        issue_fingerprints:[]
+      const d={
+        ...previous,
+        status,
+        revision:
+          (previous.revision||0)+1,
+        updated_at:
+          new Date().toISOString(),
+        reviewer_note:
+          previous.reviewer_note||'',
+        waived_issue_fingerprints:[],
+        recheck:{
+          status:'NOT_RUN',
+          error_count:0,
+          warning_count:0,
+          issue_fingerprints:[]
+        }
       };
 
       delete d.waiver_reason;
 
       if(status==='KEEP_CURRENT'){
-        d.approved_target=u.current_target;
+        d.approved_target=
+          u.current_target;
       }else{
         delete d.approved_target;
       }
 
-      state.decisions.set(
+      staged.set(
         unitId,
         d
       );
     }
 
+    state.decisions=staged;
     state.selectedUnits.clear();
 
     renderIssueFilters();
@@ -363,6 +375,6 @@
   function download(){const payload={format_version:'1.0',session_id:state.session.session_id,exported_at:new Date().toISOString(),decisions:[...state.decisions.values()]};const body=JSON.stringify(payload,null,2),blob=new Blob([body+'\n'],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=((state.session.title||'dbabel-review').replace(/[^A-Za-z0-9._-]+/g,'_'))+'_decisions.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500);}
   function moveUnit(delta){if(!state.units.length)return;const next=Math.max(0,Math.min(state.units.length-1,unitIndex(state.selected)+delta));selectUnit(state.units[next].id);}
   function initHeader(){const u=state.units[0]||{},s=languageNames[u.source_language]||u.source_language||'Source',t=languageNames[u.target_language]||u.target_language||'Target';el('documentTitle').textContent=state.session.title||state.session.original?.filename||'DBabel Portable Review';el('documentMeta').textContent=`Technical Documentation   |   ${s} → ${t}   |   ${state.session.dbabel_version||'v1.5'}`;el('sourceLanguage').textContent=`(${s})`;el('targetLanguage').textContent=`(${t})`;el('sourceLabel').textContent=`Source (${s})`;el('targetLabel').textContent=`Target (${t})`;}
-  function setup(){el('themeSelect').addEventListener('change',()=>applyTheme(el('themeSelect').value));for(const s of statusOrder)el('decisionSelect').append(new Option(statusLabel[s],s));el('decisionSelect').addEventListener('change',()=>{const s=el('decisionSelect').value;if(s==='UNREVIEWED')return;if(s==='WAIVED'){el('waiverField').classList.remove('hidden');return;}saveDecision(s);});el('searchBox').addEventListener('input',()=>{state.page=0;renderTable();});for(const id of ['quickFilter','sortSelect'])el(id).addEventListener('change',()=>{state.page=0;renderTable();});for(const cb of document.querySelectorAll('[data-review-filter]'))cb.addEventListener('change',()=>{cb.checked?state.reviewFilters.add(cb.dataset.reviewFilter):state.reviewFilters.delete(cb.dataset.reviewFilter);state.page=0;renderTable();});el('clearFilters').addEventListener('click',()=>{state.reviewFilters.clear();state.issueFilters.clear();for(const cb of document.querySelectorAll('.filters-panel input[type=checkbox]'))cb.checked=false;el('quickFilter').value='ALL';el('searchBox').value='';renderIssueFilters();renderTable();});el('pagePrev').addEventListener('click',()=>{if(state.page>0){state.page--;renderTable();}});el('pageNext').addEventListener('click',()=>{state.page++;renderTable();});el('unitPrev').addEventListener('click',()=>moveUnit(-1));el('unitNext').addEventListener('click',()=>moveUnit(1));for(const b of document.querySelectorAll('.tabs button'))b.addEventListener('click',()=>setTab(b.dataset.tab));el('editToggle').addEventListener('click',editTarget);el('editAction').addEventListener('click',()=>{if(!state.editing){editTarget();return;}saveDecision('USER_EDITED');});el('acceptButton').addEventListener('click',()=>saveDecision('ACCEPT_SUGGESTION'));el('keepButton').addEventListener('click',()=>saveDecision('KEEP_CURRENT'));el('deferButton').addEventListener('click',()=>saveDecision('DEFERRED'));el('blockButton').addEventListener('click',()=>saveDecision('BLOCKED'));el('waiveButton').addEventListener('click',()=>{el('waiverField').classList.remove('hidden');el('waiverReason').focus();});el('confirmWaiver').addEventListener('click',()=>saveDecision('WAIVED'));el('exportButton').addEventListener('click',download);el('selectPage').addEventListener('change',()=>{for(const u of currentPageUnits()){if(el('selectPage').checked){state.selectedUnits.add(u.id);}else{state.selectedUnits.delete(u.id);}}renderTable();});el('bulkKeep').addEventListener('click',()=>bulkDecision('KEEP_CURRENT'));el('bulkDefer').addEventListener('click',()=>bulkDecision('DEFERRED'));el('bulkClear').addEventListener('click',()=>{state.selectedUnits.clear();renderTable();});}
+  function setup(){el('themeSelect').addEventListener('change',()=>applyTheme(el('themeSelect').value));for(const s of statusOrder)el('decisionSelect').append(new Option(statusLabel[s],s));el('decisionSelect').addEventListener('change',()=>{const s=el('decisionSelect').value;if(s==='UNREVIEWED')return;if(s==='WAIVED'){el('waiverField').classList.remove('hidden');return;}saveDecision(s);});el('searchBox').addEventListener('input',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const id of ['quickFilter','sortSelect'])el(id).addEventListener('change',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const cb of document.querySelectorAll('[data-review-filter]'))cb.addEventListener('change',()=>{cb.checked?state.reviewFilters.add(cb.dataset.reviewFilter):state.reviewFilters.delete(cb.dataset.reviewFilter);state.selectedUnits.clear();state.page=0;renderTable();});el('clearFilters').addEventListener('click',()=>{state.reviewFilters.clear();state.issueFilters.clear();for(const cb of document.querySelectorAll('.filters-panel input[type=checkbox]'))cb.checked=false;el('quickFilter').value='ALL';el('searchBox').value='';renderIssueFilters();renderTable();});el('pagePrev').addEventListener('click',()=>{if(state.page>0){state.selectedUnits.clear();state.page--;renderTable();}});el('pageNext').addEventListener('click',()=>{state.selectedUnits.clear();state.page++;renderTable();});el('unitPrev').addEventListener('click',()=>moveUnit(-1));el('unitNext').addEventListener('click',()=>moveUnit(1));for(const b of document.querySelectorAll('.tabs button'))b.addEventListener('click',()=>setTab(b.dataset.tab));el('editToggle').addEventListener('click',editTarget);el('editAction').addEventListener('click',()=>{if(!state.editing){editTarget();return;}saveDecision('USER_EDITED');});el('acceptButton').addEventListener('click',()=>saveDecision('ACCEPT_SUGGESTION'));el('keepButton').addEventListener('click',()=>saveDecision('KEEP_CURRENT'));el('deferButton').addEventListener('click',()=>saveDecision('DEFERRED'));el('blockButton').addEventListener('click',()=>saveDecision('BLOCKED'));el('waiveButton').addEventListener('click',()=>{el('waiverField').classList.remove('hidden');el('waiverReason').focus();});el('confirmWaiver').addEventListener('click',()=>saveDecision('WAIVED'));el('exportButton').addEventListener('click',download);el('selectPage').addEventListener('change',()=>{for(const u of currentPageUnits()){if(el('selectPage').checked){state.selectedUnits.add(u.id);}else{state.selectedUnits.delete(u.id);}}renderTable();});el('bulkKeep').addEventListener('click',()=>bulkDecision('KEEP_CURRENT'));el('bulkDefer').addEventListener('click',()=>bulkDecision('DEFERRED'));el('bulkClear').addEventListener('click',()=>{state.selectedUnits.clear();renderTable();});}
   initTheme();setup();initHeader();renderIssueFilters();renderMetrics();renderTable();if(state.units.length)selectUnit(state.units[0].id);
 })();
