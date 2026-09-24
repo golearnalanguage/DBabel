@@ -168,5 +168,39 @@ class VisualContractTests(unittest.TestCase):
         )
 
 
+
+    def test_bulk_selection_has_real_actions(self):
+        desktop_html=(ROOT/'review_workbench/static/index.html').read_text(encoding='utf-8')
+        portable_html=(ROOT/'review_workbench/portable_template.html').read_text(encoding='utf-8')
+        desktop_js=(ROOT/'review_workbench/static/app.js').read_text(encoding='utf-8')
+        portable_js=(ROOT/'review_workbench/portable_app.js').read_text(encoding='utf-8')
+        css=(ROOT/'review_workbench/static/style.css').read_text(encoding='utf-8')
+
+        for content in (desktop_html,portable_html):
+            self.assertIn('id="bulkActions"',content)
+            self.assertIn('id="bulkCount"',content)
+            self.assertIn('id="bulkKeep"',content)
+            self.assertIn('id="bulkDefer"',content)
+            self.assertIn('id="bulkClear"',content)
+            self.assertIn('id="selectPage"',content)
+
+        for code in (desktop_js,portable_js):
+            self.assertIn('selectedUnits:new Set()',code)
+            self.assertIn('function bulkDecision(status)',code)
+            self.assertIn("bulkDecision('KEEP_CURRENT')",code)
+            self.assertIn("bulkDecision('DEFERRED')",code)
+            self.assertIn("el('selectPage').addEventListener",code)
+            self.assertIn('window.confirm',code)
+
+        self.assertIn(
+            'functional bulk-selection controls',
+            css,
+        )
+        self.assertIn(
+            'tr.batch-selected',
+            css,
+        )
+
+
 if __name__=='__main__':
     unittest.main()

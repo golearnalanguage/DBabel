@@ -104,3 +104,68 @@ button,input,select,textarea{font:inherit;color:inherit}button,select,input,text
   color:var(--muted);
   background:var(--surface);
 }
+
+
+/* v1.5 functional bulk-selection controls */
+.bulk-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+}
+
+.bulk-actions[hidden]{
+  display:none;
+}
+
+.bulk-actions strong{
+  color:var(--text-soft);
+  font-size:10.5px;
+  white-space:nowrap;
+}
+
+.bulk-actions button{
+  height:30px;
+  padding:0 8px;
+  border:1px solid var(--line-strong);
+  border-radius:6px;
+  background:var(--surface);
+  color:var(--text-soft);
+  font-size:10.5px;
+  font-weight:650;
+}
+
+.bulk-actions button:hover{
+  border-color:var(--blue);
+  color:var(--blue);
+}
+
+.segment-table tbody tr.batch-selected{
+  box-shadow:
+    inset 3px 0 0 var(--blue);
+}
+
+.segment-table tbody tr.active.batch-selected{
+  box-shadow:
+    inset 3px 0 0 var(--blue),
+    inset 0 0 0 1px
+      color-mix(
+        in srgb,
+        var(--blue) 30%,
+        transparent
+      );
+}
+
+@media (max-width:1160px){
+  .bulk-actions strong{
+    display:none;
+  }
+}
+
+@media (max-width:680px){
+  .bulk-actions{
+    order:10;
+    width:100%;
+    flex-wrap:wrap;
+  }
+}

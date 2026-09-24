@@ -84,6 +84,12 @@
           <select id="quickFilter" aria-label="Segment filter"><option value="ALL">All Segments</option><option value="TO_REVIEW">To Review</option><option value="REVIEWED">Reviewed</option><option value="WITH_ISSUES">With Issues</option></select>
           <div class="pager-buttons"><button id="pagePrev" title="Previous page"><svg><use href="#i-left"></use></svg></button><button id="pageNext" title="Next page"><svg><use href="#i-right"></use></svg></button></div>
           <span id="pageInfo" class="page-info">0–0 of 0</span>
+          <div id="bulkActions" class="bulk-actions" hidden>
+            <strong id="bulkCount">0 selected</strong>
+            <button id="bulkKeep" type="button">Keep Current</button>
+            <button id="bulkDefer" type="button">Defer</button>
+            <button id="bulkClear" type="button">Clear</button>
+          </div>
           <div class="toolbar-spacer"></div>
           <select id="sortSelect"><option value="DOCUMENT">Sort: Document Order</option><option value="STATUS">Sort: Review Status</option><option value="ISSUES">Sort: Issues</option></select>
           <button class="view-button active" title="Table view">▤</button><button class="view-button" disabled title="Compact view is planned">≡</button>
