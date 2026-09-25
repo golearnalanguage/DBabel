@@ -23,7 +23,7 @@ b80dcfb97b1d0116c7da6b349ed16ef6acfaa4f4b2a626117a056f89b08738cd  ./NOTICE
 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b  ./assets/.gitkeep
 35be5ec0434347ce2edcd4ada97e1aafbfc72df2691a8193c2965666d206cccf  ./assets/dbabel-review-workbench-preview.png
 542394a3f0aeeb5619ed9261dbbe13be8cbab9d187acdeadd9af044e84040043  ./assets/dbabel-social-preview.png
-55e82b62bdf1418e6e5a7fc38d344a8a262bb0a2dd2cd5fc4133356003313a49  ./assets/platform-support.svg
+ef8b030887277908f878f69552edc6e68a6ed64dc34eae6408bf9e328de4f6e0  ./assets/platform-support.svg
 be77314fe361db2e9cc86ebd67dc810b9aa05a959cf8ea97432189b681bc42e1  ./config/deterministic_qa.yaml
 0ad040c1381e82bdd8340d0ae34e4db50209bd074b36280dad30e78f411a5157  ./config/example_router.yaml
 5a278c4a957d3ae23be6c1995cfbb35aac01b0fc08164db69ae02c50b0a9dfee  ./config/file_policy.yaml

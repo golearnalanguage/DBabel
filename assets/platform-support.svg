@@ -24,42 +24,29 @@
 
   <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
     <g id="platform-macos" transform="translate(16 14)">
-      <rect width="36" height="36" rx="10" fill="url(#mac-card)"/>
-      <path fill="#f6f8ff" d="M19.665 3.32c-.734.04-1.6.514-2.123 1.092-.48.532-.882 1.322-.737 2.105.808.06 1.633-.404 2.13-.99.47-.556.827-1.34.73-2.207zM22.734 12.11c-.03-2.6 2.12-3.86 2.215-3.92-1.21-1.77-3.1-2.01-3.76-2.03-1.57-.16-3.09.92-3.89.92-.82 0-2.08-.9-3.4-.88-1.74.03-3.35 1.02-4.25 2.55-1.85 3.14-.47 7.77 1.3 10.3.87 1.24 1.9 2.63 3.25 2.58 1.3-.05 1.8-.83 3.38-.83 1.57 0 2.02.83 3.38.8 1.4-.02 2.28-1.24 3.12-2.5.99-1.44 1.4-2.84 1.43-2.91-.03-.01-2.75-1.05-2.78-4.08z" transform="translate(.2 5) scale(1.08)"/>
-      <text x="48" y="16" fill="#f6f8ff" font-size="13" font-weight="700">macOS</text>
-      <text x="48" y="31" fill="#9eabc3" font-size="10.5">desktop</text>
+      <rect width="120" height="36" rx="10" fill="url(#mac-card)"/>
+      <text x="60" y="16" text-anchor="middle" fill="#f6f8ff" font-size="13" font-weight="700">macOS</text>
+      <text x="60" y="31" text-anchor="middle" fill="#9eabc3" font-size="10.5">desktop</text>
     </g>
 
-    <path d="M157 14v36" stroke="#384057"/>
+    <path d="M151 14v36" stroke="#384057"/>
 
-    <g id="platform-windows" transform="translate(174 14)">
-      <rect width="36" height="36" rx="10" fill="url(#windows-card)"/>
-      <path fill="#72b7ff" d="m6 10.5 12-1.7v10.9H6V10.5Zm14-2 14-2v13.2H20V8.5ZM6 21.7h12v10.8L6 30.8V21.7Zm14 0h14v12.9l-14-1.9V21.7Z" transform="translate(-2 -2.5)"/>
-      <text x="48" y="16" fill="#f6f8ff" font-size="13" font-weight="700">Windows</text>
-      <text x="48" y="31" fill="#9eabc3" font-size="10.5">desktop</text>
+    <g id="platform-windows" transform="translate(164 14)">
+      <rect width="138" height="36" rx="10" fill="url(#windows-card)"/>
+      <text x="69" y="16" text-anchor="middle" fill="#72b7ff" font-size="13" font-weight="700">Windows</text>
+      <text x="69" y="31" text-anchor="middle" fill="#9eabc3" font-size="10.5">desktop</text>
     </g>
 
-    <path d="M315 14v36" stroke="#384057"/>
+    <path d="M317 14v36" stroke="#384057"/>
 
-    <g id="platform-linux" transform="translate(332 14)">
-      <rect width="36" height="36" rx="10" fill="url(#linux-card)"/>
-      <g transform="translate(0 -2.5)">
-        <path fill="#101827" d="M10.8 20.8c-3.2-.9-5.8-3.3-7-1.5-1.3 2 .8 5.9 4.4 7.3 1.3.5 2.7.5 4-.1l1.1-3.4-2.5-2.3zm14.4 0c3.2-.9 5.8-3.3 7-1.5 1.3 2-.8 5.9-4.4 7.3-1.3.5-2.7.5-4-.1l-1.1-3.4 2.5-2.3z"/>
-        <ellipse cx="18" cy="24.1" rx="9.6" ry="9.8" fill="#101827"/>
-        <ellipse cx="18" cy="24.3" rx="7.2" ry="8.2" fill="#f6f8ff"/>
-        <circle cx="18" cy="13.1" r="7.6" fill="#101827"/>
-        <path fill="#f6f8ff" d="M11.1 12.6c.4-3.3 2.6-5.5 5.2-5.5 1.1 0 1.7.5 1.7 1.3 0-.8.6-1.3 1.7-1.3 2.6 0 4.8 2.2 5.2 5.5-1.2 2.7-3.5 4.1-6.9 4.1s-5.7-1.4-6.9-4.1z"/>
-        <circle cx="14.8" cy="12.6" r="1.15" fill="#101827"/>
-        <circle cx="21.2" cy="12.6" r="1.15" fill="#101827"/>
-        <path fill="#f2a64c" d="m15.2 14.7 2.8 2.2 2.8-2.2-2.8-.7-2.8.7z"/>
-        <path fill="#f2a64c" d="M12.1 32.3c-2.1.2-3.7 1.4-4.6 2.8 1.8.9 4.8.9 6.7-.2l.8-1.5-2.9-1.1zm11.8 0-2.9 1.1.8 1.5c1.9 1.1 4.9 1.1 6.7.2-.9-1.4-2.5-2.6-4.6-2.8z"/>
-      </g>
-      <text x="48" y="16" fill="#f6f8ff" font-size="13" font-weight="700">Linux</text>
-      <text x="48" y="31" fill="#9eabc3" font-size="10.5">desktop</text>
+    <g id="platform-linux" transform="translate(330 14)">
+      <rect width="120" height="36" rx="10" fill="url(#linux-card)"/>
+      <text x="60" y="16" text-anchor="middle" fill="#f2a64c" font-size="13" font-weight="700">Linux</text>
+      <text x="60" y="31" text-anchor="middle" fill="#b9a98d" font-size="10.5">desktop</text>
     </g>
 
-    <path d="M473 14v36" stroke="#384057"/>
-    <g transform="translate(492 0)">
+    <path d="M465 14v36" stroke="#384057"/>
+    <g transform="translate(485 0)">
       <text x="0" y="27" fill="#d7deed" font-size="12.5" font-weight="650">Python 3.9+</text>
       <text x="0" y="43" fill="#8e9bb5" font-size="10.5">local review workbench</text>
     </g>
