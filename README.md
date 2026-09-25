@@ -7,7 +7,7 @@
 # DBabel
 
 <p align="center">
-  <a href="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml"><img alt="CI" src="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml/badge.svg?branch=main&event=push"></a>
+  <a href="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml"><img alt="Validate DBabel" src="https://img.shields.io/github/actions/workflow/status/golearnalanguage/DBabel/validate.yml?branch=main&amp;label=Validate%20DBabel&amp;logo=github"></a>
   <a href="https://github.com/golearnalanguage/DBabel/releases"><img alt="Release" src="https://img.shields.io/github/v/release/golearnalanguage/DBabel?display_name=tag&sort=semver"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.9%20%7C%203.11-3776AB?logo=python&logoColor=white">
@@ -21,7 +21,7 @@ DBabel provides the workflow and tools. You supply the documents, project glossa
 
 [中文说明](README.zh-CN.md) · [Workflow guide](docs/WORKFLOW_GUIDE.zh-CN.md) · [Agent entry point](SKILL.md) · [Case index](examples/technical_translation_review_examples.zh-CN.md)
 
-<p align="center"><img src="assets/platform-support.svg" alt="macOS, Windows and Linux; Python 3.9 or later" width="480"></p>
+<p align="center"><img src="assets/platform-support.svg" alt="macOS, Windows and Linux; Python 3.9 or later" width="640"></p>
 
 ## Review Workbench
 

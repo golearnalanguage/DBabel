@@ -8,7 +8,7 @@ DBabel 帮助团队按产品、版本和上下文核对技术译文。Agent 准�
 
 [English](README.md) · [工作流导航](docs/WORKFLOW_GUIDE.zh-CN.md) · [Agent 入口](SKILL.md) · [案例索引](examples/technical_translation_review_examples.zh-CN.md)
 
-<p align="center"><img src="assets/platform-support.svg" alt="支持 macOS、Windows 和 Linux；需要 Python 3.9 或更高版本" width="480"></p>
+<p align="center"><img src="assets/platform-support.svg" alt="支持 macOS、Windows 和 Linux；需要 Python 3.9 或更高版本" width="640"></p>
 
 ## 审核工作台
 
