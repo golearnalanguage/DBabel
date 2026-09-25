@@ -591,3 +591,7 @@ vendor task.
 DBabel adapts these ideas to evidence-driven database terminology review,
 structured technical documents, protected technical literals, and explicit
 human approval.
+
+## Human-edit follow-up
+
+After reviewer edits, use the bounded handoff in `docs/POST_REVIEW_QA.md` to inspect spelling, word misuse and omissions against the current source and target. The techniques above remain diagnostic guidance. Return new suggestions to human review; do not reuse an earlier QA result after the target changes.

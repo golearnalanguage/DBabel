@@ -97,18 +97,6 @@ class VisualContractTests(unittest.TestCase):
         self.assertIn('"/dbabel-workbench-logo.png": "dbabel-workbench-logo.png"',server)
         self.assertIn('allowed = {',server)
 
-    def test_brand_identity_is_clay_and_not_fake_window_chrome(self):
-        desktop=(ROOT/'review_workbench'/'static'/'index.html').read_text(encoding='utf-8')
-        portable=(ROOT/'review_workbench'/'portable_template.html').read_text(encoding='utf-8')
-        for text in (desktop, portable):
-            self.assertIn('<span class="avatar">CL</span><strong>clay</strong>', text)
-            self.assertNotIn('Jane Doe', text)
-            self.assertNotIn('Local Reviewer', text)
-            self.assertNotIn('Portable Reviewer', text)
-            self.assertNotIn('window-control', text)
-            self.assertNotIn('maximize', text.lower())
-            self.assertNotIn('minimize', text.lower())
-
     def test_logo_has_transparent_background_for_surface_blending(self):
         try:
             from PIL import Image
@@ -118,56 +106,6 @@ class VisualContractTests(unittest.TestCase):
         alpha=list(logo.getchannel('A').getdata())
         self.assertIn(0, alpha)
         self.assertIn(255, alpha)
-
-    def test_v6_visual_template_is_documented(self):
-        doc=(ROOT/'docs'/'REVIEW_WORKBENCH.md').read_text(encoding='utf-8')
-        self.assertIn('### V6 brand-shell refinement', doc)
-        self.assertIn('transparent DBabel brand lockup', doc)
-        self.assertIn('fake operating-system window chrome', doc)
-        self.assertIn('`clay`', doc)
-
-
-    def test_unimplemented_controls_are_explicitly_disabled(self):
-        desktop=(ROOT/'review_workbench/static/index.html').read_text(encoding='utf-8')
-        portable=(ROOT/'review_workbench/portable_template.html').read_text(encoding='utf-8')
-        css=(ROOT/'review_workbench/static/style.css').read_text(encoding='utf-8')
-
-        for content in (desktop,portable):
-            self.assertEqual(
-                content.count('title="Planned Workbench view"'),
-                5,
-            )
-            self.assertEqual(
-                content.count('class="nav-soon">Soon</small>'),
-                5,
-            )
-            self.assertEqual(
-                content.count('title="Planned filter"'),
-                3,
-            )
-            self.assertIn(
-                'title="Use Review Status above"',
-                content,
-            )
-            self.assertIn(
-                'disabled title="Compact view is planned"',
-                content,
-            )
-
-        self.assertIn(
-            'explicit capability-state controls',
-            css,
-        )
-        self.assertIn(
-            '.nav-item:disabled',
-            css,
-        )
-        self.assertIn(
-            '.filter-collapsed:disabled',
-            css,
-        )
-
-
 
     def test_bulk_selection_has_real_actions(self):
         desktop_html=(ROOT/'review_workbench/static/index.html').read_text(encoding='utf-8')
@@ -200,48 +138,6 @@ class VisualContractTests(unittest.TestCase):
             'tr.batch-selected',
             css,
         )
-
-
-    def test_remaining_controls_are_explicit_and_portable_copy_is_wired(self):
-        desktop_html=(
-            ROOT/'review_workbench/static/index.html'
-        ).read_text(encoding='utf-8')
-
-        portable_html=(
-            ROOT/'review_workbench/portable_template.html'
-        ).read_text(encoding='utf-8')
-
-        portable_js=(
-            ROOT/'review_workbench/portable_app.js'
-        ).read_text(encoding='utf-8')
-
-        for content in (
-            desktop_html,
-            portable_html,
-        ):
-            self.assertIn(
-                'class="icon-only" disabled '
-                'title="Notifications are not available in v1.5"',
-                content,
-            )
-
-            self.assertIn(
-                'class="close-inspector" disabled '
-                'title="Inspector remains open in v1.5"',
-                content,
-            )
-
-        self.assertIn(
-            'async function copyText(id)',
-            portable_js,
-        )
-
-        self.assertIn(
-            "document.querySelectorAll('[data-copy]')",
-            portable_js,
-        )
-
-
 
 
     def test_technique_reasoning_is_visible_but_not_a_decision(self):

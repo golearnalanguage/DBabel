@@ -34,7 +34,7 @@ vendor, product, version, domain, or text-role scope by inference.
 
 ## Canonical entry behavior
 
-DBabel v1.4 uses the JSON project glossary as the canonical machine-readable form.
+DBabel uses the JSON project glossary as the canonical machine-readable form.
 CSV is an import/export convenience format and must resolve to the same entry model.
 
 Each entry records:
@@ -70,7 +70,7 @@ Default matching is conservative:
 - case-sensitive unless the entry explicitly says otherwise;
 - Unicode normalization may standardize representation but must not be used to
   invent semantic equivalence;
-- substring matching is intentionally not a v1.4 default because it creates false
+- substring matching is intentionally not a default because it creates false
   positives inside identifiers and unrelated words.
 
 For a scoped entry, missing product/version/text-role context makes the entry
@@ -96,7 +96,7 @@ that claim.
 
 The internal model is designed to remain mappable to established terminology
 concepts, including concept/designation-oriented terminology work and TBX-style
-terminology resources. DBabel v1.4 does not claim full TBX compatibility and does
+terminology resources. DBabel does not claim full TBX compatibility and does
 not import or export arbitrary TBX dialects.
 
 Future TBX/TMX/XLIFF adapters must preserve scope, approval state, text role,

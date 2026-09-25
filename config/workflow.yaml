@@ -18,6 +18,9 @@ states:
   - TRANSLATION
   - DETERMINISTIC_QA
   - QA
+  - HUMAN_REVIEW
+  - POST_HUMAN_REVIEW
+  - EXPORT_GATE
   - REPAIR
   - ROUND_TRIP_QA
   - PROJECT_GLOSSARY_CANDIDATE
@@ -45,6 +48,9 @@ conditions:
   SOURCE_RESEARCH: unresolved_or_requested_and_permitted
   TRANSLATION: translation_requested
   DETERMINISTIC_QA: aligned_bilingual_units_available
+  HUMAN_REVIEW: proposed_changes_require_approval
+  POST_HUMAN_REVIEW: human_edits_need_language_recheck
+  EXPORT_GATE: final_or_checkpoint_native_export_requested
   REPAIR: authorized_and_high_confidence_evidenced_replacement
   ROUND_TRIP_QA: repair_attempted
   PROJECT_GLOSSARY_CANDIDATE: project_governance_requested
@@ -54,6 +60,9 @@ feedback:
   material_state_change: RESOURCE_ROUTING
   deterministic_qa_issue: CONTEXT_or_ADJUDICATION_or_QA
   terminology_qa_failure: CONTEXT_or_EVIDENCE_ASSESSMENT
+  post_human_suggestion: HUMAN_REVIEW
+  human_target_changed: DETERMINISTIC_QA_and_POST_HUMAN_REVIEW
+  checkpoint_pending_scope: HUMAN_REVIEW
   repair_qa_failure: REPAIR_or_FAILED
 terminal_statuses:
   - COMPLETED

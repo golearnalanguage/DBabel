@@ -15,6 +15,7 @@ if str(HERE) not in sys.path:
 
 from docx_review_adapter import (
     DocxExportError,
+    _anchor_identity,
     apply_reviewed_docx,
     round_trip_verify,
     verify_non_target_text_unchanged,
@@ -38,6 +39,7 @@ def export_bundle(
     glossary: Optional[Path] = None,
     receipt_path: Optional[Path] = None,
     qa_runner=None,
+    export_mode: str = "FINAL",
 ) -> Dict[str, Any]:
     data = load_bundle(bundle)
     updated_decisions, qa_by_unit = fresh_recheck_all(
@@ -45,7 +47,7 @@ def export_bundle(
     )
     save_decisions(data["bundle"], updated_decisions)
     data = load_bundle(bundle)
-    gate = evaluate_export_gate(data, fresh_qa_by_unit=qa_by_unit, original_path=original)
+    gate = evaluate_export_gate(data, fresh_qa_by_unit=qa_by_unit, original_path=original, export_mode=export_mode)
 
     if gate["status"] != "AUTHORIZED":
         if receipt_path:
@@ -75,16 +77,29 @@ def export_bundle(
 
     try:
         decisions_by_id = data["decisions_by_id"]
+        export_units = data["units"]
+        if export_mode == "CHECKPOINT":
+            included = set(gate["review_scope"]["included_unit_ids"])
+            export_units = [unit for unit in export_units if unit["id"] in included]
+            omitted_anchors = {
+                _anchor_identity(anchor) for uid, anchor in data["anchors"].items()
+                if uid not in included and anchor.get("status") == "RESOLVED"
+            }
+            for unit in export_units:
+                anchor = data["anchors"].get(unit["id"])
+                changed_target = decisions_by_id[unit["id"]].get("approved_target") != unit["current_target"]
+                if changed_target and anchor and anchor.get("status") == "RESOLVED" and _anchor_identity(anchor) in omitted_anchors:
+                    raise DocxExportError("checkpoint change overlaps an unreviewed paragraph")
         changed = apply_reviewed_docx(
             original,
             output,
-            data["units"],
+            export_units,
             decisions_by_id,
             data["anchors"],
         )
         checks = round_trip_verify(
             output,
-            data["units"],
+            export_units,
             decisions_by_id,
             data["anchors"],
         )
@@ -94,7 +109,7 @@ def export_bundle(
                 output,
                 data["anchors"],
                 decisions_by_id,
-                data["units"],
+                export_units,
             )
         )
         gate["status"] = "VERIFIED"
@@ -128,6 +143,7 @@ def main() -> int:
     parser.add_argument("--output", required=True, help="New reviewed DOCX path; original is never overwritten")
     parser.add_argument("--glossary")
     parser.add_argument("--receipt")
+    parser.add_argument("--export-mode", choices=["FINAL", "CHECKPOINT"], default="FINAL")
     args = parser.parse_args()
 
     receipt = export_bundle(
@@ -137,6 +153,7 @@ def main() -> int:
         Path(args.output).resolve(),
         Path(args.glossary).resolve() if args.glossary else None,
         Path(args.receipt).resolve() if args.receipt else None,
+        export_mode=args.export_mode,
     )
     print(json.dumps(receipt, ensure_ascii=False, indent=2))
     if receipt["status"] == "VERIFIED":

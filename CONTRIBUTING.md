@@ -26,3 +26,13 @@ After intentional edits, regenerate checksums with
 `python scripts/check_package.py --write-manifest` and re-run validation.
 For workflow changes, also exercise a relevant case from
 [behavioral evaluation](tests/BEHAVIORAL_EVAL.md) and record the observed result.
+
+## Documentation changes
+
+Write around the current DBabel task and observed behavior. Distinguish implemented capabilities, optional runtime support, unreleased changes and future work. Keep historical release notes factual. Avoid duplicating installation, export and evidence rules across documents; link to their owning guide. Use `FINAL` and `CHECKPOINT` consistently and distinguish deterministic QA, Agent suggestions and human approval.
+
+Keep each diagnostic case in its own category file and update the example router. Run `python scripts/check_documentation.py` and relevant functional regressions when changing workflows.
+
+## Browser interaction regression
+
+`tests/workbench_browser_smoke.cjs` exercises desktop and portable decisions, themes, filters, notes, QA and downloads using Playwright. Use a temporary copy of the synthetic demo bundle: the test changes its decisions. Build a portable HTML from that copy, start a local workbench for the copy, then supply `DBABEL_TEST_URL` (including its session token) and `DBABEL_TEST_PORTABLE` (absolute file path). Run `node tests/workbench_browser_smoke.cjs` in an environment with Playwright available. `DBABEL_CHROME` optionally selects an installed browser executable. Playwright is not a core runtime dependency.

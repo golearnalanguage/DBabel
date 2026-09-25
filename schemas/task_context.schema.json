@@ -179,7 +179,8 @@
           "pdf_reading_order",
           "merged_table_formula",
           "diagram_role_swap",
-          "html_attribute_binding"
+          "html_attribute_binding",
+          "post_human_edit"
         ]
       },
       "uniqueItems": true

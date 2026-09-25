@@ -210,6 +210,14 @@ def cross_contract_errors(root=ROOT):
     if set(route_ids) != set(heading_ids):
         errors.append('config/example_router.yaml: route IDs do not match worked-example sections')
 
+    for route in example_router.get('routes', []):
+        path = route.get('path', '')
+        case = root / path
+        if not path.startswith('examples/cases/') or not case.is_file():
+            errors.append('example route missing independent case: ' + str(route.get('id')))
+        elif not case.read_text(encoding='utf-8').startswith('# ' + route['id'] + ' '):
+            errors.append('example route/case ID mismatch: ' + path)
+
     # Resource router paths and example-route IDs must resolve.
     resource_router = _read_yaml(root / 'config/resource_router.yaml')
     for rel in sorted(set(_routed_paths(resource_router))):

@@ -5,7 +5,7 @@ adapters, policies, templates, and synthetic tests, not a vendor terminology cor
 
 ## v1.4 — Accuracy and runtime control
 
-The v1.4 development line adds:
+Implemented in the v1.4 line:
 
 - progressive resource routing so agents load only task-relevant instructions;
 - validated task-context and resource-plan contracts;
@@ -22,7 +22,7 @@ The v1.4 development line adds:
 
 ## v1.5 — Review Workbench
 
-The v1.5 development line adds:
+Implemented in the v1.5 line:
 
 - a local human-in-the-loop bilingual Review Workbench;
 - `.dbreview` Review Session contracts for units, issues, evidence, decisions,
@@ -34,8 +34,12 @@ The v1.5 development line adds:
   non-destructive output, and round-trip verification;
 - explicit review-only versus native-export launch modes.
 
-Further hardening remains focused on richer alignment, stronger stable anchors,
-additional native-format adapters, and productized bulk-review interactions.
+Current working-tree refinements add explicit bulk keep/defer, independently routed
+cases, checkpoint DOCX delivery, session views and a post-human Agent review handoff.
+These changes are unreleased until a validated release is created.
+
+Further work includes richer alignment, additional native-format adapters and
+semantic review integrations. The current handoff does not invoke an LLM.
 
 ## Next optional adapters
 

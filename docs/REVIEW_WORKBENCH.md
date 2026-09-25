@@ -1,4 +1,4 @@
-# DBabel Review Workbench — v1.5 release contract
+# DBabel Review Workbench
 
 Current DBabel Skill/package version: **1.5.0**.
 
@@ -16,12 +16,12 @@ native-format repair. It is intentionally not a full CAT platform.
 - A DBabel suggestion is not user approval.
 - `POTENTIAL_ISSUE` remains a deterministic QA classification, not a semantic error verdict.
 - `USER_EDITED` content is rechecked before export.
-- `UNREVIEWED`, `DEFERRED`, and `BLOCKED` units prevent export.
+- `UNREVIEWED`, `DEFERRED`, and `BLOCKED` units prevent final export; checkpoint export preserves their original content and lists them as pending.
 - A remaining deterministic `ERROR` prevents export unless the user explicitly chooses
   `WAIVED`, records a non-empty reason, and the waiver matches the current stable issue
   fingerprint.
 - The original document SHA-256 must still match the review session before native export.
-- Native export requires every review unit to have `ALIGNED` bilingual alignment.
+- Native export requires every included review unit to have `ALIGNED` bilingual alignment.
   `AMBIGUOUS`, `SPLIT`, `MERGED`, and `UNALIGNED` units remain reviewable but
   block native write-back until a dedicated alignment/write-back path exists.
 - The original document is never overwritten.
@@ -77,7 +77,7 @@ The extractor records `alignment_id`, `source_refs`, and `target_refs` in review
 units so the mapping remains auditable after `.dbreview` creation.
 
 Only `ALIGNED` units can participate in native DOCX write-back. Other alignment
-states remain reviewable but continue to block native export.
+states remain reviewable but cannot be included in native write-back.
 
 ## Desktop workflow
 
@@ -127,7 +127,7 @@ python scripts/export_reviewed_document.py translated.dbreview \
   --receipt export-receipt.json
 ```
 
-DOCM/PPTX/XLSX/PDF native repair is not claimed by this development slice.
+DOCM/PPTX/XLSX/PDF native repair is not claimed by the current native adapter.
 
 For DOCX, ordinary paragraph text inside tables, hyperlinks, and content
 controls is extractable and covered by regression tests. Paragraphs containing
@@ -135,67 +135,13 @@ Word field codes or tracked revisions remain reviewable, but native write-back
 is blocked because editing their displayed `w:t` text can invalidate Word's
 field/revision semantics.
 
-## Visual contract
+## Workspace behavior and appearance
 
-The desktop Workbench has a fixed review-oriented shell derived from the DBabel brand
-lockup and the approved Review Workbench visual reference in
-`assets/dbabel-review-workbench-preview.png`.
+Desktop and Portable Review share local CSS and the same session views. Navigation opens review, terminology findings, linked evidence, QA, reports and project settings. Activity shows recorded decisions and notes. Terminology is a session overview, not a project glossary editor; settings show session metadata and local display preferences.
 
-The visual hierarchy is part of the product contract, not a decorative mockup:
+Use status, issue, location and tag filters to narrow the table. Select one page or all matching units before an explicit bulk Keep Current / Defer decision. Compact mode changes row spacing while preserving complete sentence text. Close the inspector to widen the table; select a row to reopen it.
 
-- the DBabel handwritten wordmark, Tower of Babel, `REVIEW WORKBENCH`, and
-  `DATABASE TERMINOLOGY AUDIT` lockup stays at the upper-left;
-- the left rail owns navigation and persistent review filters;
-- the document identity/search area stays above the review surface;
-- Total Segments, Reviewed, With Issues, and To Review counters remain visible before
-  the bilingual grid;
-- the center pane is a bilingual segment table with Source, Target, Status, and Issues;
-- the right inspector owns the selected segment, suggestion, evidence, terminology/QA
-  labels, human decision controls, notes, and export-gate state;
-- `Accept Suggestion` is the primary action; `Keep Current`, `Edit`, `Defer`, `Block`,
-  and `Waive` remain distinct human decisions rather than aliases;
-- Export remains visibly locked until the export contract authorizes it.
-
-The implementation uses local HTML/CSS/JavaScript and local image assets only. No CDN,
-remote font, remote script, or remote image is required at runtime. The portable HTML
-uses the same brand lockup and review hierarchy but collapses the left rail on narrow
-screens.
-
-## Appearance contract
-
-The Workbench exposes **Light / Dark / System** appearance modes. `System` follows `prefers-color-scheme`; the selected preference is persisted locally. Long issue labels must wrap or expose their full text rather than being silently clipped. Desktop layout keeps the bilingual segment grid dominant while reserving a persistent inspector on the right; responsive layouts stack the inspector below the grid.
-
-### V5 reference-layout refinement
-
-The desktop and portable reviewers now share the same CSS layout contract. At a
-reference desktop viewport around 1600×900, the intended composition is approximately
-15% navigation/filter rail, 55% bilingual segment workspace, and 30% selected-segment
-inspector. Typography and row density are sized so roughly eight review rows remain
-visually readable without shrinking technical text.
-
-Long machine check identifiers are not truncated. The UI may display a concise alias
-such as `NUMBER_UNIT`, `PLACEHOLDER`, or `ENV_VAR` while retaining the complete
-machine identifier in the underlying review data and the element tooltip. This is a
-presentation rule only and never rewrites QA semantics.
-
-The Suggested Translation tab includes a linked-evidence preview when evidence is
-available, matching the evidence-first human-review flow. The full Evidence tab remains
-available for all linked records.
-
-### V6 brand-shell refinement
-
-The approved shell is now treated as a repository-level visual template rather than a
-one-off illustration. The Workbench uses a transparent DBabel brand lockup so the tower,
-handwritten wordmark, `REVIEW WORKBENCH`, and subtitle visually merge with the rail/header
-surface instead of sitting on a white image rectangle. The application UI must not draw
-fake operating-system window chrome (minimize, maximize, or close controls); those belong
-to the host browser/desktop, not DBabel.
-
-Reference/demo reviewer identity is `clay` with the `CL` avatar. Runtime implementations
-may later source reviewer identity from an explicit user/session setting, but the review
-contract must never infer or overwrite decision authorship silently. The README preview
-uses the approved Workbench template with `clay` and no simulated OS title-bar controls.
-
+System / Dark / Light follow the selected browser preference. The glass shell uses restrained borders and semantic status colors; the review text stays fully readable. Small screens retain navigation and stack the inspector below the table. Assets, scripts and styles load locally. No fabricated account identity or operating-system controls are displayed.
 
 ## Technique-aware review findings
 
@@ -210,3 +156,16 @@ authorize repair.
 
 Human decisions remain `UNREVIEWED`, `ACCEPT_SUGGESTION`, `KEEP_CURRENT`,
 `USER_EDITED`, `DEFERRED`, `BLOCKED`, and `WAIVED`.
+
+## Staged delivery and language review
+
+The desktop and portable workbenches provide session-backed Terminology, Evidence, Quality Check, Reports, Project Settings and Activity views. Location/tag filters, selectable page size, compact rows and inspector close/reopen work locally. Terminology shows session findings and labels, not a glossary editor. Project settings expose session metadata and local display preferences.
+
+Desktop export accepts `FINAL` (default) or `CHECKPOINT`. A checkpoint applies completed human decisions only, preserves unresolved content and lists omitted unit IDs in `review_scope`. ERRORs in the included scope, original hash mismatch and invalid anchors still block. No pending decision becomes approved. Both modes use a new output path; existing output files are never overwritten. The Workbench numbers checkpoint copies and their receipts automatically. The CLI requires a new output filename for each export; final export retains the configured output path.
+
+```bash
+python scripts/export_reviewed_document.py project.dbreview --original target.docx --output checkpoint-01.docx --export-mode CHECKPOINT --receipt checkpoint-01.json
+python scripts/build_post_review_report.py project.dbreview --output post-review.json
+```
+
+Reports are available without finishing all reviews. Follow [post-review QA](POST_REVIEW_QA.md) for spelling and word-use suggestions after human edits. This creates an Agent handoff, not an automatic AI review service. Portable review still exports decisions for import and fresh local QA.

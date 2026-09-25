@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — review workflow refinement
+
+- Split 18 worked examples into individually routed files.
+- Add checkpoint DOCX delivery without fabricating approval of pending units.
+- Add post-human Agent review handoffs with decision revisions and target hashes.
+- Implement session navigation, reports, scope filters and density controls in desktop and portable review.
+- Refine glass workspace, readable full segment text and Chinese README paragraphs.
+
 ## Unreleased
 
 - Added a Translation Review Intake orchestration contract that composes surface extraction, signal contrasts, technique candidate routing, and phase-aware deterministic QA without creating semantic findings or approval.

@@ -25,8 +25,8 @@ packages and native/external runtimes are capabilities, not assumptions.
 
 ## RESOURCE_ROUTING
 
-Build the resource plan and load only `load_now` plus explicitly routed worked
-example sections. Do not load all references as a precaution.
+Build the resource plan and load only `load_now`, including the independent
+case paths listed in `example_files`. Do not load all references as a precaution.
 
 ## INGEST
 
@@ -111,3 +111,9 @@ state change             -> RESOURCE_ROUTING
 Return findings, coverage, evidence, QA actually performed, repair outcomes,
 limitations, and next actions only after every requested operation has a reported
 outcome. Use the completion statuses defined in `SKILL.md`.
+
+## HUMAN_REVIEW / POST_HUMAN_REVIEW
+
+Before approval-required native write-back, record explicit human decisions in the Workbench. After human edits, load `docs/POST_REVIEW_QA.md` and create an Agent handoff with `scripts/build_post_review_report.py`. Review typos and word misuse against the current text revision. Return suggestions to the human; changes return to deterministic and semantic QA.
+
+A checkpoint applies reviewed changes while preserving pending content and reports incomplete review scope. Final release requires the full gate. A successful checkpoint must not be reported as a completed review of the whole document.

@@ -25,3 +25,10 @@
 - Completion status:
 - Limitations:
 - Items requiring review and next actions:
+
+## Review delivery (when applicable)
+- Export mode: FINAL / CHECKPOINT
+- Reviewed unit IDs and pending scope:
+- Agent language-review status and inspected revisions:
+- Suggestions awaiting renewed human confirmation:
+- Export receipt and output identity:

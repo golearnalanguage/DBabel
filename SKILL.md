@@ -79,8 +79,8 @@ required content were successfully ingested.
 ### 3. Route instructions
 
 Load `config/resource_router.yaml`, build the validated resource plan, and load only
-the paths in `load_now`. Load only the worked-example sections listed in
-`example_sections`. Do not perform a precautionary full-reference sweep.
+the paths in `load_now`. Load only the independent worked-example files listed in
+`example_files` (their stable IDs remain in `example_sections`). Do not perform a precautionary full-reference sweep.
 
 Re-route when material state changes, including completion of source/target
 alignment, discovery of a technical claim, failure of an approved source to resolve
@@ -184,3 +184,9 @@ Finish with one status:
 
 Detailed rules are loaded progressively through the resource router. If repository
 instructions conflict, this kernel is authoritative for DBabel workflow behavior.
+
+## Bounded delivery and post-human review
+
+For large reviews, an explicitly selected `CHECKPOINT` export applies only completed human decisions; it does not approve pending units. Report the included and unreviewed scope from the receipt. A checkpoint is not a final release. `FINAL` remains the default full-review gate.
+
+After human edits, use `scripts/build_post_review_report.py` and load `docs/POST_REVIEW_QA.md` for the Agent language-review handoff. Check typos and word misuse against current source and target, return located suggestions, and require renewed human review before applying them. Recheck changed decisions before export. For stage-by-stage navigation, read `docs/WORKFLOW_GUIDE.zh-CN.md` when needed.

@@ -58,3 +58,9 @@ A successful save is not a passed round-trip gate.
 
 Identify partial coverage and checks that could not run. Failed output QA requires
 `FAILED`. An unverified copy must not be described as ready for use.
+
+## Human review and staged delivery
+
+`FINAL` export remains the default. `CHECKPOINT` evaluates only completed human decisions, requires at least one reviewed unit and records omitted IDs. It preserves unresolved content without approving it. Included units still require aligned text, current original hash, valid anchors and no unwaived blocking errors. Both modes verify the written copy.
+
+Human edits may introduce typos or word misuse beyond deterministic checks. Generate a revision-bound Agent handoff and follow `docs/POST_REVIEW_QA.md`; new suggestions require human confirmation. Report semantic QA as not run until it is actually performed.

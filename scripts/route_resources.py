@@ -246,6 +246,12 @@ def build_plan(
             )
         )
 
+    example_data = yaml.safe_load(EXAMPLE_ROUTER.read_text(encoding="utf-8"))
+    case_paths = {route["id"]: route["path"] for route in example_data["routes"]}
+    example_files = [case_paths[section] for section in example_sections]
+    if check_package_paths:
+        _check_resource_paths(example_files)
+    _append_unique(load_now, seen, example_files)
     not_loaded = [resource for resource in all_resources if resource not in seen]
 
     if config.get("policy", {}).get("deny_full_reference_sweep") is True:
@@ -259,6 +265,7 @@ def build_plan(
         "load_now": load_now,
         "not_loaded": not_loaded,
         "example_sections": example_sections,
+        "example_files": example_files,
         "notes": notes,
     }
 

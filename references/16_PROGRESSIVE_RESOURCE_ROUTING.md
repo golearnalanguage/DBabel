@@ -11,7 +11,8 @@ the current task. The router is a control plane, not a source of technical truth
    preflight, task-context creation, and initial routing.
 4. Route input, mode, format, project-resource, risk, research, QA, and repair resources.
 5. Load only `load_now`.
-6. Load only the worked-example sections listed in `example_sections`; examples are
+6. Load the independent case paths in `example_files`; stable case IDs remain in
+   `example_sections`. These paths are also included in `load_now`. Examples are
    diagnostic patterns, never evidence.
 7. After parsing a file, validate actual ingest coverage; preflight `READY` is not
    ingest success.
@@ -82,9 +83,10 @@ An audit or review request does not authorize repair.
 
 ### Worked examples are narrow
 
-Risk tags may route up to the configured maximum number of worked-example sections.
-Risk-tag order represents relevance order when the cap is exceeded. Do not load the
-full worked-example file unless a separate explicit reason requires it.
+Risk tags route at most three independent case files under `examples/cases/`.
+Risk-tag order represents relevance order when the cap is exceeded.
+`config/example_router.yaml` maps each case ID to a category and file path.
+The former combined example document is now an index; do not load unrelated cases.
 
 ## Re-routing
 

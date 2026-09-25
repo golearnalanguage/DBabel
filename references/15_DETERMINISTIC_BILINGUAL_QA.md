@@ -27,7 +27,7 @@ severities, not declarations that the translation is factually wrong.
 Deterministic output must not authorize repair by itself. Repair still follows the
 DBabel evidence, confidence, authorization, and round-trip QA gates.
 
-## v1.4 checks
+## Implemented checks
 
 ### High-confidence integrity checks
 
@@ -71,7 +71,7 @@ DBabel evidence, confidence, authorization, and round-trip QA gates.
 
 `NUMBER_UNIT_INTEGRITY`
 : Bind a simple number to a recognized adjacent unit and flag material pair
-  differences. v1.4 does not automatically treat unit conversion as equivalent.
+  differences. The checker does not automatically treat unit conversion as equivalent.
 
 `PREFERRED_TERM`
 : When an applicable approved `TRANSLATE` entry matches the source, flag a target
@@ -95,7 +95,7 @@ narrow, testable, and covered by regression fixtures.
 
 Numbers are not blindly normalized.
 
-Safe v1.4 behavior:
+Supported comparison behavior:
 
 - compare simple signed integers/decimals when unambiguous;
 - keep versions, paths, URLs, placeholders, and identifiers out of number checks
@@ -104,8 +104,8 @@ Safe v1.4 behavior:
 - do not infer that `1,000.50` and `1 000,50` are equivalent without locale context;
 - do not silently convert `500 ms` to `0.5 s` and mark it equal.
 
-This conservative policy favors false-negative reduction only where the comparison
-is deterministic and avoids turning locale guesses into false errors.
+These checks report only supported comparisons. Ambiguous locale conventions remain
+for contextual review rather than being guessed or reported as certain errors.
 
 ## Glossary application
 

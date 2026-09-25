@@ -490,7 +490,10 @@ def evaluate_export_gate(
     bundle_data: Dict[str, Any],
     fresh_qa_by_unit: Optional[Dict[str, List[Dict[str, Any]]]] = None,
     original_path: Optional[Path] = None,
+    export_mode: str = "FINAL",
 ) -> Dict[str, Any]:
+    if export_mode not in {"FINAL", "CHECKPOINT"}:
+        raise ValueError("export mode must be FINAL or CHECKPOINT")
     session = bundle_data["session"]
     units_by_id = bundle_data["units_by_id"]
     decisions_by_id = bundle_data["decisions_by_id"]
@@ -511,7 +514,14 @@ def evaluate_export_gate(
     for issue in issues:
         static_by_unit.setdefault(issue["unit_id"], []).append(issue)
 
+    included = [uid for uid in units_by_id if decisions_by_id[uid]["status"] in COMPLETED_STATUSES]
+    included_set = set(included)
+    excluded = [uid for uid in units_by_id if uid not in included_set]
+    if export_mode == "CHECKPOINT" and not included:
+        blockers.append("checkpoint requires at least one human-reviewed unit")
     for unit_id, unit in units_by_id.items():
+        if export_mode == "CHECKPOINT" and unit_id not in included_set:
+            continue
         decision = decisions_by_id[unit_id]
         status = decision["status"]
 
@@ -553,7 +563,7 @@ def evaluate_export_gate(
                 blockers.append("{} has unwaived ERROR {}".format(unit_id, issue.get("label") or issue["id"]))
 
     decisions_canonical = [decisions_by_id[k] for k in sorted(decisions_by_id)]
-    qa_summary = {"units_checked": len(units_by_id), "error_count": 0, "warning_count": 0}
+    qa_summary = {"units_checked": len(included) if fresh_qa_by_unit is not None else 0, "error_count": 0, "warning_count": 0}
     if fresh_qa_by_unit is not None:
         all_issues = [x for values in fresh_qa_by_unit.values() for x in values]
         qa_summary["error_count"] = sum(1 for x in all_issues if x.get("severity") == "ERROR")
@@ -567,6 +577,9 @@ def evaluate_export_gate(
         "session_id": session["session_id"],
         "status": "BLOCKED" if blockers else "AUTHORIZED",
         "checked_at": utc_now(),
+        "export_mode": export_mode,
+        "review_scope": {"included_unit_ids": included, "unreviewed_unit_ids": excluded,
+                         "complete": not excluded},
         "source_sha256": session["original"]["sha256"],
         "decision_digest": sha256_json(decisions_canonical),
         "blockers": sorted(set(blockers)),

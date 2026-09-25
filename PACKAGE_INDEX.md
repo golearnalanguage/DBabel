@@ -93,3 +93,11 @@
 - [Contributing](CONTRIBUTING.md) · [Changes](CHANGELOG.md)
 - [License](LICENSE) · [Notice](NOTICE) · [Third-party notice](THIRD_PARTY_NOTICE.md)
 - [Security](SECURITY.md) · [Scope notice](DISCLAIMER.md)
+
+## Focused review resources
+
+- `docs/WORKFLOW_GUIDE.zh-CN.md`: stage inputs, next steps and problem-to-file map.
+- `docs/POST_REVIEW_QA.md`: Agent review after human edits.
+- `scripts/build_post_review_report.py`: revision-bound review handoff.
+- `examples/cases/`: 18 independently routed cases in five mechanism categories.
+- `review_workbench/static/workbench_views.js`: shared local and portable session views.

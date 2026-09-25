@@ -1,0 +1,23 @@
+// Optional Playwright regression. Only run against disposable synthetic review sessions.
+const {chromium}=require('playwright');
+if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_PORTABLE)throw Error('Set DBABEL_TEST_URL and DBABEL_TEST_PORTABLE to disposable synthetic fixtures. This test changes decisions.');
+(async()=>{const browser=await chromium.launch({headless:true,...(process.env.DBABEL_CHROME ? {executablePath:process.env.DBABEL_CHROME} : {})});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];const checked=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+async function run(url,portable){await page.goto(url);await page.waitForSelector('#segmentRows tr');
+for(const t of ['dark','light','system']){await page.selectOption('#themeSelect',t);if(await page.locator('html').getAttribute('data-theme-pref')!==t)throw Error('theme mismatch');}checked.push('themes');
+await page.locator('#segmentRows tr').first().click();for(const t of ['evidence','terminology','suggestion']){await page.locator(`[data-tab="${t}"]`).click();}checked.push('inspector tabs');
+await page.click('#acceptButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='ACCEPT_SUGGESTION');
+await page.click('#keepButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='KEEP_CURRENT');
+await page.click('#editAction');await page.fill('#targetText','The primary database sends archived logs to the standby database.');await page.click('#editAction');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='USER_EDITED');checked.push('accept/keep/edit');
+await page.locator('.review-note-details summary').click();await page.fill('#reviewerNote','Language review follow-up.');await page.click('#saveNote');await page.waitForTimeout(100);await page.click('#unitNext');await page.click('#unitPrev');if(await page.inputValue('#reviewerNote')!=='Language review follow-up.')throw Error('note lost');checked.push('save note/navigation');
+await page.click('#deferButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='DEFERRED');await page.click('#blockButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='BLOCKED');
+await page.click('#waiveButton');await page.click('#confirmWaiver');if(!await page.locator('#waiverField').isVisible())throw Error('Missing waiver reason accepted');await page.fill('#waiverReason','Synthetic regression only.');await page.click('#confirmWaiver');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='WAIVED');await page.selectOption('#decisionSelect','UNREVIEWED');await page.waitForTimeout(150);checked.push('defer/block/waiver/reset');
+await page.fill('#searchBox','UNMATCHABLE-ZZZ');if(await page.locator('#segmentRows tr').count())throw Error('Search not applied');await page.click('#clearFilters');
+await page.selectOption('#quickFilter','REVIEWED');await page.selectOption('#sortSelect','ISSUES');await page.click('#clearFilters');
+for(const id of ['tagFilter','locationFilter']){const options=await page.locator('#'+id+' option').count();if(options>1){await page.selectOption('#'+id,{index:1});await page.click('#clearFilters');}}
+checked.push('search/status/location/tag/sort');
+await page.check('#selectPage');await page.click('#selectFiltered');await page.click('#bulkDefer');await page.waitForTimeout(150);await page.check('#selectPage');await page.click('#bulkKeep');await page.waitForTimeout(500);checked.push('bulk keep/defer');
+await page.click('#notificationsButton');await page.getByRole('heading',{name:'Review activity'}).waitFor();await page.locator('[data-view="Quality Check"]').click();if(!portable){await page.getByRole('button',{name:'Run fresh QA'}).click();await page.waitForTimeout(200);}
+await page.locator('[data-view="Reports"]').click();let d=page.waitForEvent('download');await page.getByRole('button',{name:'Download Agent review handoff'}).click();await d;checked.push('activity/QA/report');
+await page.locator('[data-view="Review"]').click();if(portable){d=page.waitForEvent('download');await page.click('#exportButton');await d;checked.push('offline decisions export');}
+}
+await run(process.env.DBABEL_TEST_URL,false);await run(require('url').pathToFileURL(process.env.DBABEL_TEST_PORTABLE).href,true);await browser.close();console.log(JSON.stringify({passed:!errors.length,checked,errors},null,2));if(errors.length)throw Error(errors.join('\n'));console.log('Desktop and portable decision interactions passed');})().catch(e=>{console.error(e);process.exit(1)});

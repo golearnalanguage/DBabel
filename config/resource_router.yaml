@@ -83,6 +83,8 @@ aligned_qa:
   resource: references/15_DETERMINISTIC_BILINGUAL_QA.md
 
 risk_resources:
+  post_human_edit:
+    - docs/POST_REVIEW_QA.md
   technical_claim:
     - references/10_TECHNICAL_CLAIM_BOUNDARY.md
   cross_product_mapping:

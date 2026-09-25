@@ -123,3 +123,13 @@ Local tooling should operate on the minimum material needed for the task. The fo
 probe does not authorize uploads or network calls. Optional third-party parsers may
 have their own I/O, model, native-library, or service behavior; review those
 properties before processing confidential or restricted material.
+
+## Review, checkpoint export and language-review handoff
+
+```bash
+python scripts/start_review_workbench.py project.dbreview --original target.docx --output reviewed.docx
+python scripts/export_reviewed_document.py project.dbreview --original target.docx --output checkpoint-01.docx --export-mode CHECKPOINT --receipt checkpoint-01.json
+python scripts/build_post_review_report.py project.dbreview --output post-review.json
+```
+
+Use a new output filename for each CLI export. `FINAL` is the default export mode; `CHECKPOINT` preserves pending content without approving it. Reports are available before all reviews finish. The handoff records Agent review as `NOT_RUN`; follow `docs/POST_REVIEW_QA.md` to perform the semantic review.

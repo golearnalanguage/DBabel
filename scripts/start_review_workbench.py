@@ -23,6 +23,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 from export_reviewed_document import export_bundle
+from build_post_review_report import build_report
 from review_model import (
     append_event,
     evaluate_export_gate,
@@ -132,6 +133,10 @@ class Handler(BaseHTTPRequestHandler):
                     "export_available": bool(self.state.original and self.state.output),
                     "output_name": self.state.output.name if self.state.output else None,
                 })
+            return
+        if parsed.path == "/api/post-review-report":
+            with self.state.lock:
+                self._json(200, build_report(self.state.data()))
             return
         if parsed.path == "/api/progress":
             with self.state.lock:
@@ -415,9 +420,11 @@ class Handler(BaseHTTPRequestHandler):
                     save_decisions(self.state.bundle, updated)
                     data = self.state.data()
                     gate = evaluate_export_gate(
-                        data, fresh_qa_by_unit=qa_by_unit, original_path=self.state.original
+                        data, fresh_qa_by_unit=qa_by_unit, original_path=self.state.original,
+                        export_mode=body.get("export_mode", "FINAL")
                     )
-                    self._json(200, gate)
+                    self._json(200, dict(gate, review_decisions=updated,
+                        qa_issues=[issue for rows in qa_by_unit.values() for issue in rows]))
                 return
             if parsed.path == "/api/export":
                 if not self.state.original or not self.state.output:
@@ -428,13 +435,26 @@ class Handler(BaseHTTPRequestHandler):
                         "event": "EXPORT_REQUESTED", "at": utc_now(), "revision": 0,
                         "actor": "HUMAN"
                     })
+                    mode = body.get("export_mode", "FINAL")
+                    export_output = self.state.output
+                    export_receipt = self.state.receipt
+                    if mode == "CHECKPOINT":
+                        index = 1
+                        while True:
+                            candidate = self.state.output.with_name(self.state.output.stem + ".checkpoint-{}.docx".format(index))
+                            if not candidate.exists() and not candidate.with_suffix(".receipt.json").exists():
+                                export_output = candidate
+                                export_receipt = candidate.with_suffix(".receipt.json")
+                                break
+                            index += 1
                     receipt = export_bundle(
                         self.state.bundle,
                         self.state.repo_root,
                         self.state.original,
-                        self.state.output,
+                        export_output,
                         self.state.glossary,
-                        self.state.receipt,
+                        export_receipt,
+                        export_mode=body.get("export_mode", "FINAL"),
                     )
                     event_name = "EXPORT_COMPLETED" if receipt["status"] == "VERIFIED" else "EXPORT_BLOCKED"
                     append_event(self.state.bundle / "events.jsonl", {
@@ -457,6 +477,7 @@ class Handler(BaseHTTPRequestHandler):
             "": "index.html",
             "/": "index.html",
             "/app.js": "app.js",
+            "/workbench_views.js": "workbench_views.js",
             "/style.css": "style.css",
             "/dbabel-workbench-logo.png": "dbabel-workbench-logo.png",
         }

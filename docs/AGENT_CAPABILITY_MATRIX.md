@@ -29,3 +29,12 @@ relevant.
 
 A completed review may contain `REVIEW` findings; a verified repair requires passed
 round-trip QA. Use the task status defined in `SKILL.md` to make that distinction.
+
+## Workbench delivery capabilities
+
+| Task | Implemented behavior | Boundary |
+|---|---|---|
+| Native document export | DOCX copy, original hash and target-anchor checks, text round-trip validation | Other formats require a dedicated writer; visual QA is separate |
+| Checkpoint export | Apply completed human decisions and list pending IDs in the receipt | Pending text is preserved; not a final quality approval |
+| Post-human review | Download source/target, notes, revisions and text hashes for an Agent | Handoff only; semantic review must actually be performed |
+| Portable review | Offline decisions, views and report download | Import decisions and run fresh local QA before native export |

@@ -107,3 +107,9 @@ because 1.3 added required completion, coverage, QA, repair, source records, and
 finding IDs.
 Upgrade an older report by recording the work actually performed; do not invent
 evidence or mark skipped checks as passed.
+
+## Review delivery records
+
+`schemas/export_receipt.schema.json` records the export mode and review scope as well as original identity, decision digest, QA and round-trip results. `CHECKPOINT` with pending IDs is a partial review even when written-output verification passes. `VERIFIED` describes output integrity, not automatic semantic certification.
+
+The post-human handoff from `scripts/build_post_review_report.py` contains source, current reviewed target, revision and target hash. It is advisory task data, not an audit verdict or human decision import. See `docs/POST_REVIEW_QA.md` for the response contract and stale-text checks.

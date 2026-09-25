@@ -8,7 +8,7 @@ intact.
 progressively through `config/resource_router.yaml`; do not preload the entire
 `references/` directory.
 
-The [README](../README.md#how-to-use) contains installation and invocation prompts.
+The [README](../README.md#use-with-an-agent) contains installation and invocation prompts.
 
 ## Runtime sequence
 
@@ -86,3 +86,7 @@ duplicate skill entries.
 - [Codex local skill locations and discovery](https://learn.chatgpt.com/docs/build-skills)
 - [Claude Code skills and invocation](https://code.claude.com/docs/en/skills)
 - [Anthropic skill examples](https://github.com/anthropics/skills)
+
+## Human review handoff
+
+For approval-required changes, create a `.dbreview` session and use the [Workbench](REVIEW_WORKBENCH.md). After human edits, generate a revision-bound handoff with `scripts/build_post_review_report.py` and follow [post-review QA](POST_REVIEW_QA.md). Do not import Agent suggestions as human decisions. Route accepted edits through another review and QA cycle. `CHECKPOINT` exports reviewed changes with explicit pending scope; `FINAL` keeps the full gate.

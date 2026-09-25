@@ -19,6 +19,7 @@ def build(bundle: Path, output: Path) -> Path:
     logo=base64.b64encode((ROOT/"review_workbench"/"static"/"dbabel-workbench-logo.png").read_bytes()).decode("ascii")
     css=(ROOT/"review_workbench"/"static"/"style.css").read_text(encoding="utf-8")
     js=(ROOT/"review_workbench"/"portable_app.js").read_text(encoding="utf-8")
+    js=(ROOT/"review_workbench"/"static"/"workbench_views.js").read_text(encoding="utf-8")+"\n"+js
     rendered=(template.replace("__DBABEL_DATA__",encoded)
                       .replace("__DBABEL_LOGO__",logo)
                       .replace("__DBABEL_CSS__",css)

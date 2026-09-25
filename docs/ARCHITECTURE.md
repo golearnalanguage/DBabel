@@ -43,10 +43,17 @@ User request / files
             |                           |
             +-------------+-------------+
                           v
-                 QA / repair gate
+                 Human review decisions
                           |
                           v
-                 round-trip / output
+                 Agent language recheck
+                 (suggestions -> human review)
+                          |
+                          v
+                 Final / checkpoint gate
+                          |
+                          v
+                 round-trip / scoped output
 ```
 
 The public repository owns workflow code, schemas, policies, templates, adapters,

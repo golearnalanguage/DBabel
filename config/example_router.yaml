@@ -9,74 +9,110 @@ selection:
   examples_are_evidence: false
 routes:
   - id: A1
+    path: examples/cases/context/A1.zh-CN.md
+    category: context
     mechanism: heading_flow_conflict
     title: 标题写“导出”，实际步骤描述“导入”
     signals: [heading_body_conflict, workflow_direction, import_export]
   - id: A2
+    path: examples/cases/context/A2.zh-CN.md
+    category: context
     mechanism: execution_scope_inheritance
     title: 上级标题涵盖两台主机，不等于每一步都执行两次
     signals: [host_scope, node_scope, run_on, execute_on, parent_child_scope]
   - id: A3
+    path: examples/cases/context/A3.zh-CN.md
+    category: context
     mechanism: operation_object_conflict
     title: 标题、按钮与正文指向不同操作对象
     signals: [heading_button_body_conflict, action_object, ui_operation]
   - id: B1
+    path: examples/cases/semantics/B1.zh-CN.md
+    category: semantics
     mechanism: negation_quantifier_condition
     title: 否定、例外与“全部”同时丢失
     signals: [negation, exception, unless, quantifier, all_any, must_not]
   - id: B2
+    path: examples/cases/semantics/B2.zh-CN.md
+    category: semantics
     mechanism: precondition_order
     title: 把前置校验移到操作之后
     signals: [precondition, sequence, before_after, only_after]
   - id: B3
+    path: examples/cases/semantics/B3.zh-CN.md
+    category: semantics
     mechanism: number_unit_scope
     title: 数值相同，单位、默认值与作用范围已经变了
     signals: [number, unit, default_value, scope, special_value]
   - id: B4
+    path: examples/cases/semantics/B4.zh-CN.md
+    category: semantics
     mechanism: terminology_vs_claim
     title: 术语修正与性能主张分别处理
     signals: [terminology, performance_claim, reliability_claim, benchmark]
   - id: B5
+    path: examples/cases/semantics/B5.zh-CN.md
+    category: semantics
     mechanism: null_three_valued_logic
     title: NULL、空字符串与“未知”被混成一个概念
     signals: [null, empty_string, unknown, three_valued_logic]
   - id: C1
+    path: examples/cases/product-scope/C1.zh-CN.md
+    category: product-scope
     mechanism: cross_product_concept
     title: 相同术语在不同产品中对应不同层级
     signals: [cross_vendor, cross_product, same_term_different_concept]
   - id: C2
+    path: examples/cases/product-scope/C2.zh-CN.md
+    category: product-scope
     mechanism: version_rename
     title: 新版改名，不代表旧版参数可以直接替换
     signals: [version_difference, rename, deprecated_name, adjacent_version]
   - id: C3
+    path: examples/cases/product-scope/C3.zh-CN.md
+    category: product-scope
     mechanism: prose_vs_exact_ui
     title: 正文项目用语与精确 UI 名称不必相同
     signals: [project_wording, ui_label, exact_label, text_role]
   - id: D1
+    path: examples/cases/protected-content/D1.zh-CN.md
+    category: protected-content
     mechanism: same_form_different_role
     title: 同一词形分别是概念、列名和业务数据
     signals: [identifier, column_name, data_value, text_role]
   - id: D2
+    path: examples/cases/protected-content/D2.zh-CN.md
+    category: protected-content
     mechanism: ocr_executable_ambiguity
     title: OCR 可疑字符不能靠常见拼写补齐
     signals: [ocr, executable_token, ambiguous_character]
   - id: D3
+    path: examples/cases/protected-content/D3.zh-CN.md
+    category: protected-content
     mechanism: placeholder_correspondence
     title: 占位符名称保留了，但位置对应关系被交换
     signals: [placeholder, positional_binding, variable_binding]
   - id: E1
+    path: examples/cases/document-structure/E1.zh-CN.md
+    category: document-structure
     mechanism: pdf_reading_order
     title: PDF 抽取顺序打乱，脚注中的适用条件消失
     signals: [pdf, reading_order, footnote, extraction]
   - id: E2
+    path: examples/cases/document-structure/E2.zh-CN.md
+    category: document-structure
     mechanism: table_scope_formula
     title: 合并表头与公式让“空白格”失去含义
     signals: [table, merged_header, formula, blank_cell, scope]
   - id: E3
+    path: examples/cases/document-structure/E3.zh-CN.md
+    category: document-structure
     mechanism: diagram_relation
     title: 图中主备角色互换，单词都正确仍然是错译
     signals: [diagram, relation, primary_standby, role_swap, visual]
   - id: E4
+    path: examples/cases/document-structure/E4.zh-CN.md
+    category: document-structure
     mechanism: html_translatability
     title: HTML 属性有些可译，有些承担程序绑定
     signals: [html, attribute, translatable, program_binding, dom]
