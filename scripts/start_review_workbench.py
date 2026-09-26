@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start the local DBabel Review Workbench on 127.0.0.1 using Python stdlib only."""
+"""Start the local DBabel Review Workbench on 127.0.0.1 using a local HTTP server."""
 
 from __future__ import annotations
 
@@ -9,6 +9,11 @@ import mimetypes
 import secrets
 import sys
 import threading
+import tempfile
+import uuid
+import shutil
+import zipfile
+from xml.etree import ElementTree as ET
 import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -22,6 +27,8 @@ STATIC_ROOT = ROOT / "review_workbench" / "static"
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
+from review_exchange import upload_file, read_document, create_intake, glossary_score, render_result, RESULT_FORMATS
+from glossary_io import load_glossary, validate_glossary
 from export_reviewed_document import export_bundle
 from build_post_review_report import build_report
 from review_model import (
@@ -36,7 +43,7 @@ from review_model import (
     utc_now,
 )
 
-MAX_BODY = 1024 * 1024
+MAX_BODY = 48 * 1024 * 1024
 
 
 class WorkbenchState:
@@ -55,13 +62,22 @@ class WorkbenchState:
         self.token = token
         self.original = original.resolve() if original else None
         self.output = output.resolve() if output else None
-        self.glossary = glossary.resolve() if glossary else None
+        self.glossary = glossary.resolve() if glossary else next((p for p in [self.bundle / "project-glossary.json", self.bundle / "project-glossary.csv"] if p.exists()), None)
+        self.upload_root = self.bundle.parent / "dbabel-sessions"
         self.receipt = receipt.resolve() if receipt else (self.bundle / "export_receipt.json")
         self.lock = threading.RLock()
         self.origin = ""
 
     def data(self):
         return load_bundle(self.bundle)
+
+
+def session_locked(method):
+    """Keep token validation and dispatch on the same session during an intake switch."""
+    def handle(self):
+        with self.state.lock:
+            return method(self)
+    return handle
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -116,6 +132,7 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("request body must be an object")
         return value
 
+    @session_locked
     def do_GET(self) -> None:
         if not self._authorized_api():
             return
@@ -132,11 +149,20 @@ class Handler(BaseHTTPRequestHandler):
                     "progress": progress(data),
                     "export_available": bool(self.state.original and self.state.output),
                     "output_name": self.state.output.name if self.state.output else None,
+                    "result_formats": sorted(RESULT_FORMATS),
+                    "glossary_name": self.state.glossary.name if self.state.glossary else None,
                 })
             return
         if parsed.path == "/api/post-review-report":
             with self.state.lock:
                 self._json(200, build_report(self.state.data()))
+            return
+        if parsed.path == "/api/glossary":
+            try:
+                with self.state.lock:
+                    self._json(200, glossary_score(self.state.data(), self.state.glossary) if self.state.glossary else {"entries": 0, "score": None, "checks": []})
+            except (ValueError, OSError) as exc:
+                self._error(400, str(exc))
             return
         if parsed.path == "/api/progress":
             with self.state.lock:
@@ -158,6 +184,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._serve_static(parsed.path)
 
+    @session_locked
     def do_PUT(self) -> None:
         if not self._authorized_api():
             return
@@ -204,15 +231,67 @@ class Handler(BaseHTTPRequestHandler):
                     "detail": saved["recheck"]["status"]
                 })
                 self._json(200, {"decision": saved, "recheck_issues": recheck_issues})
-        except (ValueError, RuntimeError, OSError, json.JSONDecodeError) as exc:
+        except (ValueError, RuntimeError, OSError, json.JSONDecodeError, zipfile.BadZipFile, ET.ParseError, KeyError, IndexError) as exc:
             self._error(400, str(exc))
 
+    @session_locked
     def do_POST(self) -> None:
         if not self._authorized_api():
             return
         parsed = urlparse(self.path)
         try:
             body = self._body_json()
+
+            if parsed.path in {"/api/intake/inspect", "/api/intake/create"}:
+                with self.state.lock, tempfile.TemporaryDirectory() as td:
+                    source_dir = Path(td)/"source"; source_dir.mkdir()
+                    source = upload_file(body.get("source"), source_dir)
+                    if parsed.path.endswith("inspect"):
+                        info = read_document(source)
+                        info["segment_count"] = len(info.pop("segments"))
+                        self._json(200, info)
+                        return
+                    target = None
+                    if body.get("target"):
+                        target_dir = Path(td)/"target"; target_dir.mkdir()
+                        target = upload_file(body["target"], target_dir)
+                    languages = body.get("target_languages")
+                    if not isinstance(languages, list) or not all(isinstance(x, str) for x in languages):
+                        raise ValueError("target_languages must be an array of language tags")
+                    self.state.upload_root.mkdir(parents=True, exist_ok=True)
+                    bundle = self.state.upload_root/(uuid.uuid4().hex+".dbreview")
+                    try:
+                        create_intake(source, bundle, str(body.get("source_language", "")), languages, target, body.get("alignment_confirmed") is True)
+                    except Exception:
+                        if bundle.exists(): shutil.rmtree(bundle)
+                        raise
+                    self.state.bundle = bundle
+                    self.state.original = None
+                    self.state.output = None
+                    self.state.glossary = None
+                    self.state.receipt = bundle/"export_receipt.json"
+                    self.state.token = secrets.token_urlsafe(32)
+                    self._json(200, {"session_id": self.state.data()["session"]["session_id"], "bundle": str(bundle), "token": self.state.token})
+                return
+            if parsed.path == "/api/glossary":
+                with self.state.lock, tempfile.TemporaryDirectory() as td:
+                    path = upload_file(body.get("file"), td)
+                    if path.suffix.lower() not in {".json", ".csv"}:
+                        raise ValueError("Use the project glossary JSON or CSV template.")
+                    score = glossary_score(self.state.data(), path)
+                    dest = self.state.bundle/("project-glossary"+path.suffix.lower())
+                    for old in self.state.bundle.glob("project-glossary.*"):
+                        if old.suffix in {".json", ".csv"} and old != dest: old.unlink()
+                    dest.write_bytes(path.read_bytes())
+                    self.state.glossary = dest
+                    self._json(200, score)
+                return
+            if parsed.path == "/api/results":
+                with self.state.lock:
+                    fmt = body.get("format", "json")
+                    content = render_result(self.state.data(), fmt)
+                    self._json(200, {"filename": "dbabel-review."+fmt, "content": content, "content_type": RESULT_FORMATS[fmt]})
+                return
 
             if parsed.path == "/api/decisions/bulk":
                 status = str(
@@ -469,7 +548,7 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(200, receipt)
                 return
             self._error(404, "not found")
-        except (ValueError, RuntimeError, OSError, json.JSONDecodeError) as exc:
+        except (ValueError, RuntimeError, OSError, json.JSONDecodeError, zipfile.BadZipFile, ET.ParseError, KeyError, IndexError) as exc:
             self._error(400, str(exc))
 
     def _serve_static(self, path: str) -> None:
@@ -477,6 +556,10 @@ class Handler(BaseHTTPRequestHandler):
             "": "index.html",
             "/": "index.html",
             "/app.js": "app.js",
+            "/i18n.js": "i18n.js",
+            "/exchange.js": "exchange.js",
+            "/dbabel-logo-light.svg": "dbabel-logo-light.svg",
+            "/dbabel-logo-dark.svg": "dbabel-logo-dark.svg",
             "/workbench_views.js": "workbench_views.js",
             "/style.css": "style.css",
             "/dbabel-workbench-logo.png": "dbabel-workbench-logo.png",
@@ -486,7 +569,13 @@ class Handler(BaseHTTPRequestHandler):
             self._error(404, "not found")
             return
         target = STATIC_ROOT / relative
-        data = target.read_bytes()
+        # One ordered runtime response prevents a partially loaded dependency set
+        # after a quick reload. The source files stay separate for maintenance.
+        if relative == "app.js":
+            data = b"\n".join((STATIC_ROOT/name).read_bytes() for name in
+                              ("i18n.js", "exchange.js", "workbench_views.js", "app.js"))
+        else:
+            data = target.read_bytes()
         content_type = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
         self.send_response(200)
         self._security_headers()

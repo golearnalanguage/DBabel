@@ -70,6 +70,10 @@ def _load_units(path: Path) -> List[Dict[str, Any]]:
             "requires_confirmation": True,
         }
 
+        for key in ("suggested_target", "suggestion_reason"):
+            if isinstance(unit.get(key), str) and unit[key].strip():
+                review[key] = unit[key]
+
         alignment = str(
             unit.get("alignment") or "ALIGNED"
         ).upper()

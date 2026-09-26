@@ -8,10 +8,11 @@ The Review Workbench is part of the DBabel v1.5.0 release contract. A repository
 version change does not by itself create or move a Git tag or GitHub Release;
 those release artifacts are created only after validation succeeds.
 
-The Review Workbench adds a human approval layer between DBabel findings/QA and any
-native-format repair. It is intentionally not a full CAT platform.
+The Workbench connects source/target text, proposed changes, evidence and human decisions. Use the local desktop interface for uploads, scoped glossary checks, QA and export; use Portable Review for offline decisions. Both interfaces support English and Simplified Chinese.
 
-## Invariants
+Start with the [Chinese walkthrough](WORKFLOW_GUIDE.zh-CN.md) for complete executable commands. Consult the [format matrix](DOCUMENT_FORMATS.md) for parser dependencies, extraction coverage and export fidelity.
+
+## Review and export rules
 
 - A DBabel suggestion is not user approval.
 - `POTENTIAL_ISSUE` remains a deterministic QA classification, not a semantic error verdict.
@@ -29,8 +30,7 @@ native-format repair. It is intentionally not a full CAT platform.
 
 ## Review bundle
 
-A `.dbreview` directory contains review metadata and decisions, not a second copy of the
-customer document by default:
+A `.dbreview` directory created from aligned units contains:
 
 ```text
 Manual.dbreview/
@@ -44,12 +44,11 @@ Manual.dbreview/
   original.sha256
 ```
 
-The local path of the original is not stored unless the creator explicitly requests a
-path hint.
+Aligned-unit sessions record the original filename and hash; `--include-path-hint` also records its local path. Upload-created sessions additionally store input copies in `inputs/` and extraction coverage in `intake.json`. Uploaded glossaries are saved as `project-glossary.csv` or `project-glossary.json`.
 
 ## Bilingual DOCX alignment
 
-The default extractor remains fail-closed and positional. If source and target
+The DOCX alignment extractor pairs non-empty paragraphs by position and validates coverage. If source and target
 non-empty paragraph counts differ, DBabel does not guess an alignment.
 
 For real bilingual documents that contain split or merged paragraphs, use an
@@ -137,11 +136,11 @@ field/revision semantics.
 
 ## Workspace behavior and appearance
 
-Desktop and Portable Review share local CSS and the same session views. Navigation opens review, terminology findings, linked evidence, QA, reports and project settings. Activity shows recorded decisions and notes. Terminology is a session overview, not a project glossary editor; settings show session metadata and local display preferences.
+Desktop and Portable Review share local CSS and the same session views. Navigation opens review, terminology findings, linked evidence, QA, reports and project settings. Activity shows recorded decisions and notes. The desktop Terminology page uploads and validates project glossary CSV/JSON, lists mismatches and reports lexical compliance. Settings show session metadata and display preferences.
 
 Use status, issue, location and tag filters to narrow the table. Select one page or all matching units before an explicit bulk Keep Current / Defer decision. Compact mode changes row spacing while preserving complete sentence text. Close the inspector to widen the table; select a row to reopen it.
 
-System / Dark / Light follow the selected browser preference. The glass shell uses restrained borders and semantic status colors; the review text stays fully readable. Small screens retain navigation and stack the inspector below the table. Assets, scripts and styles load locally. No fabricated account identity or operating-system controls are displayed.
+System / Dark / Light follow the selected browser preference. The table and inspector scroll independently on desktop; filters remain accessible in the left pane. Small screens retain navigation and stack the inspector below the table. Assets, scripts and styles load locally. Language and theme controls remain available at mobile widths.
 
 ## Technique-aware review findings
 
@@ -159,7 +158,7 @@ Human decisions remain `UNREVIEWED`, `ACCEPT_SUGGESTION`, `KEEP_CURRENT`,
 
 ## Staged delivery and language review
 
-The desktop and portable workbenches provide session-backed Terminology, Evidence, Quality Check, Reports, Project Settings and Activity views. Location/tag filters, selectable page size, compact rows and inspector close/reopen work locally. Terminology shows session findings and labels, not a glossary editor. Project settings expose session metadata and local display preferences.
+The desktop and portable workbenches provide session-backed Terminology, Evidence, Quality Check, Reports, Project Settings and Activity views. Location/tag filters, selectable page size, compact rows and inspector close/reopen work locally. Terminology shows findings, labels and the local glossary upload/score panel. Project settings expose session metadata and local display preferences.
 
 Desktop export accepts `FINAL` (default) or `CHECKPOINT`. A checkpoint applies completed human decisions only, preserves unresolved content and lists omitted unit IDs in `review_scope`. ERRORs in the included scope, original hash mismatch and invalid anchors still block. No pending decision becomes approved. Both modes use a new output path; existing output files are never overwritten. The Workbench numbers checkpoint copies and their receipts automatically. The CLI requires a new output filename for each export; final export retains the configured output path.
 
@@ -169,3 +168,21 @@ python scripts/build_post_review_report.py project.dbreview --output post-review
 ```
 
 Reports are available without finishing all reviews. Follow [post-review QA](POST_REVIEW_QA.md) for spelling and word-use suggestions after human edits. This creates an Agent handoff, not an automatic AI review service. Portable review still exports decisions for import and fresh local QA.
+
+## Upload and review-result export
+
+Choose **Upload documents** in the left navigation. Inspect the source, set explicit language tags and create a session. Uploading a target requires a single target language and equal segment counts; select the alignment checkbox only after checking correspondence. Multiple target languages create separate pending units. An Agent supplies translations and reasons through aligned-unit JSON; the server does not call a model.
+
+Use **Download review results** at any stage. Review-only and demo sessions export JSON, CSV, TSV, Markdown, HTML and TXT, including pending rows and explicit decisions. JSON additionally retains suggestions, issues, evidence and reviewer notes. See [format fidelity](DOCUMENT_FORMATS.md#review-result-formats--审核结果格式).
+
+```bash
+python scripts/intake_document.py source.txt --inspect
+python scripts/intake_document.py source.txt --source-language zh-CN --target-languages en,ja --output manual.multilingual.dbreview
+python scripts/export_review_results.py manual.multilingual.dbreview --format html --output manual.review.html
+```
+
+## Suggestions and glossary scoring
+
+Every unit shows either a proposed target with its reason or an actionable review instruction. Missing target text prompts translation in the declared target language. Findings produce a revision checklist; a unit without findings displays its current text and asks the reviewer to verify conditions, terminology and protected tokens. **Accept Suggestion** requires an actual `suggested_target`; guidance alone cannot be accepted as a translation.
+
+Upload a canonical project glossary under **Terminology → Upload project glossary**. Word/PDF terminology documents should first be converted by an Agent to the DBabel CSV/JSON contract. The score counts passed applicable approved term/unit checks over all such checks; no applicable checks produce `null`, displayed as unavailable. It measures scoped lexical compliance. New decisions and fresh QA use the saved glossary; restarting the same session reloads it.

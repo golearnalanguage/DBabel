@@ -32,9 +32,17 @@ round-trip QA. Use the task status defined in `SKILL.md` to make that distinctio
 
 ## Workbench delivery capabilities
 
-| Task | Implemented behavior | Boundary |
+| Task | Implemented behavior | Requirements and limitations |
 |---|---|---|
 | Native document export | DOCX copy, original hash and target-anchor checks, text round-trip validation | Other formats require a dedicated writer; visual QA is separate |
-| Checkpoint export | Apply completed human decisions and list pending IDs in the receipt | Pending text is preserved; not a final quality approval |
+| Checkpoint export | Apply completed human decisions and list pending IDs in the receipt | Pending text is preserved and listed in the receipt |
 | Post-human review | Download source/target, notes, revisions and text hashes for an Agent | Handoff only; semantic review must actually be performed |
 | Portable review | Offline decisions, views and report download | Import decisions and run fresh local QA before native export |
+
+| Local Workbench feature | Implemented behavior | Requirements |
+|---|---|---|
+| Document upload | Text, delimited/structured text and Office extraction with located scope | [Format-specific dependencies and omissions](DOCUMENT_FORMATS.md) |
+| Review-result export | JSON, CSV, TSV, Markdown, HTML and TXT in every local session | Pending status stays explicit; native layout is handled separately |
+| Multilingual review | One independent unit per source/target-language pair | Agent supplies target-language proposals |
+| Glossary upload and score | Canonical CSV/JSON validation and scoped lexical checks | Applicable `PROJECT_APPROVED` entries and explicit languages |
+| Interface language | English and Simplified Chinese, including Portable Review | Local browser preference; document content stays verbatim |

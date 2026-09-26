@@ -1,15 +1,13 @@
-# DBabel disclaimer
+# Use and licensing notes / 使用与许可说明
 
-This document supplements the repository's licensing and scope notices. It does not replace or modify the PolyForm Noncommercial License 1.0.0.
+DBabel provides terminology review, translation review, local QA and document delivery tools. Apply project terminology within its approved scope, cite the product/version used for a finding, and inspect exported documents before publication. Extraction coverage and format-specific limits are described in the [format matrix](docs/DOCUMENT_FORMATS.md).
 
-DBabel is a methodology and Agent workflow for terminology research, document review, translation constraints, evidence assessment, and related quality assurance. It is not an authoritative database-vendor publication, legal opinion, security certification, compliance certification, or guarantee of technical correctness.
+DBabel 提供术语审核、翻译审校、本地 QA 与文档交付工具。项目术语按批准范围使用，发现记录对应产品与版本，发布前检查导出的文档。提取范围和具体格式限制见[格式说明](docs/DOCUMENT_FORMATS.md)。
 
-Agents, language models, search engines, machine-translation systems, parsers, OCR systems, external APIs, and third-party documentation can be incomplete, outdated, unavailable, ambiguous, or wrong. DBabel therefore requires evidence checks and review states, but it cannot guarantee that every result, translation, source, citation, or recommendation will be correct or suitable for a particular use.
+The local Workbench processes uploads on the user's machine. When using an external Agent, translation provider or research service, follow the permissions established for the document and project.
 
-Users are responsible for validating material decisions against the applicable product version, official documentation, standards, contractual requirements, security requirements, and organizational policies before relying on them in production, customer-facing, regulatory, safety-critical, or otherwise consequential contexts.
+本地工作台在用户机器上处理上传文件。使用外部 Agent、翻译服务或检索服务时，遵循该文档和项目已经确定的处理授权。
 
-DBabel does not itself authorize the upload of confidential, proprietary, personal, licensed, or customer material to third-party services. Users remain responsible for determining whether a document or query may be processed by a selected Agent, model, search provider, machine-translation provider, or other external service.
+The [PolyForm Noncommercial License 1.0.0](LICENSE) governs use of this repository, including its warranty and liability terms. Third-party documents, software, names and trademarks retain their own licenses and rights. This note does not amend those terms.
 
-Third-party names, products, documentation, standards, and trademarks remain subject to their own rights and terms. DBabel's source-selection rules do not transfer ownership or licensing rights in third-party material.
-
-DBabel is provided on an "AS IS" basis under the repository license. To the maximum extent permitted by applicable law, no warranty is made regarding accuracy, availability, fitness for a particular purpose, non-infringement, compatibility, uninterrupted operation, or the outcome of using DBabel.
+本仓库适用 [PolyForm Noncommercial License 1.0.0](LICENSE)，包括其中的保证与责任条款。第三方文档、软件、名称及商标适用各自许可与权利。本说明不修改上述条款。

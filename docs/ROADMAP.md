@@ -1,7 +1,6 @@
 # Roadmap
 
-DBabel remains data-light: the repository owns workflow logic, schemas, validators,
-adapters, policies, templates, and synthetic tests, not a vendor terminology corpus.
+The roadmap tracks the review workflow, schemas, validators, document adapters and synthetic regression coverage.
 
 ## v1.4 — Accuracy and runtime control
 
@@ -34,8 +33,7 @@ Implemented in the v1.5 line:
   non-destructive output, and round-trip verification;
 - explicit review-only versus native-export launch modes.
 
-Current working-tree refinements add explicit bulk keep/defer, independently routed
-cases, checkpoint DOCX delivery, session views and a post-human Agent review handoff.
+Current working-tree refinements add English/Chinese UI, document upload, multilingual sessions, project glossary upload and scoring, six review-result formats, explained suggestions, responsive panes, theme-aware vector logos, checkpoint DOCX delivery and a post-human Agent review handoff.
 These changes are unreleased until a validated release is created.
 
 Further work includes richer alignment, additional native-format adapters and
@@ -57,7 +55,4 @@ semantic review integrations. The current handoff does not invoke an LLM.
 - project-level evidence and decision history;
 - reusable benchmark corpora built only from redistributable or synthetic data.
 
-Future tooling must preserve DBabel's existing boundaries: no implicit vendor
-termbase, no automatic semantic authority from deterministic checks, no silent
-cross-product terminology mapping, and no verified-repair claim without round-trip
-QA.
+Future adapters must record provenance and product scope, keep suggestions separate from human decisions, and verify native output through round-trip QA.

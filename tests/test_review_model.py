@@ -38,6 +38,11 @@ class ReviewModelTests(unittest.TestCase):
         d=normalize_decision(unit,{'status':'USER_EDITED','approved_target':'new'},prev)
         self.assertEqual(d['recheck']['status'],'NOT_RUN')
 
+    def test_accept_rejects_empty_suggestion(self):
+        for target in [None, '', '   ']:
+            with self.assertRaises(ValueError):
+                normalize_decision({'id':'U1','current_target':'original','suggested_target':target}, {'status':'ACCEPT_SUGGESTION'}, default_decision('U1'))
+
     def test_export_gate_blocks_unreviewed(self):
         with tempfile.TemporaryDirectory() as td:
             b=Path(td)/'x.dbreview';b.mkdir()

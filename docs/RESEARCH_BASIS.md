@@ -1,9 +1,6 @@
 # Research basis
 
-DBabel's design follows established terminology, localization, and interchange
-principles without redistributing standards text or vendor terminology datasets.
-These sources inform design choices; they do **not** make DBabel conformant with a
-standard unless a specific adapter or conformance claim is implemented and tested.
+These references explain the design of DBabel's concepts, scope, evidence and protected-content handling. Implemented interchange formats are documented in the format matrix; standards-based adapters are tracked separately.
 
 ## Terminology and localization references
 
@@ -29,10 +26,7 @@ standard unless a specific adapter or conformance claim is implemented and teste
   the context of its source publication rather than treated as context-free truth.
   https://csrc.nist.gov/glossary
 
-DBabel currently does **not** claim TBX, TMX, or XLIFF compatibility. The public
-project-glossary and bilingual-unit schemas are DBabel-native contracts. Interchange
-adapters remain separate work and must preserve provenance, scope, and protected
-content when implemented.
+DBabel uses its JSON/CSV project-glossary and bilingual-unit contracts. TBX, TMX and XLIFF adapters remain planned work, with provenance, scope and protected-content preservation as implementation requirements.
 
 ## Document and runtime implementation references
 

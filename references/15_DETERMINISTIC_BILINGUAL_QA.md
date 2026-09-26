@@ -4,7 +4,7 @@ Deterministic QA detects mechanically verifiable source/target differences befor
 or after translation. It complements terminology adjudication; it does not replace
 context, evidence, or human/agent review.
 
-## Input boundary
+## Input contract
 
 The checker consumes aligned bilingual units, not arbitrary DOCX/PPTX/XLSX files.
 Document parsing and alignment remain separate responsibilities.
@@ -14,7 +14,7 @@ metadata, and optional scope context such as vendor, product, version, domain, a
 text role. If alignment is uncertain, mark that condition before deterministic QA;
 do not manufacture a 1:1 unit merely to run the checker.
 
-## Output boundary
+## Output contract
 
 Every emitted item is a `POTENTIAL_ISSUE`. `ERROR` and `WARNING` are policy
 severities, not declarations that the translation is factually wrong.

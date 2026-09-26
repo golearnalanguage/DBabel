@@ -38,7 +38,8 @@ class ContractTests(unittest.TestCase):
         self.assertIn('Never',openai)
 
         self.assertIn('"output_name"',server)
-        self.assertIn('Review-only mode.',app)
+        self.assertIn('Download review results',app)
+        self.assertIn('window.exportReviewResults()',app)
 
 
 if __name__=='__main__':unittest.main()

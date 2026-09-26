@@ -1,0 +1,68 @@
+{
+  "format_version": "1.0",
+  "entries": [
+    {
+      "id": "TERM001",
+      "source": {
+        "language": "en",
+        "term": "sync point"
+      },
+      "behavior": "TRANSLATE",
+      "approval": "PROJECT_APPROVED",
+      "targets": [
+        {
+          "language": "zh-CN",
+          "term": "同步点",
+          "status": "PREFERRED"
+        },
+        {
+          "language": "zh-CN",
+          "term": "同步节点",
+          "status": "FORBIDDEN"
+        }
+      ],
+      "scope": {
+        "vendor": "Example Vendor",
+        "product": "Product A",
+        "version": "3",
+        "domain": "replication",
+        "text_roles": [
+          "prose",
+          "operator_note"
+        ]
+      },
+      "match": {
+        "mode": "token",
+        "case_sensitive": true,
+        "unicode_normalization": "NFC"
+      },
+      "notes": "Synthetic example only"
+    },
+    {
+      "id": "LIT001",
+      "source": {
+        "language": "en",
+        "term": "EXAMPLE_MODE"
+      },
+      "behavior": "PROTECT",
+      "approval": "PROJECT_APPROVED",
+      "targets": [],
+      "scope": {
+        "vendor": "Example Vendor",
+        "product": "Product A",
+        "version": "3",
+        "domain": "configuration",
+        "text_roles": [
+          "code",
+          "prose"
+        ]
+      },
+      "match": {
+        "mode": "token",
+        "case_sensitive": true,
+        "unicode_normalization": "NFC"
+      },
+      "notes": "Synthetic protected literal"
+    }
+  ]
+}

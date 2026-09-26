@@ -10,7 +10,7 @@ The machine-readable registry is
 Its schema is
 [`../schemas/translation_techniques.schema.json`](../schemas/translation_techniques.schema.json).
 
-## Boundary
+## Applying the playbook
 
 The techniques are execution guidance, not source evidence.
 
@@ -22,11 +22,11 @@ The techniques are execution guidance, not source evidence.
 - An AI suggestion is not human approval.
 - Missing context remains missing. Do not silently repair an ambiguous source.
 
-## Candidate routing boundary
+## Candidate routing
 
 The machine-readable `triggers` in this playbook may route explicit unit-level observations to candidate techniques. Matching is exact rather than fuzzy; task mode and concrete text role constrain applicability; unknown or unmatched signals remain visible; and a candidate does not establish that a translation failure occurred. Semantic adjudication is required before `finding.technique` is populated. A candidate never chooses a semantic decision or authorizes repair.
 
-The deterministic surface extractor is intentionally narrower than the full trigger catalog. It may emit only allowlisted, directly observable literal, lexical, or text-role cues. Triggers that require concept resolution, cross-sentence reasoning, source-defect judgment, role mapping, attachment analysis, or product/version inference remain semantic agent work and are never synthesized by regex alone.
+The deterministic surface extractor uses directly observable cues from the trigger catalog. It may emit only allowlisted, directly observable literal, lexical, or text-role cues. Triggers that require concept resolution, cross-sentence reasoning, source-defect judgment, role mapping, attachment analysis, or product/version inference remain semantic agent work and are never synthesized by regex alone.
 
 ## Execution order
 

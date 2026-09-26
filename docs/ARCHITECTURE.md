@@ -1,6 +1,6 @@
 # Architecture
 
-DBabel is intentionally data-light and method-heavy.
+DBabel separates runtime context, terminology evidence, review decisions and document delivery.
 
 ```text
 User request / files
@@ -56,15 +56,12 @@ User request / files
                  round-trip / scoped output
 ```
 
-The public repository owns workflow code, schemas, policies, templates, adapters,
-and synthetic tests. It does not ship a vendor terminology corpus.
+The repository contains workflow code, schemas, policies, templates, adapters and synthetic tests. Project documents and terminology are supplied at runtime.
 
 Project glossaries remain user/project data. Only `PROJECT_APPROVED` entries are
 eligible for deterministic enforcement within their declared scope.
 
-The Accuracy Core is deliberately narrower than semantic review: it detects
-mechanical integrity and approved terminology conditions, but does not establish
-technical truth, evidence quality, or repair authorization.
+The Accuracy Core checks literal integrity and approved terminology conditions. The Agent evaluates meaning and evidence; the reviewer records decisions; the export adapter verifies the resulting copy.
 
 Format probing is bounded and non-executing. Optional parser/detector backends are
 capabilities, not mandatory dependencies. A selected parser must still be followed

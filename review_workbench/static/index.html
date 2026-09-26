@@ -26,10 +26,25 @@
   <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></symbol>
   <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 5h10l-2 4 2 4H6"/></symbol>
 </svg>
+<section id="exchangePanel" class="exchange-panel" hidden>
+    <div class="field-head"><h2>Upload documents</h2><button id="closeIntake" aria-label="Close upload panel">×</button></div>
+    <p>Upload a source document, inspect the extraction, then create a new review session.</p>
+    <div class="intake-grid">
+      <label>Source document<input type="file" id="sourceUpload" accept=".txt,.md,.csv,.tsv,.json,.jsonl,.html,.docx,.xlsx,.pptx,.pdf"></label>
+      <label>Target document (optional)<input type="file" id="targetUpload" accept=".txt,.md,.csv,.tsv,.json,.jsonl,.html,.docx,.xlsx,.pptx,.pdf"></label>
+      <label>Source language<input id="intakeSourceLanguage" value="zh-CN" placeholder="zh-CN"></label>
+      <label>Target languages<input id="intakeTargetLanguages" value="en" placeholder="en,ja,de"></label>
+    </div>
+    <label class="alignment-control"><input type="checkbox" id="confirmAlignment">I checked that source and target segments correspond in order.</label>
+    <p>For multiple target languages, upload only the source. An Agent supplies translations for each language.</p>
+    <button id="inspectDocument" class="view-action">Inspect document</button><button id="createIntake" class="view-action">Create session</button>
+    <pre id="intakeStatus" role="status"></pre>
+  </section>
 <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand-lockup"><img src="/dbabel-workbench-logo.png" alt="DBabel Review Workbench"></div>
+    <div class="brand-lockup"><img class="brand-light" src="/dbabel-logo-light.svg" alt="DBabel Review Workbench"><img class="brand-dark" src="/dbabel-logo-dark.svg" alt="DBabel Review Workbench"></div>
     <nav class="main-nav" aria-label="Workbench sections">
+      <button class="nav-item" id="openIntake"><svg><use href="#i-doc"></use></svg><span>Upload documents</span></button>
       <button class="nav-item active" data-view="Review"><svg><use href="#i-review"></use></svg><span>Review</span></button>
       <button class="nav-item" data-view="Terminology"><svg><use href="#i-book"></use></svg><span>Terminology</span></button>
       <button class="nav-item" data-view="Evidence"><svg><use href="#i-db"></use></svg><span>Evidence</span></button>
@@ -62,6 +77,7 @@
       </div>
       <label class="global-search"><svg><use href="#i-search"></use></svg><input id="searchBox" type="search" placeholder="Search source, target, term, or issue..."></label>
       <div class="reviewer-zone">
+        <label class="language-control"><span>Language</span><select id="languageSelect" aria-label="Interface language"><option value="en">English</option><option value="zh-CN">简体中文</option></select></label>
         <label class="theme-control" title="Appearance"><span>Theme</span><select id="themeSelect" aria-label="Appearance theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
         <button id="notificationsButton" class="icon-only" title="Review activity" aria-label="Notifications"><svg><use href="#i-bell"></use></svg></button>
       </div>
@@ -72,7 +88,7 @@
       <div class="metric-card reviewed"><span class="metric-icon green"><svg><use href="#i-check"></use></svg></span><div><span>Reviewed</span><strong id="metricReviewed">0</strong></div></div>
       <div class="metric-card"><span class="metric-icon coral">!</span><div><span>With Issues</span><strong id="metricIssues">0</strong></div></div>
       <div class="metric-card"><span class="metric-icon slate">○</span><div><span>To Review</span><strong id="metricPending">0</strong></div></div>
-      <div class="export-summary"><select id="exportMode" aria-label="Export mode"><option value="FINAL">Final · all reviewed</option><option value="CHECKPOINT">Checkpoint · reviewed changes</option></select><button id="exportButton" disabled><svg><use href="#i-lock"></use></svg><span>Export Translation...</span></button><small id="exportHint">Complete all required reviews to enable export.</small></div>
+      <div class="export-summary"><div class="result-export"><select id="resultFormat" aria-label="Result format"><option value="json">JSON</option><option value="csv">CSV</option><option value="tsv">TSV</option><option value="md">Markdown</option><option value="html">HTML</option><option value="txt">TXT</option></select><button id="downloadResults">Download review results</button></div><select id="exportMode" aria-label="Export mode"><option value="FINAL">Final · all reviewed</option><option value="CHECKPOINT">Checkpoint · reviewed changes</option></select><button id="exportButton" disabled><svg><use href="#i-lock"></use></svg><span>Export Translation...</span></button><small id="exportHint">Complete all required reviews to enable export.</small></div>
     </section>
 
     <section id="sectionView" class="section-view" hidden aria-live="polite"></section>
@@ -119,7 +135,6 @@
     </div>
   </section>
 </div>
-<script src="/workbench_views.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

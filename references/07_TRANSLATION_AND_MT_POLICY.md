@@ -34,7 +34,7 @@ stylistic realization may vary.
 Do not assume a provider's glossary feature guarantees semantic correctness. MT/LLM
 output is generated text, not terminology authority. Validate it after translation.
 
-## Deterministic QA boundary
+## Deterministic QA checks
 
 The Accuracy Core may detect placeholder, URL, path, filename, CLI option,
 environment-variable, version, number/unit, protected-literal, or approved glossary

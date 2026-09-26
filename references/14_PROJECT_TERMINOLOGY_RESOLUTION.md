@@ -70,7 +70,7 @@ Default matching is conservative:
 - case-sensitive unless the entry explicitly says otherwise;
 - Unicode normalization may standardize representation but must not be used to
   invent semantic equivalence;
-- substring matching is intentionally not a default because it creates false
+- substring matching is excluded by default because it creates false
   positives inside identifiers and unrelated words.
 
 For a scoped entry, missing product/version/text-role context makes the entry
@@ -92,7 +92,7 @@ A project preference may govern project wording, but reports must not describe i
 an official vendor designation unless authoritative evidence independently supports
 that claim.
 
-## Interchange boundary
+## Interchange formats
 
 The internal model is designed to remain mappable to established terminology
 concepts, including concept/designation-oriented terminology work and TBX-style

@@ -2,6 +2,17 @@
 
 ## Unreleased — review workflow refinement
 
+### Workbench language, intake and delivery
+
+- Add English/Simplified Chinese UI to desktop and Portable Review, with persisted language preference and unchanged document text.
+- Add located document intake, explicit source/target languages, multilingual review sessions, and local source/extraction records.
+- Export review snapshots from every local session as JSON, CSV, TSV, Markdown, HTML or TXT; keep pending decisions and unaccepted suggestions separate.
+- Add project glossary CSV/JSON upload, validation, scope-aware compliance scoring and reuse during QA.
+- Preserve Agent-authored suggestion reasons and show actionable guidance for every review unit.
+- Refine pane spacing and scrolling at desktop, tablet and mobile widths; provide light/dark vector logos with a coloured tower.
+- Rewrite the Agent skill and user guides around executable intake, review, QA, export and post-human language review.
+
+
 - Split 18 worked examples into individually routed files.
 - Add checkpoint DOCX delivery without fabricating approval of pending units.
 - Add post-human Agent review handoffs with decision revisions and target hashes.

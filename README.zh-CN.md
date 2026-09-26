@@ -4,11 +4,14 @@
 
 DBabel 帮助团队按产品、版本和上下文核对技术译文。Agent 准备有定位的发现、证据和建议，审校人员在本地工作台确认修改，再导出经过完整性校验的 DOCX 副本与审核回执。
 
-仓库提供工作流和工具。待审文档、项目术语表与批准资料由用户提供；DBabel 不内置厂商术语库，也不会自行调用翻译模型。
+DBabel 提供审核流程、本地工具和格式适配器。用户提供文档与项目参考资料，Agent 生成译文并核实证据；工作台记录人工决策、运行检查并导出结果。
 
 [English](README.md) · [工作流导航](docs/WORKFLOW_GUIDE.zh-CN.md) · [Agent 入口](SKILL.md) · [案例索引](examples/technical_translation_review_examples.zh-CN.md)
 
-<p align="center"><img src="assets/platform-support.svg" alt="支持 macOS、Windows 和 Linux；需要 Python 3.9 或更高版本" width="640"></p>
+<p align="center"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/dbabel-logo-dark.svg">
+  <img src="assets/dbabel-logo-light.svg" alt="DBabel Review Workbench" width="420">
+</picture></p>
 
 ## 审核工作台
 
@@ -16,12 +19,16 @@ DBabel 帮助团队按产品、版本和上下文核对技术译文。Agent 准�
 
 并排查看原文和译文，核对证据，然后明确选择**接受建议、保留当前译文、编辑、暂缓、阻断或豁免**。AI 建议、潜在问题和人工批准是不同状态。
 
+- **界面语言**：右上角切换中文或英文，文档正文与审核备注保持原样。
+- **逐条建议**：每个单元显示建议译文及理由，或具体的翻译、修改检查项。
 - **集中审核**：按状态、问题类型、位置和标签筛选；选中一页或全部匹配项后，明确执行批量保留或暂缓。
 - **分批交付**：Checkpoint 只应用已审核修改，未处理内容保持原样并列入回执。Final 仍要求完成全部必要审核。
-- **人工修改后复核**：从 Reports 下载 Agent 交接报告，检查 typo、误用词和遗漏。下载不代表已运行模型，建议仍需人工确认。
+- **人工修改后复核**：从 Reports 下载 Agent 交接报告，检查 typo、误用词和遗漏。将报告交给 Agent 执行复核，再由人工确认新建议。
 - **离线协作**：Portable Review 可独立打开，导出人工决策后导入对应本地会话，再运行 QA。
 
-当前原格式写回仅支持 **DOCX**。其他输入可在可用解析能力与覆盖范围内审查；识别格式不代表支持原格式导出。
+在左侧 **上传文档** 中导入 TXT、Markdown、CSV/TSV、JSON/JSONL、HTML、DOCX、XLSX、PPTX 或带文字层的 PDF，先检查提取范围，再建立单语言或多目标语言会话。**术语 → 上传项目术语表** 支持 CSV/JSON 验证及适用范围内的术语符合率评分。
+
+所有本地会话，包括演示和 review-only 会话，都可以导出 **JSON、CSV、TSV、Markdown、HTML、TXT** 审核结果。DOCX 原格式导出另行验证包结构与段落内容。详见[格式依赖与保真度](docs/DOCUMENT_FORMATS.md)。
 
 ## 工作流程
 
@@ -34,7 +41,7 @@ DBabel 帮助团队按产品、版本和上下文核对技术译文。Agent 准�
 | 复核 | 检查人工修改后的拼写和用词，再运行 QA | 需要再次确认的新建议 |
 | 交付 | 导出阶段或完整 DOCX 副本并回读验证 | 输出文件与审核回执 |
 
-按当前阶段加载文件，不预读整个资料库。[18 个案例](examples/technical_translation_review_examples.zh-CN.md)已分成五类独立文件，路由输出精确的 `example_files`。案例用于帮助诊断，不能作为当前文档的证据。
+按当前阶段加载文件，不预读整个资料库。[18 个案例](examples/technical_translation_review_examples.zh-CN.md)已分成五类独立文件，路由输出精确的 `example_files`。案例帮助诊断；当前文档结论使用对应产品与版本的证据。
 
 ## 启动本地演示
 
@@ -43,10 +50,12 @@ DBabel 帮助团队按产品、版本和上下文核对技术译文。Agent 准�
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python scripts/start_review_workbench.py examples/review_workbench_demo.dbreview
+mkdir -p output
+.venv/bin/python -c "import shutil; shutil.copytree('examples/review_workbench_demo.dbreview', 'output/demo.dbreview')"
+.venv/bin/python scripts/start_review_workbench.py output/demo.dbreview
 ```
 
-演示会话仅供审核。真实项目先通过 `scripts/create_review_session.py` 准备会话，再以 `--original target.docx --output reviewed.docx` 启动工作台以启用原格式导出。详见 [Review Workbench](docs/REVIEW_WORKBENCH.md)。
+演示副本支持审核和结果下载。真实文档可从“上传文档”开始，按[完整中文流程](docs/WORKFLOW_GUIDE.zh-CN.md)完成预检、建立会话、术语检查和导出。已有目标 DOCX 时，以 `--original target.docx --output reviewed.docx` 启动工作台启用原格式导出。每次试用请复制到新的输出目录。
 
 ## 交给 Agent 使用
 
@@ -91,13 +100,13 @@ git clone https://github.com/golearnalanguage/DBabel.git \
 
 无法联网时，可下载并解压 [DBabel](https://github.com/golearnalanguage/DBabel/archive/refs/heads/main.zip)，把完整目录、待审文件和允许使用的参考资料一并交给 Agent。
 
-## 能力边界
+## 审核与交付规则
 
 - 核查术语、双语语义、受保护技术标记与项目用词；数据库运维和 SQL 调试不在此工作流内。
 - 确定性 QA 检查占位符、路径、URL、数字、单位等完整性。`POTENTIAL_ISSUE` 需要判断；检查通过不等于语义正确。
 - 保留产品、版本和文本角色的区别；证据不足时保留不确定性，不靠猜测修改。
 - 原格式导出检查原文件哈希、目标锚点和回读文本，写入新副本并验证非目标文本不变；视觉版式检查仍需单独进行。
-- 报告必须说明已检查范围、未决项与未执行检查。DBabel 不宣称已兼容 TBX、TMX 或 XLIFF。
+- 报告必须说明已检查范围、未决项与未执行检查。交换数据使用 DBabel JSON/CSV 合同；TBX、TMX 和 XLIFF 需要另行实现适配器。
 
 ## 开发与参考
 

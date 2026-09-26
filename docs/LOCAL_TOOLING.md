@@ -2,8 +2,7 @@
 
 DBabel's local scripts provide reproducible contracts around routing, format
 preflight, glossary handling, deterministic QA, ingest coverage, and structured
-reports. They support the Agent workflow; they do not replace source reading or
-semantic judgment.
+reports. Use their structured outputs as inputs to Agent source reading and semantic review.
 
 ## Baseline environment
 
@@ -36,7 +35,7 @@ python scripts/prepare_runtime.py \
 
 The plan combines format preflight, declared/available capabilities, Task Context,
 and the initial progressive resource plan. `READY_FOR_INGEST` means a parser may be
-used; it does not mean ingest already succeeded.
+used. Run extraction next and record its coverage.
 
 ## Inspect format and capabilities separately
 
@@ -97,8 +96,7 @@ completed file coverage.
 python scripts/validate_report.py examples/audit_report.json
 ```
 
-The validator checks recorded contract consistency and evidence/repair gating. It
-does not verify that an external source is true or that a file was visually correct.
+The validator checks recorded contract consistency and evidence/repair gating. Review source validity and rendered layout separately.
 
 ## Package regression
 
@@ -117,12 +115,9 @@ python -m unittest discover -s tests -v
 git diff --check
 ```
 
-## Data and privacy boundary
+## Local files and services
 
-Local tooling should operate on the minimum material needed for the task. The format
-probe does not authorize uploads or network calls. Optional third-party parsers may
-have their own I/O, model, native-library, or service behavior; review those
-properties before processing confidential or restricted material.
+The Workbench sends uploads to its authenticated local server at 127.0.0.1. New sessions save source copies in inputs/ and extraction details in intake.json. Agent and external parser services use the permissions supplied for the task.
 
 ## Review, checkpoint export and language-review handoff
 
@@ -133,3 +128,14 @@ python scripts/build_post_review_report.py project.dbreview --output post-review
 ```
 
 Use a new output filename for each CLI export. `FINAL` is the default export mode; `CHECKPOINT` preserves pending content without approving it. Reports are available before all reviews finish. The handoff records Agent review as `NOT_RUN`; follow `docs/POST_REVIEW_QA.md` to perform the semantic review.
+
+## Document intake and review-result delivery
+
+```bash
+python scripts/intake_document.py source.md --inspect
+python scripts/intake_document.py source.md --source-language zh-CN --target-languages en,ja --output manual.multilingual.dbreview
+python scripts/start_review_workbench.py manual.multilingual.dbreview
+python scripts/export_review_results.py manual.multilingual.dbreview --format json --output manual.review.json
+```
+
+The desktop upload panel runs the same extraction path. The Terminology page validates uploaded glossary CSV/JSON and scores applicable approved terms. [Document formats](DOCUMENT_FORMATS.md) lists dependencies, extracted structures and output fidelity.

@@ -1,9 +1,9 @@
 # Runtime preflight and ingest validation
 
-This reference governs the boundary between a user-supplied file and DBabel's
+This reference defines the checks connecting a user-supplied file to DBabel's
 terminology/translation workflow.
 
-## Why the boundary exists
+## Four checks before delivery
 
 Four claims must remain separate:
 

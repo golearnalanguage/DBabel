@@ -31,6 +31,13 @@ class ServerTests(unittest.TestCase):
         self.server.shutdown();self.server.server_close();self.td.cleanup()
     def req(self,method,path,body=None,headers=None):
         c=http.client.HTTPConnection('127.0.0.1',self.port,timeout=5);payload=None if body is None else json.dumps(body);h=headers or {};h.setdefault('Content-Type','application/json');c.request(method,path,payload,headers=h);r=c.getresponse();raw=r.read();c.close();return r.status,json.loads(raw.decode()) if raw else None
+    def test_runtime_is_served_as_one_ordered_dependency_bundle(self):
+        c=http.client.HTTPConnection('127.0.0.1',self.port,timeout=5)
+        c.request('GET','/app.js');r=c.getresponse();source=r.read().decode();c.close()
+        self.assertEqual(r.status,200)
+        self.assertLess(source.index('window.dbabelI18n='),source.index('window.installExchange ='))
+        self.assertLess(source.index('window.installWorkbenchViews ='),source.index('const state={token:'))
+
     def test_api_requires_token(self):
         status,_=self.req('GET','/api/bootstrap');self.assertEqual(status,403)
     def test_wrong_origin_rejected(self):
@@ -112,6 +119,46 @@ class ServerTests(unittest.TestCase):
             decision['recheck']['status'],
             'PASS',
         )
+
+    def test_review_only_results_preserve_pending_and_accept_all_formats(self):
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        for fmt in ['json','csv','tsv','md','html','txt']:
+            status,result=self.req('POST','/api/results',{'format':fmt},headers)
+            self.assertEqual(status,200)
+            self.assertTrue(result['content'])
+            self.assertIn('UNREVIEWED',result['content'])
+        status,_=self.req('POST','/api/results',{'format':[]},headers)
+        self.assertEqual(status,400)
+
+    def test_upload_inspect_create_and_reject_stale_session_token(self):
+        import base64
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        payload={'name':'source.txt','content_base64':base64.b64encode('甲\n乙'.encode()).decode()}
+        status,info=self.req('POST','/api/intake/inspect',{'source':payload},headers)
+        self.assertEqual(status,200);self.assertEqual(info['segment_count'],2)
+        old_bundle=self.server.state.bundle
+        status,result=self.req('POST','/api/intake/create',{'source':payload,'source_language':'zh-CN','target_languages':['en','ja']},headers)
+        self.assertEqual(status,200)
+        self.assertTrue(old_bundle.exists())
+        status,_=self.req('GET','/api/bootstrap',headers=headers)
+        self.assertEqual(status,403)
+        headers['X-DBabel-Session']=result['token']
+        status,current=self.req('GET','/api/bootstrap',headers=headers)
+        self.assertEqual(status,200);self.assertEqual(len(current['units']),4)
+        self.assertFalse(current['export_available'])
+
+    def test_glossary_upload_validates_before_replacing_saved_resource(self):
+        import base64
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        content=(ROOT/'templates/project_glossary.csv').read_bytes()
+        status,result=self.req('POST','/api/glossary',{'file':{'name':'terms.csv','content_base64':base64.b64encode(content).decode()}},headers)
+        self.assertEqual(status,200)
+        saved=self.server.state.glossary
+        before=saved.read_bytes()
+        status,_=self.req('POST','/api/glossary',{'file':{'name':'bad.json','content_base64':base64.b64encode(b'{}').decode()}},headers)
+        self.assertEqual(status,400);self.assertEqual(saved.read_bytes(),before)
+        status,_=self.req('GET','/api/glossary',headers=headers)
+        self.assertEqual(status,200)
 
 
 if __name__=='__main__':unittest.main()

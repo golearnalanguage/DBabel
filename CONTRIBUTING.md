@@ -36,3 +36,5 @@ Keep each diagnostic case in its own category file and update the example router
 ## Browser interaction regression
 
 `tests/workbench_browser_smoke.cjs` exercises desktop and portable decisions, themes, filters, notes, QA and downloads using Playwright. Use a temporary copy of the synthetic demo bundle: the test changes its decisions. Build a portable HTML from that copy, start a local workbench for the copy, then supply `DBABEL_TEST_URL` (including its session token) and `DBABEL_TEST_PORTABLE` (absolute file path). Run `node tests/workbench_browser_smoke.cjs` in an environment with Playwright available. `DBABEL_CHROME` optionally selects an installed browser executable. Playwright is not a core runtime dependency.
+
+The additional `tests/workbench_exchange_smoke.cjs` covers interface language, theme, responsive layouts at four widths, six result downloads, glossary upload, preflight and multilingual intake. It creates a new session and rotates the server token; run it after the existing desktop/portable smoke test. Set `DBABEL_TEST_OUTPUT` to a scratch directory for downloads and screenshots. Never point these tests at a user's active review session.

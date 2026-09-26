@@ -340,7 +340,7 @@ def normalize_decision(unit: Dict[str, Any], incoming: Dict[str, Any], previous:
     value["waived_issue_fingerprints"] = sorted(set(str(x) for x in incoming.get("waived_issue_fingerprints") or []))
     if status == "ACCEPT_SUGGESTION":
         suggestion = unit.get("suggested_target")
-        if suggestion is None:
+        if not isinstance(suggestion, str) or not suggestion.strip():
             raise ValueError("unit {} has no suggested_target".format(unit["id"]))
         value["approved_target"] = str(suggestion)
     elif status == "KEEP_CURRENT":

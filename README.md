@@ -1,8 +1,7 @@
-<p align="center">
-  <img src="assets/dbabel-social-preview.png"
-       alt="DBabel — Database terminology review for AI agents."
-       width="100%">
-</p>
+<p align="center"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/dbabel-logo-dark.svg">
+  <img src="assets/dbabel-logo-light.svg" alt="DBabel Review Workbench" width="420">
+</picture></p>
 
 # DBabel
 
@@ -17,7 +16,7 @@
 
 DBabel helps reviewers check technical translations against the right product, version and context. An Agent prepares located findings, evidence and suggested wording; a human reviews the changes in a local workbench. Reviewed DOCX copies are exported with integrity checks and an audit receipt.
 
-DBabel provides the workflow and tools. You supply the documents, project glossary and approved reference material. It does not bundle a vendor terminology database or run a translation model by itself.
+DBabel supplies the review workflow, local tools and document adapters. You provide documents and scoped reference material; your Agent generates translations and evaluates evidence. The Workbench records human decisions and checks their outputs.
 
 [中文说明](README.zh-CN.md) · [Workflow guide](docs/WORKFLOW_GUIDE.zh-CN.md) · [Agent entry point](SKILL.md) · [Case index](examples/technical_translation_review_examples.zh-CN.md)
 
@@ -29,12 +28,16 @@ DBabel provides the workflow and tools. You supply the documents, project glossa
 
 Read the source and target side by side, inspect the supporting evidence, then **Accept Suggestion**, **Keep Current**, **Edit**, **Defer**, **Block**, or **Waive**. AI suggestions, potential issues and human decisions remain separate.
 
+- **Choose the interface language:** switch between English and Simplified Chinese; source text and reviewer notes stay verbatim.
+- **Understand each suggestion:** inspect a proposed translation with its reason, or a concrete revision checklist when no replacement is supplied.
 - **Focus the review:** filter by status, issue type, location or tag. Select a page or all matching segments for an explicit bulk Keep Current / Defer decision.
 - **Deliver in stages:** Checkpoint export applies reviewed changes and keeps pending content unchanged. Its receipt lists the unreviewed scope. Final export requires the full review gate.
 - **Check human edits:** download an Agent handoff from Reports to check typos, mistaken wording and omissions. Suggestions return to human review; downloading the report does not run an LLM.
 - **Review offline:** a self-contained Portable Review file exports decisions for import into the matching local session and fresh QA.
 
-Native write-back currently supports **DOCX**. Other inputs can be reviewed within available parser coverage; format recognition alone does not imply native export support.
+Use **Upload documents** to inspect and import TXT, Markdown, CSV/TSV, JSON/JSONL, HTML, DOCX, XLSX, PPTX or text-layer PDF. Set one or several target languages, then review each language separately. **Terminology → Upload project glossary** validates CSV/JSON project terms and reports scoped terminology compliance.
+
+All local sessions, including the demo and review-only sessions, export **JSON, CSV, TSV, Markdown, HTML and TXT** review results. Native DOCX export additionally preserves the document package and validates changed paragraphs. See [format dependencies and fidelity](docs/DOCUMENT_FORMATS.md).
 
 ## Workflow
 
@@ -56,10 +59,14 @@ Python 3.9+:
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python scripts/start_review_workbench.py examples/review_workbench_demo.dbreview
+mkdir -p output
+.venv/bin/python -c "import shutil; shutil.copytree('examples/review_workbench_demo.dbreview', 'output/demo.dbreview')"
+.venv/bin/python scripts/start_review_workbench.py output/demo.dbreview
 ```
 
-The demo is review-only. For a real session, prepare aligned units with `scripts/create_review_session.py` and start the workbench with `--original target.docx --output reviewed.docx` to enable native export. See [Review Workbench](docs/REVIEW_WORKBENCH.md) for session creation, portable review and export details.
+The demo supports decisions and review-result downloads. Use a new copy for each trial so that the bundled example stays reproducible. For a real document, open **Upload documents**, inspect the extracted scope, and create a session. The [Chinese walkthrough](docs/WORKFLOW_GUIDE.zh-CN.md) includes runnable intake, multilingual review, glossary, QA, export and Agent-review commands.
+
+For an existing DOCX translation, prepare aligned units with `scripts/create_review_session.py`, then launch with `--original target.docx --output reviewed.docx`. The [Workbench manual](docs/REVIEW_WORKBENCH.md) describes native export and portable review.
 
 ## Use with an Agent
 
@@ -126,13 +133,13 @@ For a local-only agent, download the [repository ZIP](https://github.com/golearn
 extract it, and provide the complete folder together with your document and approved
 references.
 
-## Scope and guarantees
+## Review and delivery rules
 
-- Check terminology, bilingual meaning, protected tokens and scoped project wording. Database administration and SQL debugging are outside this workflow.
+- Check terminology, bilingual meaning, protected tokens and scoped project wording. Keep executable SQL and identifiers intact during language review.
 - Deterministic QA checks placeholders, paths, URLs, numbers, units and other literal content. A `POTENTIAL_ISSUE` requires interpretation; a passing check is not semantic approval.
 - Preserve product/version distinctions and uncertainty. Evidence must support the actual claim and scope.
 - Native export checks the original hash, changed text anchors and round-trip text integrity. It writes a new copy and preserves non-target text. Visual layout review remains a separate check.
-- Agent reports disclose inspected scope, unresolved items and unavailable checks. DBabel does not claim TBX, TMX or XLIFF compatibility.
+- Agent reports disclose inspected scope, unresolved items and unavailable checks. Use the DBabel JSON/CSV contracts for interchange; TBX, TMX and XLIFF require separate adapters.
 
 ## Development and reference
 

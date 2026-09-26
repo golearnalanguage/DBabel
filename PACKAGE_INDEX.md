@@ -101,3 +101,15 @@
 - `scripts/build_post_review_report.py`: revision-bound review handoff.
 - `examples/cases/`: 18 independently routed cases in five mechanism categories.
 - `review_workbench/static/workbench_views.js`: shared local and portable session views.
+
+## Workbench intake and interchange
+
+- `scripts/review_exchange.py`: located format extraction, intake, scoped glossary scoring and result rendering.
+- `scripts/intake_document.py`: inspect source files and create bilingual or multilingual review sessions.
+- `scripts/export_review_results.py`: six review-result formats, including pending states.
+- `review_workbench/static/i18n.js`: shared English/Chinese interface messages and per-unit review guidance.
+- `review_workbench/static/exchange.js`: document/glossary upload and result-download controls.
+- `assets/dbabel-logo-light.svg`, `assets/dbabel-logo-dark.svg`: theme-specific vector brand resources.
+- `docs/DOCUMENT_FORMATS.md`: bilingual dependency, coverage and fidelity matrix.
+- `templates/project_glossary.json`: JSON companion to the canonical CSV template.
+- `tests/test_review_exchange.py`, `tests/workbench_exchange_smoke.cjs`: intake, scoring, export, UI-language and layout regressions.

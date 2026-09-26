@@ -1,4 +1,4 @@
-# Technical claim boundary
+# Technical claim verification
 
 Terminology correctness does not prove factual correctness.
 

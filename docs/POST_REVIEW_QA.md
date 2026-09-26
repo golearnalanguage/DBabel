@@ -6,7 +6,7 @@ Use this workflow after a reviewer edits target text or before final delivery. T
 python scripts/build_post_review_report.py project.dbreview --output post-review.json
 ```
 
-This command exports data; it does not call an LLM and never reports semantic review as completed. No document is sent to an external provider automatically. Deterministic QA remains separate from language review.
+This command exports a local handoff with `agent_review_status: NOT_RUN`. Give the file to an Agent to perform the language review below, then record which units were inspected.
 
 To route only the follow-up instructions, use `python scripts/prepare_runtime.py --mode BILINGUAL_REVIEW --risk post_human_edit`. The tag records observed human edits; it is not a semantic issue verdict.
 
@@ -33,4 +33,4 @@ To route only the follow-up instructions, use `python scripts/prepare_runtime.py
 }
 ```
 
-The response is advisory, not an importable human decision file. Human reviewers apply chosen suggestions in the target editor. Portable handoffs require importing decisions and rerunning QA in the matching local session before a revision-bound local handoff or native export.
+The response contains proposed changes. Human reviewers apply chosen suggestions in the target editor. Portable handoffs require importing decisions and rerunning QA in the matching local session before a revision-bound local handoff or native export.

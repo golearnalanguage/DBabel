@@ -54,8 +54,7 @@ waiver decisions.
 
 Create sessions with `scripts/create_review_session.py`. For native DOCX export,
 start `scripts/start_review_workbench.py` with both `--original` and `--output`.
-Review-only and Portable Review are allowed, but must not be represented as native
-export sessions.
+Review-only sessions export status-bearing review results in six formats. Portable Review exports decisions for import. Native export uses its own original-file and output-path configuration.
 
 Portable decisions must be imported into the matching `.dbreview` session and
 rechecked before export.

@@ -1,9 +1,8 @@
 interface:
   display_name: "DBabel"
-  short_description: "Verify database terms and review technical translations"
+  short_description: "Review database terminology and multilingual documents"
   default_prompt: >
-    Use $dbabel-database-terminology-audit to review this document's database
-    terminology and explain material changes with supporting sources. For bilingual
-    changes or native-format export that require human approval, materialize a DBabel
-    Review Session and route the proposed changes through Review Workbench. Never
-    infer or fabricate human approval.
+    Use $dbabel-database-terminology-audit to review this document, provide located
+    translation suggestions with reasons, apply scoped project terminology, and
+    create a Review Session in Review Workbench for human decisions, QA and result
+    export. Never fabricate human approval.

@@ -29,7 +29,7 @@
 </svg>
 <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand-lockup"><img src="data:image/png;base64,__DBABEL_LOGO__" alt="DBabel Review Workbench"></div>
+    <div class="brand-lockup"><img class="brand-light" src="data:image/svg+xml;base64,__DBABEL_LOGO__" alt="DBabel Review Workbench"><img class="brand-dark" src="data:image/svg+xml;base64,__DBABEL_LOGO_DARK__" alt="DBabel Review Workbench"></div>
     <nav class="main-nav" aria-label="Workbench sections">
       <button class="nav-item active" data-view="Review"><svg><use href="#i-review"></use></svg><span>Review</span></button>
       <button class="nav-item" data-view="Terminology"><svg><use href="#i-book"></use></svg><span>Terminology</span></button>
@@ -63,6 +63,7 @@
       </div>
       <label class="global-search"><svg><use href="#i-search"></use></svg><input id="searchBox" type="search" placeholder="Search source, target, term, or issue..."></label>
       <div class="reviewer-zone">
+        <label class="language-control"><span>Language</span><select id="languageSelect" aria-label="Interface language"><option value="en">English</option><option value="zh-CN">简体中文</option></select></label>
         <label class="theme-control" title="Appearance"><span>Theme</span><select id="themeSelect" aria-label="Appearance theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
         <button id="notificationsButton" class="icon-only" title="Review activity" aria-label="Notifications"><svg><use href="#i-bell"></use></svg></button>
       </div>

@@ -8,7 +8,7 @@ class VisualContractTests(unittest.TestCase):
         html=(ROOT/'review_workbench'/'static'/'index.html').read_text(encoding='utf-8')
         css=(ROOT/'review_workbench'/'static'/'style.css').read_text(encoding='utf-8')
         for marker in [
-            'dbabel-workbench-logo.png','class="sidebar"','class="document-bar"',
+            'dbabel-logo-light.svg','dbabel-logo-dark.svg','class="sidebar"','class="document-bar"',
             'class="metrics-strip"','id="segmentRows"','class="inspector"',
             'Suggested Translation','Evidence from Reference Documents','Accept Suggestion',
             'Keep Current','Quality Check','Project Settings','id="themeSelect"',
@@ -64,10 +64,13 @@ class VisualContractTests(unittest.TestCase):
         self.assertIn('@media (max-width:680px)',css)
 
     def test_logo_and_readme_preview_assets_exist(self):
-        logo=ROOT/'review_workbench'/'static'/'dbabel-workbench-logo.png'
-        preview=ROOT/'assets'/'dbabel-review-workbench-preview.png'
-        self.assertTrue(logo.is_file());self.assertTrue(preview.is_file())
-        self.assertGreater(logo.stat().st_size,1000);self.assertGreater(preview.stat().st_size,10000)
+        from xml.etree import ElementTree as ET
+        for theme in ['light','dark']:
+            logo=ROOT/'review_workbench/static'/('dbabel-logo-'+theme+'.svg')
+            root=ET.fromstring(logo.read_text())
+            self.assertEqual(root.tag,'{http://www.w3.org/2000/svg}svg')
+            self.assertEqual(logo.read_bytes(),(ROOT/'assets'/logo.name).read_bytes())
+        self.assertGreater((ROOT/'assets/dbabel-review-workbench-preview.png').stat().st_size,10000)
 
     def test_portable_reuses_desktop_css_and_has_embedded_runtime(self):
         template=(ROOT/'review_workbench'/'portable_template.html').read_text(encoding='utf-8')
@@ -97,15 +100,21 @@ class VisualContractTests(unittest.TestCase):
         self.assertIn('"/dbabel-workbench-logo.png": "dbabel-workbench-logo.png"',server)
         self.assertIn('allowed = {',server)
 
-    def test_logo_has_transparent_background_for_surface_blending(self):
-        try:
-            from PIL import Image
-        except ImportError:
-            self.skipTest('Pillow not installed in minimal package runtime')
-        logo=Image.open(ROOT/'review_workbench'/'static'/'dbabel-workbench-logo.png').convert('RGBA')
-        alpha=list(logo.getchannel('A').getdata())
-        self.assertIn(0, alpha)
-        self.assertIn(255, alpha)
+    def test_logo_text_contrast_and_tower_colours(self):
+        from xml.etree import ElementTree as ET
+        ns={'s':'http://www.w3.org/2000/svg'}
+        palettes=[]
+        def luminance(hex_colour):
+            rgb=[int(hex_colour[i:i+2],16)/255 for i in (1,3,5)]
+            linear=[v/12.92 if v<=0.04045 else ((v+0.055)/1.055)**2.4 for v in rgb]
+            return sum(v*w for v,w in zip(linear,[0.2126,0.7152,0.0722]))
+        for theme,background in [('light',1),('dark',0)]:
+            root=ET.fromstring((ROOT/'review_workbench/static'/('dbabel-logo-'+theme+'.svg')).read_text())
+            for text in root.findall('s:text',ns):
+                lum=luminance(text.attrib['fill'])
+                self.assertGreater((max(lum,background)+0.05)/(min(lum,background)+0.05),7)
+            palettes.append([p.attrib['fill'] for p in root.findall('.//s:path',ns)])
+        self.assertEqual(palettes[0],palettes[1]);self.assertGreaterEqual(len(set(palettes[0])),4)
 
     def test_bulk_selection_has_real_actions(self):
         desktop_html=(ROOT/'review_workbench/static/index.html').read_text(encoding='utf-8')
