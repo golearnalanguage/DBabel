@@ -1,7 +1,8 @@
-<p align="center"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/dbabel-logo-dark.svg">
-  <img src="assets/dbabel-logo-light.svg" alt="DBabel Review Workbench" width="420">
-</picture></p>
+<p align="center">
+  <img src="assets/dbabel-social-preview.png"
+       alt="DBabel — Database terminology review for AI agents."
+       width="100%">
+</p>
 
 # DBabel
 
