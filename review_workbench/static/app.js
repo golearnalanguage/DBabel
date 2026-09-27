@@ -496,7 +496,60 @@
     }
   }
 
-  async function refreshGate(){try{state.gate=await api('/api/export-gate',{method:'POST',body:JSON.stringify({export_mode:el('exportMode').value})});const fresh=state.gate.qa_issues||[];if(state.gate.review_decisions){for(const d of state.gate.review_decisions)state.decisions.set(d.unit_id,d);state.issues=state.issues.filter(i=>i.kind!=='DETERMINISTIC'||!completedStatuses.has(decisionFor(i.unit_id).status)).concat(fresh);delete state.gate.review_decisions;delete state.gate.qa_issues;renderIssueFilters();renderTable();}const blockers=state.gate.blockers||[];el('gateStatus').textContent=state.gate.status+(blockers.length?'\n'+blockers.slice(0,5).join('\n'):'');if(!state.exportAvailable){el('exportButton').disabled=false;el('exportButton').querySelector('span').textContent=trUI('Download review results');el('exportHint').textContent=trUI('Includes pending rows and decision status. Native DOCX, TXT, MD or XLSX export requires an original and output path.');return;}el('exportButton').disabled=state.gate.status!=='AUTHORIZED';if(state.gate.status==='AUTHORIZED'){el('exportHint').textContent='Reviewed scope passed. Native export is ready'+(state.outputName?': '+state.outputName:'.');el('exportButton').querySelector('span').textContent=el('exportMode').value==='CHECKPOINT'?'Export Checkpoint':'Export Translation';}else{el('exportHint').textContent=(state.outputName?'Output: '+state.outputName+' · ':'')+'Resolve the listed blockers, or choose Checkpoint to export reviewed changes.';el('exportButton').querySelector('span').textContent=el('exportMode').value==='CHECKPOINT'?'Export Checkpoint':'Export Translation';}}catch(err){el('gateStatus').textContent=err.message;el('exportButton').disabled=true;}}
+  async function refreshGate(){try{state.gate=await api('/api/export-gate',{method:'POST',body:JSON.stringify({export_mode:el('exportMode').value})});const fresh=state.gate.qa_issues||[];if(state.gate.review_decisions){for(const d of state.gate.review_decisions)state.decisions.set(d.unit_id,d);state.issues=state.issues.filter(i=>i.kind!=='DETERMINISTIC'||!completedStatuses.has(decisionFor(i.unit_id).status)).concat(fresh);delete state.gate.review_decisions;delete state.gate.qa_issues;renderIssueFilters();renderTable();}const blockers=state.gate.blockers||[];el('gateStatus').textContent=state.gate.status+(blockers.length?'\n'+blockers.slice(0,5).join('\n'):'');if(!state.exportAvailable){
+        el('exportButton').disabled=false;
+        el('exportButton').classList.remove('authorized');
+        el('exportButton').querySelector('use').setAttribute('href','#i-doc');
+        el('exportButton').querySelector('span').textContent=trUI('Download review results');
+        el('exportHint').textContent=trUI('Includes pending rows and decision status. Native DOCX, TXT, MD or XLSX export requires an original and output path.');
+        return;
+      }
+
+      const authorized=
+        state.gate.status==='AUTHORIZED';
+
+      el('exportButton').disabled=!authorized;
+      el('exportButton').classList.toggle(
+        'authorized',
+        authorized
+      );
+
+      el('exportButton')
+        .querySelector('use')
+        .setAttribute(
+          'href',
+          authorized
+            ? '#i-check'
+            : '#i-lock'
+        );
+
+      if(authorized){
+        el('exportHint').textContent=
+          'Reviewed scope passed. Native export is ready'+
+          (state.outputName
+            ? ': '+state.outputName
+            : '.');
+
+        el('exportButton')
+          .querySelector('span')
+          .textContent=
+            el('exportMode').value==='CHECKPOINT'
+              ? 'Export Checkpoint'
+              : 'Export Translation';
+      }else{
+        el('exportHint').textContent=
+          (state.outputName
+            ? 'Output: '+state.outputName+' · '
+            : '')+
+          'Resolve the listed blockers, or choose Checkpoint to export reviewed changes.';
+
+        el('exportButton')
+          .querySelector('span')
+          .textContent=
+            el('exportMode').value==='CHECKPOINT'
+              ? 'Export Checkpoint'
+              : 'Export Translation';
+      }}catch(err){el('gateStatus').textContent=err.message;el('exportButton').disabled=true;}}
   async function doExport(){
     if(!state.exportAvailable){await window.exportReviewResults();return;}
     if(el('exportMode').value==='CHECKPOINT'&&!confirm(trUI('Export reviewed changes only? Unreviewed content stays unchanged. This is not a fully reviewed release.')))return;
