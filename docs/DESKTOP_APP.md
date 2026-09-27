@@ -6,7 +6,7 @@ The macOS app opens the existing Full Local Review Workbench in a native window.
 
 ## Install and open
 
-The packaged Apple Silicon disk image is `output/release/DBabel-macOS-AppleSilicon.dmg`. Open it, drag **DBabel.app** to Applications, then launch it. The app bundles Python 3.12, OpenSSL 3 and its runtime dependencies. Demo and new sessions are written to `~/Library/Application Support/DBabel/`; the installed app does not depend on the checkout or `.venv`. This local build is ad-hoc signed and not notarized; a public Developer ID distribution has not been prepared.
+The packaged Apple Silicon disk image is `output/release/DBabel-macOS-AppleSilicon.dmg`. Open it, drag **DBabel.app** to Applications, then launch it. The packaging command leaves one app bundle and one disk image in the release directory; its temporary build copies are removed. The app bundles Python 3.12, OpenSSL 3 and its runtime dependencies. Demo and new sessions are written to `~/Library/Application Support/DBabel/`; the installed app does not depend on the checkout or `.venv`. This local build is ad-hoc signed and not notarized; a public Developer ID distribution has not been prepared.
 
 To rebuild the disk image from source, use macOS on Apple Silicon with Xcode Command Line Tools and network access for the first dependency download:
 

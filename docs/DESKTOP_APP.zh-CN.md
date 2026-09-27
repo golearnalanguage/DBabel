@@ -6,7 +6,7 @@ macOS 应用在原生窗口中打开现有的完整本地 Review Workbench。它
 
 ## 安装和启动
 
-已打包的 Apple Silicon 安装镜像位于 `output/release/DBabel-macOS-AppleSilicon.dmg`。打开镜像，将 **DBabel.app** 拖到“应用程序”后启动。应用内含 Python 3.12、OpenSSL 3 和运行依赖；演示副本与新会话写入 `~/Library/Application Support/DBabel/`，不依赖原仓库或 `.venv`。这是本地临时签名、未公证的构建版，尚未制作面向公众的开发者签名安装包。
+已打包的 Apple Silicon 安装镜像位于 `output/release/DBabel-macOS-AppleSilicon.dmg`。打开镜像，将 **DBabel.app** 拖到“应用程序”后启动。打包命令在发布目录只保留一个应用和一个镜像，临时构建副本会清理。应用内含 Python 3.12、OpenSSL 3 和运行依赖；演示副本与新会话写入 `~/Library/Application Support/DBabel/`，不依赖原仓库或 `.venv`。这是本地临时签名、未公证的构建版，尚未制作面向公众的开发者签名安装包。
 
 要从源码重建该安装镜像，需要 macOS、Apple Silicon、Xcode Command Line Tools 和用于下载构建依赖的网络连接。在本仓库执行：
 

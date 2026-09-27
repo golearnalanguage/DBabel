@@ -11,8 +11,10 @@ PYTHON="$PYTHONS/cpython-3.12.14-macos-aarch64-none"
 VENDOR="$OUTPUT/build-vendor"
 RELEASE="${DBABEL_RELEASE_DIR:-$OUTPUT/release}"
 APP="$RELEASE/DBabel.app"
-STAGE="$RELEASE/dmg-stage"
 DMG="$RELEASE/DBabel-macOS-AppleSilicon.dmg"
+BUILD_TMP=$(mktemp -d "${TMPDIR:-/tmp}/dbabel-package.XXXXXX")
+trap 'rm -rf "$BUILD_TMP"' EXIT
+STAGE="$BUILD_TMP/dmg-stage"
 
 if [ ! -x "$UV" ]; then
   /usr/bin/python3 -m pip install --disable-pip-version-check \
@@ -24,10 +26,9 @@ fi
 "$UV" pip install --target "$VENDOR" --python "$PYTHON/bin/python3" \
   -r "$ROOT/requirements-dev.txt"
 
-sh "$ROOT/scripts/build_macos_app.sh" >/dev/null
 mkdir -p "$RELEASE"
-rm -rf "$APP" "$STAGE"
-ditto "$OUTPUT/desktop/DBabel.app" "$APP"
+rm -rf "$APP"
+DBABEL_DESKTOP_APP_PATH="$APP" sh "$ROOT/scripts/build_macos_app.sh" >/dev/null
 mkdir -p "$APP/Contents/Resources/DBabel" "$STAGE"
 ditto "$PYTHON" "$APP/Contents/Resources/Python"
 ditto "$VENDOR" "$APP/Contents/Resources/vendor"
@@ -41,21 +42,20 @@ rsync -a \
   --exclude='*.p12' --exclude='*.pfx' --exclude='.DS_Store' \
   "$ROOT/" "$APP/Contents/Resources/DBabel/"
 
-ICONSET="$OUTPUT/desktop/DBabelIcon.iconset"
-rm -rf "$ICONSET"
+ICONSET="$BUILD_TMP/DBabelIcon.iconset"
 mkdir -p "$ICONSET"
 sips -Z 900 "$ROOT/review_workbench/static/dbabel-workbench-logo.png" \
-  --out "$OUTPUT/desktop/DBabelIcon-scaled.png" >/dev/null
+  --out "$BUILD_TMP/DBabelIcon-scaled.png" >/dev/null
 sips -p 1024 1024 --padColor FFFFFF \
-  "$OUTPUT/desktop/DBabelIcon-scaled.png" \
-  --out "$OUTPUT/desktop/DBabelIcon-square.png" >/dev/null
+  "$BUILD_TMP/DBabelIcon-scaled.png" \
+  --out "$BUILD_TMP/DBabelIcon-square.png" >/dev/null
 for size in 16 32 128 256 512; do
-  sips -z "$size" "$size" "$OUTPUT/desktop/DBabelIcon-square.png" \
+  sips -z "$size" "$size" "$BUILD_TMP/DBabelIcon-square.png" \
     --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
 done
 for size in 16 32 128 256 512; do
   double=$((size * 2))
-  sips -z "$double" "$double" "$OUTPUT/desktop/DBabelIcon-square.png" \
+  sips -z "$double" "$double" "$BUILD_TMP/DBabelIcon-square.png" \
     --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" \

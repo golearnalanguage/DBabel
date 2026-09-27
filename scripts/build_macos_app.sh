@@ -3,7 +3,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-APP="$ROOT/output/desktop/DBabel.app"
+APP="${DBABEL_DESKTOP_APP_PATH:-$ROOT/output/desktop/DBabel.app}"
 MACOS="$APP/Contents/MacOS"
 mkdir -p "$MACOS"
 
