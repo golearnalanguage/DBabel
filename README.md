@@ -15,11 +15,11 @@
 
 **Database terminology review and bilingual quality checks for AI agents.**
 
-DBabel helps reviewers check technical translations against the right product, version and context. An Agent prepares located findings, evidence and suggested wording; a human reviews the changes in a local workbench. Reviewed DOCX copies are exported with integrity checks and an audit receipt.
+DBabel helps reviewers check technical translations against the right product, version and context. An Agent prepares located findings, evidence and suggested wording; a human reviews the changes in a local workbench. Reviewed DOCX, TXT and Markdown copies are exported with integrity checks, an audit receipt, bilingual comparison and Agent handoff.
 
 DBabel supplies the review workflow, local tools and document adapters. You provide documents and scoped reference material; your Agent generates translations and evaluates evidence. The Workbench records human decisions and checks their outputs.
 
-[中文说明](README.zh-CN.md) · [Workflow guide](docs/WORKFLOW_GUIDE.zh-CN.md) · [Agent entry point](SKILL.md) · [Case index](examples/technical_translation_review_examples.zh-CN.md)
+[中文说明](README.zh-CN.md) · [Workflow guide](docs/WORKFLOW_GUIDE.md) · [Agent entry point](SKILL.md) · [Case index](examples/technical_translation_review_examples.md)
 
 <p align="center"><img src="assets/platform-support.svg" alt="macOS, Windows and Linux; Python 3.9 or later" width="640"></p>
 
@@ -49,7 +49,7 @@ All local sessions, including the demo and review-only sessions, export **JSON, 
 | Diagnose | Run applicable integrity checks, assess semantics and inspect evidence | Findings and suggested wording |
 | Review | Record explicit human decisions in the Workbench | Reviewed targets and pending scope |
 | Recheck | Review human edits for spelling and word misuse, then rerun QA | New suggestions for human confirmation |
-| Deliver | Export a checkpoint or final DOCX copy and verify the result | Output and export receipt |
+| Deliver | Export a checkpoint or final DOCX/TXT/Markdown copy and verify the result | Document, receipt, bilingual view and Agent handoff |
 
 Load only resources needed for the current step. The [18 worked cases](examples/technical_translation_review_examples.zh-CN.md) are split into individual files across five problem categories. The router returns exact `example_files`; examples are diagnostic patterns, never evidence for the current document.
 
@@ -143,7 +143,7 @@ references.
 
 ## Development and reference
 
-Repository version: **1.5.0**. Review Workbench version: **1.5.0**. This working tree also contains unreleased refinements recorded in [Changes](CHANGELOG.md).
+Repository version: **1.5.0**. Review Workbench version: **1.5.0**. Repository improvements since that release are recorded under Unreleased in [Changes](CHANGELOG.md). Merging changes does not create a new version tag or GitHub Release.
 
 ```bash
 python -m py_compile scripts/*.py

@@ -2,7 +2,7 @@
 
 **面向 AI Agent 的数据库术语核查与双语技术审校工具。**
 
-DBabel 帮助团队按产品、版本和上下文核对技术译文。Agent 准备有定位的发现、证据和建议，审校人员在本地工作台确认修改，再导出经过完整性校验的 DOCX 副本与审核回执。
+DBabel 帮助团队按产品、版本和上下文核对技术译文。Agent 准备有定位的发现、证据和建议，审校人员在本地工作台确认修改，再导出经过完整性校验的 DOCX、TXT 或 Markdown 副本，附带审核回执、双语对照和 Agent 交接记录。
 
 DBabel 提供审核流程、本地工具和格式适配器。用户提供文档与项目参考资料，Agent 生成译文并核实证据；工作台记录人工决策、运行检查并导出结果。
 
@@ -36,7 +36,7 @@ DBabel 提供审核流程、本地工具和格式适配器。用户提供文档�
 | 判断 | 执行完整性检查、分析语义、核实证据 | 发现与建议译文 |
 | 审核 | 人工明确记录接受、保留、修改或未决状态 | 已审核目标与待处理范围 |
 | 复核 | 检查人工修改后的拼写和用词，再运行 QA | 需要再次确认的新建议 |
-| 交付 | 导出阶段或完整 DOCX 副本并回读验证 | 输出文件与审核回执 |
+| 交付 | 导出阶段或完整 DOCX/TXT/Markdown 副本并验证 | 修订文档、回执、双语对照和 Agent 交接记录 |
 
 按当前阶段加载文件，不预读整个资料库。[18 个案例](examples/technical_translation_review_examples.zh-CN.md)已分成五类独立文件，路由输出精确的 `example_files`。案例帮助诊断；当前文档结论使用对应产品与版本的证据。
 
@@ -106,7 +106,7 @@ git clone https://github.com/golearnalanguage/DBabel.git \
 
 ## 开发与参考
 
-当前仓库包版本为 **1.5.0**。Review Workbench 当前版本为 **1.5.0**。本工作树中的未发布改进见 [Changes](CHANGELOG.md)。
+当前仓库包版本为 **1.5.0**。Review Workbench 当前版本为 **1.5.0**。该版本之后的仓库改进记录在[变更记录](CHANGELOG.md)的 Unreleased 部分。合并代码不会自动创建新版本标签或 GitHub Release。
 
 ```bash
 python -m py_compile scripts/*.py

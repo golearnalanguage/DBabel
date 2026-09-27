@@ -122,10 +122,13 @@ Portable review never writes the native document itself.
 
 ## DOCX native export
 
-The initial native adapter supports `.docx` only. It uses exact OOXML paragraph anchors,
+Native delivery supports DOCX, TXT and Markdown. The DOCX adapter uses exact OOXML paragraph anchors,
 verifies the original package hash and anchor text, patches existing `w:t` nodes rather
 than rebuilding the document, refuses ambiguous anchors, refuses in-place overwrite,
-and verifies reviewed target text plus non-target paragraph text after writing.
+and verifies reviewed target text, non-target paragraph text, non-text XML and untouched
+package parts after writing. TXT/Markdown use line anchors and retain UTF-8 BOM,
+original newline sequences, blank lines and untouched lines. All three formats produce
+a receipt, bilingual HTML and Markdown/JSON Agent handoff alongside the native copy.
 
 ```bash
 python scripts/export_reviewed_document.py translated.dbreview \
@@ -134,13 +137,15 @@ python scripts/export_reviewed_document.py translated.dbreview \
   --receipt export-receipt.json
 ```
 
-DOCM/PPTX/XLSX/PDF native repair is not claimed by the current native adapter.
+DOCM/PPTX/XLSX/PDF native repair is not implemented. PPTX/XLSX/PDF intake can produce
+review-result exports as described in the [format matrix](DOCUMENT_FORMATS.md).
 
 For DOCX, ordinary paragraph text inside tables, hyperlinks, and content
 controls is extractable and covered by regression tests. Paragraphs containing
-Word field codes or tracked revisions remain reviewable, but native write-back
-is blocked because editing their displayed `w:t` text can invalidate Word's
-field/revision semantics.
+Word field codes, tracked revisions, nested paragraphs, manual breaks or tabs remain
+reviewable, but the current adapter blocks rewriting those paragraphs. Other
+parts remain unchanged. Preserving formatting definitions does not guarantee the
+same rendered line breaks or pagination; inspect the output in Word or LibreOffice.
 
 ## Workspace behavior and appearance
 

@@ -4,6 +4,8 @@
 
 ### Original-format delivery and local reviewer workflow
 
+- Synchronize README, Agent entry instructions and Workbench documentation with the supported native formats and delivery artifacts; distinguish merged repository changes from a tagged release.
+
 - Restore existing PNG branding in both Workbenches and the Chinese README; preserve the user-selected preview images.
 - Keep the comment column visible and separate inspector navigation from segment counts.
 - Patch DOCX text without reserializing surrounding XML; verify non-text structure and untouched package parts. Add UTF-8 TXT/Markdown line-preserving delivery.
