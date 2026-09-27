@@ -36,7 +36,7 @@ class ExchangeTests(unittest.TestCase):
     def test_office_scopes_and_formula_exclusion(self):
         cases=[('docx','word/document.xml','application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml','<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>甲</w:t></w:r></w:p></w:body></w:document>'),
                ('pptx','ppt/slides/slide1.xml','application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml','<slide><a:p xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:r><a:t>甲</a:t></a:r></a:p></slide>'),
-               ('xlsx','xl/worksheets/sheet1.xml','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml','<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row><c r="A1" t="inlineStr"><is><t>甲</t></is></c><c r="B1"><f>1+1</f><v>2</v></c></row></sheetData></worksheet>')]
+               ('xlsx','xl/worksheets/sheet1.xml','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml','<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row><c r="A1" t="inlineStr"><is><t>甲</t></is></c><c r="B1"><f>1+1</f><v>2</v></c><c r="C1"><v>500</v></c><c r="D1" t="b"><v>1</v></c></row></sheetData></worksheet>')]
         for suffix,part,ctype,xml in cases:
             p=self.root/('a.'+suffix)
             with zipfile.ZipFile(p,'w') as z:

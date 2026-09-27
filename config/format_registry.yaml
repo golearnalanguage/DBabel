@@ -49,7 +49,7 @@ formats:
   docx:
     family: ooxml_word
     task_context_format: docx
-    audit_backends: [python_docx, markitdown, docling, tika, native_agent]
+    audit_backends: [python_docx, builtin_ooxml, markitdown, docling, tika, native_agent]
     repair_backends: [python_docx]
     risks: []
   docm:
@@ -73,7 +73,7 @@ formats:
   xlsx:
     family: ooxml_excel
     task_context_format: xlsx
-    audit_backends: [openpyxl, markitdown, docling, tika, native_agent]
+    audit_backends: [openpyxl, builtin_ooxml, markitdown, docling, tika, native_agent]
     repair_backends: [openpyxl]
     risks: [FORMULA_PRESERVATION]
   xlsm:
@@ -208,6 +208,9 @@ backends:
     kind: detector
     builtin: true
   builtin_text:
+    kind: parser
+    builtin: true
+  builtin_ooxml:
     kind: parser
     builtin: true
   filetype:

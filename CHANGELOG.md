@@ -13,6 +13,11 @@
 
 ### Original-format delivery and local reviewer workflow
 
+- Add a local macOS AppKit shell for translation, saved sessions and the demo. Its embedded Workbench shares one translucent window material in light and dark appearances, with native file/save panels and a responsive review table.
+- Put document upload and the demo on the home screen, use native language menus and standard copy/paste, and retain API service settings across launches with keys in macOS Keychain.
+- Bundle the Python runtime and dependencies in the Apple Silicon disk image; make checkout-bound development builds use the prepared runtime when available. Add built-in OOXML preflight and preserve numeric/formula XLSX cells outside translation.
+- Clarify provider connection errors and accept a compatible model's `AMBIGUITY` label as an unresolved human-review finding rather than stopping the run.
+
 - Synchronize README, Agent entry instructions and Workbench documentation with the supported native formats and delivery artifacts; distinguish merged repository changes from a tagged release.
 
 - Restore existing PNG branding in both Workbenches and the Chinese README; preserve the user-selected preview images.

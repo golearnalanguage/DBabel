@@ -261,6 +261,50 @@ class ProviderTests(unittest.TestCase):
             observed["body"]["stream"]
         )
 
+    def test_reasoning_model_omits_temperature_for_new_api(self):
+        observed = {}
+
+        def transport(url, headers, body, timeout, max_bytes):
+            observed.update(json.loads(body.decode("utf-8")))
+            return 200, b'{"choices":[{"message":{"content":"OK"}}]}'
+
+        config = ProviderConfig(
+            "openai-compatible",
+            "https://new-api.example.com/v1",
+            "NEW_API_KEY",
+            "gpt-6-astra",
+        )
+        provider = OpenAICompatibleProvider(
+            config, {"NEW_API_KEY": "test-key"}, transport
+        )
+        self.assertEqual(
+            provider.generate(GenerationRequest(system="S", user="U")).text,
+            "OK",
+        )
+        self.assertNotIn("temperature", observed)
+        self.assertEqual(observed["messages"][0]["role"], "system")
+
+    def test_deepseek_official_base_url_uses_chat_route(self):
+        observed = {}
+
+        def transport(url, headers, body, timeout, max_bytes):
+            observed["url"] = url
+            observed["authorization"] = headers["Authorization"]
+            observed["body"] = json.loads(body.decode("utf-8"))
+            return 200, b'{"choices":[{"message":{"content":"OK"}}]}'
+
+        provider = OpenAICompatibleProvider(
+            ProviderConfig("openai-compatible", "https://api.deepseek.com",
+                           "DEEPSEEK_API_KEY", "deepseek-flash"),
+            {"DEEPSEEK_API_KEY": "test-deepseek-key"}, transport,
+        )
+        self.assertEqual(provider.generate(
+            GenerationRequest(system="S", user="U")
+        ).text, "OK")
+        self.assertEqual(observed["url"], "https://api.deepseek.com/chat/completions")
+        self.assertEqual(observed["authorization"], "Bearer test-deepseek-key")
+        self.assertEqual(observed["body"]["model"], "deepseek-flash")
+
     def test_malformed_response_fails_closed(
         self,
     ):

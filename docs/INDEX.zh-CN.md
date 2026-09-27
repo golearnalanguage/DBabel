@@ -5,6 +5,7 @@
 | 任务 | 中文手册 | 英文手册 |
 |---|---|---|
 | 安装、本地启动和人工审核 | [本地教程](WORKFLOW_GUIDE.zh-CN.md) | [Walkthrough](WORKFLOW_GUIDE.md) |
+| 构建并使用 macOS 应用 | [桌面应用](DESKTOP_APP.zh-CN.md) | [Desktop app](DESKTOP_APP.md) |
 | 审核状态、对齐和便携版 | [工作台](REVIEW_WORKBENCH.zh-CN.md) | [Workbench](REVIEW_WORKBENCH.md) |
 | 格式依赖和保真度 | [格式说明](DOCUMENT_FORMATS.zh-CN.md) | [Formats](DOCUMENT_FORMATS.md) |
 | 原格式实现及开源评估 | [实现评估](NATIVE_EXPORT_ASSESSMENT.zh-CN.md) | [Assessment](NATIVE_EXPORT_ASSESSMENT.md) |

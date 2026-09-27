@@ -119,6 +119,20 @@ class DocumentPreflightTests(unittest.TestCase):
         self.assertEqual(report["selection"]["status"], "READY")
         self.assertEqual(report["selection"]["selected_backend"], "builtin_text")
 
+    def test_xlsx_uses_builtin_extractor_without_optional_backend(self):
+        path = self.dir / "manual.xlsx"
+        with zipfile.ZipFile(path, "w") as zf:
+            zf.writestr("[Content_Types].xml", "<Types/>")
+            zf.writestr("xl/workbook.xml", "<workbook/>")
+            zf.writestr("xl/worksheets/sheet1.xml", "<worksheet/>")
+        report = preflight_document(path, intent="audit", fallback_backend="none", registry=self.registry)
+        capabilities = report["capabilities"]
+        for name in ("openpyxl", "markitdown", "docling", "tika", "native_agent"):
+            capabilities["backends"][name]["available"] = False
+        selection = select_backend(report["probe"], capabilities, "audit", self.registry)
+        self.assertEqual(selection["status"], "READY")
+        self.assertEqual(selection["selected_backend"], "builtin_ooxml")
+
     def test_no_backend_is_explicit(self):
         path = self.dir / "manual.pdf"
         path.write_bytes(b"%PDF-1.7\n")

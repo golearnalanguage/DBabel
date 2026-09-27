@@ -21,6 +21,8 @@ python scripts/start_local.py
 
 上面的路径是本次项目位置，其他电脑请换成实际解压路径。Windows PowerShell 先用 `Set-Location "C:\你的目录\DBabel"` 进入项目，再用 `py -m venv .venv`、`.venv\Scripts\Activate.ps1`；后续 Python 命令相同。启动器首次复制演示到 `output/local-demo.dbreview`，以后继续该副本，不会重置已保存的审核。
 
+macOS 还可[构建桌面应用](DESKTOP_APP.zh-CN.md)，在同一个原生毛玻璃窗口中打开演示或已有会话；工作台会跟随系统外观。
+
 在任意目录也可以直接启动，无需记住当前终端在哪个文件夹：
 
 ```bash

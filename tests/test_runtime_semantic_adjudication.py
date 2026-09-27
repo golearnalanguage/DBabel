@@ -180,6 +180,26 @@ class SemanticAdjudicationTests(
             finding,
         )
 
+    def test_ambiguity_alias_stays_a_human_review_finding(self):
+        result = adjudicate_semantics(
+            provider=FakeProvider({
+                "units": [{
+                    "id": "U00001_en",
+                    "outcome": "REVIEW",
+                    "classification": "AMBIGUITY",
+                    "reason": "The source may refer to a product-specific primary database.",
+                    "next_action": "Check the product context with a reviewer.",
+                }]
+            }),
+            post_translation=post_translation(),
+            source_language="zh-CN",
+            target_language="en",
+            document_name="source.txt",
+        )
+        finding = result["audit_report"]["findings"][0]
+        self.assertEqual(finding["classification"], "AMBIGUOUS_HIGH_RISK")
+        self.assertEqual(finding["decision"], "REVIEW")
+
     def test_out_of_scope_claim_is_routed_not_verified(
         self,
     ):

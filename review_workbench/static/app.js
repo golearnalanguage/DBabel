@@ -4,9 +4,11 @@
   const state={token:'',session:null,units:[],issues:[],evidence:[],decisions:new Map(),selected:null,gate:null,exportAvailable:false,outputName:null,page:0,pageSize:50,reviewFilters:new Set(),issueFilters:new Set(),activeTab:'suggestion',editing:false,theme:'system',selectedUnits:new Set()};
   const el=id=>document.getElementById(id);
   const THEME_KEY='dbabel-review-theme';
+  const desktopMac=document.documentElement.classList.contains('desktop-macos');
   const systemTheme=()=>window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
-  function applyTheme(pref){state.theme=['light','dark','system'].includes(pref)?pref:'system';let resolved=state.theme==='system'?systemTheme():state.theme;document.documentElement.dataset.theme=resolved;document.documentElement.dataset.themePref=state.theme;const control=el('themeSelect');if(control)control.value=state.theme;try{localStorage.setItem(THEME_KEY,state.theme);}catch(_){}}
-  function initTheme(){let saved='system';try{saved=localStorage.getItem(THEME_KEY)||'system';}catch(_){}applyTheme(saved);if(window.matchMedia){const mq=window.matchMedia('(prefers-color-scheme: dark)');const sync=()=>{if(state.theme==='system')applyTheme('system');};if(mq.addEventListener)mq.addEventListener('change',sync);else if(mq.addListener)mq.addListener(sync);}}
+  function applyTheme(pref){state.theme=['light','dark','system'].includes(pref)?pref:'system';let resolved=state.theme==='system'?systemTheme():state.theme;document.documentElement.dataset.theme=resolved;document.documentElement.dataset.themePref=state.theme;const control=el('themeSelect');if(control)control.value=state.theme;if(!desktopMac)try{localStorage.setItem(THEME_KEY,state.theme);}catch(_){}}
+  function initTheme(){let saved='system';if(desktopMac)saved=new URLSearchParams(location.search).get('appearance')||'system';else try{saved=localStorage.getItem(THEME_KEY)||'system';}catch(_){}applyTheme(saved);if(window.matchMedia){const mq=window.matchMedia('(prefers-color-scheme: dark)');const sync=()=>{if(state.theme==='system')applyTheme('system');};if(mq.addEventListener)mq.addEventListener('change',sync);else if(mq.addListener)mq.addListener(sync);}}
+  window.dbabelSetDesktopTheme=mode=>{if(desktopMac)applyTheme(mode);};
   const completedStatuses=new Set(['ACCEPT_SUGGESTION','KEEP_CURRENT','USER_EDITED','WAIVED']);
   const statusOrder=['UNREVIEWED','ACCEPT_SUGGESTION','KEEP_CURRENT','USER_EDITED','DEFERRED','BLOCKED','WAIVED'];
   const statusLabel={UNREVIEWED:'To Review',ACCEPT_SUGGESTION:'Reviewed · Accepted',KEEP_CURRENT:'Reviewed · Kept',USER_EDITED:'Reviewed · Edited',DEFERRED:'Deferred',BLOCKED:'Blocked',WAIVED:'Reviewed · Waived'};
@@ -209,7 +211,7 @@
 
       const [slabel,sclass]=friendlyStatus(u);
 
-      const st=node('td');
+      const st=node('td',undefined,'status-col');
       st.append(
         node(
           'span',
@@ -218,7 +220,7 @@
         )
       );
 
-      const issues=node('td');
+      const issues=node('td',undefined,'issues-col');
 
       for(const i of issuesFor(u.id).slice(0,3)){
         const raw=
@@ -291,6 +293,14 @@
   function renderSuggestion(u){
     const iss=issuesFor(u.id);
     const advice=window.dbabelI18n.suggestion(u,iss);
+    const decision=decisionFor(u.id);
+    const decisionText={
+      ACCEPT_SUGGESTION:'Accepted by reviewer',
+      KEEP_CURRENT:'Current text kept by reviewer',
+      USER_EDITED:'Edited by reviewer',
+      WAIVED:'Waived by reviewer'
+    };
+    el('suggestionDecision').textContent=trUI(decisionText[decision.status]||'Human confirmation required');
     el('suggestionBox').textContent=advice.text;
 
     const reasons=iss

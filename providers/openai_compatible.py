@@ -107,14 +107,29 @@ def _default_transport(
             return int(response.status), raw
 
     except HTTPError as exc:
+        guidance = {
+            400: "request or model was rejected",
+            401: "API key or gateway token was rejected",
+            403: "token lacks access to this model",
+            404: "API route or model was not found",
+            429: "quota or rate limit was reached",
+        }.get(exc.code, "service returned an error")
         raise ProviderError(
-            "provider HTTP error: {}".format(exc.code)
+            "provider HTTP error: {} ({})".format(exc.code, guidance)
         )
 
     except URLError as exc:
+        reason = str(exc.reason)
+        if any(marker in reason.lower() for marker in (
+            "ssl", "tls", "connection reset", "eof occurred"
+        )):
+            raise ProviderError(
+                "provider TLS/network connection failed before key or model "
+                "validation; check VPN and proxy settings: {}".format(reason)
+            ) from exc
         raise ProviderError(
             "provider connection error: {}".format(
-                exc.reason
+                reason
             )
         )
 
@@ -170,11 +185,17 @@ class OpenAICompatibleProvider(
                     "content": request.user,
                 },
             ],
-            "temperature": float(
-                request.temperature
-            ),
             "stream": False,
         }
+        # Reasoning models exposed directly or through New API can reject
+        # temperature unless reasoning is disabled. These model families use
+        # the service default; other compatible models retain the requested
+        # sampling setting.
+        reasoning_prefixes = (
+            "gpt-5", "gpt-6", "o1", "o3", "o4"
+        )
+        if not self._config.model.lower().startswith(reasoning_prefixes):
+            payload["temperature"] = float(request.temperature)
 
         body = json.dumps(
             payload,

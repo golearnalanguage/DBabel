@@ -91,7 +91,10 @@ window.installWorkbenchViews = function(ctx) {
       );
       card('Session',`${state.session.title||'Untitled'}\n${state.session.session_id}\n${state.session.mode}`);
       card('Original document',`${state.session.original.filename}\nSHA-256: ${state.session.original.sha256}`);
-      const c=card('Appearance','Choose the theme for this browser.');for(const t of ['system','dark','light'])c.append(button(t,()=>{applyTheme(t);window.workbenchNotice('Theme: '+t);}));
+      if(!document.documentElement.classList.contains('desktop-macos')){
+        const c=card('Appearance','Choose the theme for this browser.');
+        for(const t of ['system','dark','light'])c.append(button(t,()=>{applyTheme(t);window.workbenchNotice('Theme: '+t);}));
+      }
       const size=node('select');size.setAttribute('aria-label','Segments per page');for(const n of [25,50,100,200])size.add(new Option(String(n),String(n)));size.value=state.pageSize;size.addEventListener('change',()=>{state.pageSize=Number(size.value);state.page=0;state.selectedUnits.clear();renderTable();});card('Segments per page','Smaller pages keep large reviews easier to navigate.').append(size);
       card(
         'Export capability',

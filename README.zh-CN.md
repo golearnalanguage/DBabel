@@ -51,7 +51,7 @@ python3 -m venv .venv
 .venv/bin/python scripts/start_local.py
 ```
 
-启动器首次建立独立演示副本，以后继续保存的进度。真实文档从“上传文档”开始；[完整中文流程](docs/WORKFLOW_GUIDE.zh-CN.md)包含离线使用、任意目录启动、译文建议、术语检查、QA 和导出。[文档目录](docs/INDEX.zh-CN.md)提供分开的中英文手册入口。
+启动器首次建立独立演示副本，以后继续保存的进度。macOS 用户可使用[原生桌面应用](docs/DESKTOP_APP.zh-CN.md)，在统一的系统材质窗口中翻译、上传文档或打开演示和已有会话。真实文档从“上传文档”开始；[完整中文流程](docs/WORKFLOW_GUIDE.zh-CN.md)包含离线使用、任意目录启动、译文建议、术语检查、QA 和导出。[文档目录](docs/INDEX.zh-CN.md)提供分开的中英文手册入口。
 
 ## 交给 Agent 使用
 

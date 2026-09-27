@@ -18,6 +18,8 @@ python scripts/start_local.py
 
 On Windows PowerShell, use `Set-Location "C:\your-folder\DBabel"`, `py -m venv .venv` and `.venv\Scripts\Activate.ps1`, then the same Python commands. The launcher copies the demo to `output/local-demo.dbreview` only on first use; later launches resume its saved decisions.
 
+On macOS, you can also [build the desktop app](DESKTOP_APP.md) and open that demo or a saved session in one native window. Its Workbench follows the system appearance and shares the window's translucent material.
+
 You can start from any directory with absolute paths:
 
 ```bash

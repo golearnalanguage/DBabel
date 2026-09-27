@@ -106,11 +106,16 @@ def _read_document(path):
                 for name in sorted(n for n in z.namelist() if re.fullmatch(r'xl/worksheets/sheet\d+\.xml', n)):
                     for cell in xml(name).findall('.//s:c', ns):
                         if cell.find('s:f', ns) is not None: continue
+                        # Only stored text can be translated. Numeric, date,
+                        # boolean and error cells remain in the workbook and
+                        # must not become proposed translation targets.
+                        kind = cell.get('t')
+                        if kind not in {'s', 'inlineStr', 'str'}: continue
                         value = cell.findtext('s:v', '', ns)
-                        if cell.get('t') == 's': value = strings[int(value)]
-                        if cell.get('t') == 'inlineStr': value = ''.join(t.text or '' for t in cell.findall('.//s:t', ns))
+                        if kind == 's': value = strings[int(value)]
+                        if kind == 'inlineStr': value = ''.join(t.text or '' for t in cell.findall('.//s:t', ns))
                         add('{}:{}'.format(name, cell.get('r')), value)
-                limitations = ['Stored non-formula cells, including hidden sheets; formulas, formatting, charts and comments are not extracted.']
+                limitations = ['Stored text cells, including hidden sheets; numeric, date, boolean and formula cells, formatting, charts and comments are not extracted.']
     elif fmt == 'pdf':
         try:
             from pypdf import PdfReader

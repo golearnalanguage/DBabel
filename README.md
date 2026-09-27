@@ -64,7 +64,7 @@ python3 -m venv .venv
 .venv/bin/python scripts/start_local.py
 ```
 
-The launcher creates a separate demo copy once, then resumes it. For a real document, open **Upload documents**, inspect the scope and create a session. The [local walkthrough](docs/WORKFLOW_GUIDE.md) covers offline use, starting from any directory, translation proposals, terminology, QA and delivery. The [documentation index](docs/INDEX.md) links separate English and Chinese manuals.
+The launcher creates a separate demo copy once, then resumes it. For a real document, open **Upload documents**, inspect the scope and create a session. On macOS, the [native desktop app](docs/DESKTOP_APP.md) opens the same local Workbench in a continuous system-material window; its demo and saved sessions use the same appearance. The [local walkthrough](docs/WORKFLOW_GUIDE.md) covers offline use, starting from any directory, translation proposals, terminology, QA and delivery. The [documentation index](docs/INDEX.md) links separate English and Chinese manuals.
 
 For an existing DOCX translation, prepare aligned units with `scripts/create_review_session.py`, then launch with `--original target.docx --output reviewed.docx`. The [Workbench manual](docs/REVIEW_WORKBENCH.md) describes native export and portable review.
 

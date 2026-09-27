@@ -5,6 +5,7 @@
 | Need | English | Simplified Chinese |
 |---|---|---|
 | Install, run locally and review | [Walkthrough](WORKFLOW_GUIDE.md) | [本地教程](WORKFLOW_GUIDE.zh-CN.md) |
+| Build and use the macOS app | [Desktop app](DESKTOP_APP.md) | [桌面应用](DESKTOP_APP.zh-CN.md) |
 | Workbench states, alignment and portable review | [Workbench](REVIEW_WORKBENCH.md) | [工作台](REVIEW_WORKBENCH.zh-CN.md) |
 | Format dependencies and fidelity | [Formats](DOCUMENT_FORMATS.md) | [格式说明](DOCUMENT_FORMATS.zh-CN.md) |
 | Original-format implementation and open-source evaluation | [Assessment](NATIVE_EXPORT_ASSESSMENT.md) | [实现评估](NATIVE_EXPORT_ASSESSMENT.zh-CN.md) |

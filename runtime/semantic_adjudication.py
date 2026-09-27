@@ -308,7 +308,9 @@ def build_request(
             "Use REVIEW for unresolved ambiguity, terminology, meaning, register, or context risk.",
             "Use OUT_OF_SCOPE_CLAIM for a technical claim requiring separate factual verification.",
             "Never return REPLACE, KEEP, approval, or repaired wording.",
+            "For REVIEW, choose classification exactly from allowed_classifications; use AMBIGUOUS_HIGH_RISK for unresolved ambiguity.",
         ],
+        "allowed_classifications": sorted(CLASSIFICATIONS),
         "units": [
             {
                 "id": unit["id"],
@@ -475,6 +477,10 @@ def parse_response(
                 )
 
         else:
+            # Some compatible models use this unambiguous synonym despite the
+            # enumerated response contract. It remains a human-review finding.
+            if classification == "AMBIGUITY":
+                classification = "AMBIGUOUS_HIGH_RISK"
             if classification not in CLASSIFICATIONS:
                 raise SemanticAdjudicationError(
                     "{} has invalid classification {!r}".format(
@@ -503,7 +509,9 @@ def parse_response(
                     )
                 )
 
-        results.append(dict(item))
+        normalized = dict(item)
+        normalized["classification"] = classification
+        results.append(normalized)
 
     return results
 

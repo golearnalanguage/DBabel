@@ -44,6 +44,10 @@ jobs:
       - name: Compile Python entry points
         run: python -m compileall -q scripts tests
 
+      - name: Typecheck macOS desktop app
+        if: runner.os == 'macOS'
+        run: swiftc -parse-as-library -typecheck desktop/macos/DesktopBackend.swift desktop/macos/DBabelApp.swift
+
       - name: Validate package contracts and manifest
         run: python scripts/check_package.py
 

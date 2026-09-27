@@ -588,6 +588,7 @@ class Handler(BaseHTTPRequestHandler):
             "/": "index.html",
             "/app.js": "app.js",
             "/i18n.js": "i18n.js",
+            "/desktop_theme.js": "desktop_theme.js",
             "/exchange.js": "exchange.js",
             "/dbabel-logo-light.svg": "dbabel-logo-light.svg",
             "/dbabel-logo-dark.svg": "dbabel-logo-dark.svg",
