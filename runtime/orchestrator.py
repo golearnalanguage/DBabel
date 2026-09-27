@@ -16,6 +16,13 @@ from runtime.models import ProviderConfig
 from runtime.post_translation import (
     prepare_post_translation,
 )
+from runtime.review_binding import (
+    bind_review_session,
+)
+from runtime.semantic_adjudication import (
+    SemanticLimits,
+    adjudicate_semantics,
+)
 from runtime.translation import (
     TranslationLimits,
     translate_units,
@@ -663,7 +670,7 @@ class RuntimeOrchestrator:
                 status="READY",
                 details={
                     "next_step":
-                        "REVIEW_SESSION_BINDING",
+                        "ADJUDICATION",
                     "completion_allowed":
                         False,
                 },
@@ -694,6 +701,424 @@ class RuntimeOrchestrator:
             except Exception:
                 # Preserve the original execution failure
                 # even if failure recording itself breaks.
+                pass
+
+            raise OrchestrationError(
+                "{} failed: {}".format(
+                    stage,
+                    exc,
+                )
+            ) from exc
+    def run_translation_to_review(
+        self,
+        *,
+        source: Path,
+        source_language: str,
+        target_language: str,
+        provider_config_path: Path,
+        default_text_role: str,
+        declared_backends: Optional[
+            Iterable[str]
+        ] = None,
+        provider: Optional[
+            TextGenerationProvider
+        ] = None,
+        translation_limits:
+            TranslationLimits = TranslationLimits(),
+        semantic_limits:
+            SemanticLimits = SemanticLimits(),
+    ) -> dict:
+        """Run TRANSLATE through the Full Local Workbench delivery gate.
+
+        A successful return means READY_FOR_HUMAN_REVIEW only.
+        It does not represent human approval or workflow completion.
+        """
+
+        source = Path(
+            source
+        ).resolve()
+
+        manifest = (
+            self.run_translation_to_qa(
+                source=source,
+                source_language=
+                    source_language,
+                target_language=
+                    target_language,
+                provider_config_path=
+                    provider_config_path,
+                default_text_role=
+                    default_text_role,
+                declared_backends=
+                    declared_backends,
+                provider=provider,
+                limits=
+                    translation_limits,
+            )
+        )
+
+        if (
+            manifest["status"]
+            == "BLOCKED"
+        ):
+            return manifest
+
+        if (
+            manifest["status"]
+            != "READY_FOR_SEMANTIC_ADJUDICATION"
+        ):
+            raise OrchestrationError(
+                "unexpected pre-adjudication state: {}".format(
+                    manifest["status"]
+                )
+            )
+
+        run_root = Path(
+            manifest[
+                "artifacts"
+            ][
+                "runtime_plan"
+            ][
+                "path"
+            ]
+        ).parent
+
+        run = ProjectRun(
+            run_id=
+                manifest["run_id"],
+            root=
+                run_root,
+            manifest_path=
+                run_root
+                / "run.json",
+            audit_path=
+                run_root
+                / "audit.jsonl",
+            runtime_plan_path=
+                run_root
+                / "runtime-plan.json",
+        )
+
+        audit = AuditTrail(
+            run.audit_path,
+            run.run_id,
+        )
+
+        def artifact_record(
+            path: Path,
+        ):
+            return {
+                "path":
+                    str(path),
+                "sha256":
+                    sha256_file(
+                        path
+                    ),
+            }
+
+        stage = "ADJUDICATION"
+
+        try:
+            run.assert_source_unchanged()
+
+            current = (
+                run.load_manifest()
+            )
+
+            ingest_path = Path(
+                current[
+                    "artifacts"
+                ][
+                    "ingest"
+                ][
+                    "path"
+                ]
+            )
+
+            post_path = Path(
+                current[
+                    "artifacts"
+                ][
+                    "post_translation"
+                ][
+                    "path"
+                ]
+            )
+
+            ingest = json.loads(
+                ingest_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            post_translation = (
+                json.loads(
+                    post_path.read_text(
+                        encoding="utf-8"
+                    )
+                )
+            )
+
+            # ---------------------------------------------
+            # SEMANTIC ADJUDICATION
+            # ---------------------------------------------
+
+            audit.append(
+                stage=stage,
+                status="STARTED",
+                details={
+                    "unit_count":
+                        len(
+                            post_translation[
+                                "review_units"
+                            ]
+                        ),
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            config = (
+                ProviderConfig.from_path(
+                    Path(
+                        provider_config_path
+                    )
+                )
+            )
+
+            effective_provider = (
+                provider
+                if provider is not None
+                else OpenAICompatibleProvider(
+                    config
+                )
+            )
+
+            semantic = (
+                adjudicate_semantics(
+                    provider=
+                        effective_provider,
+                    post_translation=
+                        post_translation,
+                    source_language=
+                        source_language,
+                    target_language=
+                        target_language,
+                    document_name=
+                        source.name,
+                    limits=
+                        semantic_limits,
+                )
+            )
+
+            semantic_path = (
+                run.root
+                / "semantic-adjudication.json"
+            )
+
+            atomic_write_json(
+                semantic_path,
+                semantic,
+            )
+
+            run.assert_source_unchanged()
+
+            audit.append(
+                stage=stage,
+                status="PASS",
+                details={
+                    "finding_count":
+                        semantic[
+                            "finding_count"
+                        ],
+                    "unit_count":
+                        semantic[
+                            "unit_count"
+                        ],
+                    "next_state":
+                        semantic[
+                            "next_state"
+                        ],
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            run.update(
+                status=
+                    "SEMANTIC_ADJUDICATION_READY",
+                current_stage=
+                    "ADJUDICATION",
+                artifacts={
+                    "semantic_adjudication":
+                        artifact_record(
+                            semantic_path
+                        ),
+                },
+                failure=None,
+            )
+
+            # ---------------------------------------------
+            # REVIEW SESSION BINDING
+            # ---------------------------------------------
+
+            stage = (
+                "REVIEW_SESSION_BINDING"
+            )
+
+            audit.append(
+                stage=stage,
+                status="STARTED",
+                details={
+                    "surface":
+                        "FULL_LOCAL_WORKBENCH",
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            binding = (
+                bind_review_session(
+                    repo_root=
+                        self.repo_root,
+                    run_root=
+                        run.root,
+                    source=
+                        source,
+                    source_info=
+                        ingest["source"],
+                    post_translation=
+                        post_translation,
+                    semantic_result=
+                        semantic,
+                    title=
+                        source.name,
+                )
+            )
+
+            run.assert_source_unchanged()
+
+            audit.append(
+                stage=stage,
+                status="PASS",
+                details={
+                    "session_id":
+                        binding[
+                            "session_id"
+                        ],
+                    "surface":
+                        binding[
+                            "surface"
+                        ],
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            # bind_review_session already executed the
+            # delivery gate; record that normative state
+            # separately in the orchestration audit.
+            stage = (
+                "DELIVERY_VALIDATION"
+            )
+
+            receipt = binding[
+                "delivery_receipt"
+            ]
+
+            audit.append(
+                stage=stage,
+                status="PASS",
+                details={
+                    "delivery_status":
+                        receipt[
+                            "status"
+                        ],
+                    "surface":
+                        receipt[
+                            "surface"
+                        ],
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            artifacts = dict(
+                binding[
+                    "artifacts"
+                ]
+            )
+
+            artifacts.update({
+                "semantic_adjudication":
+                    artifact_record(
+                        semantic_path
+                    ),
+                "review_bundle": {
+                    "path":
+                        binding[
+                            "bundle_path"
+                        ],
+                },
+                "review_session":
+                    binding[
+                        "session"
+                    ],
+            })
+
+            manifest = run.update(
+                status=
+                    "READY_FOR_HUMAN_REVIEW",
+                current_stage=
+                    "DELIVERY_VALIDATION",
+                artifacts=
+                    artifacts,
+                failure=None,
+            )
+
+            audit.append(
+                stage="HUMAN_REVIEW",
+                status="READY",
+                details={
+                    "session_id":
+                        binding[
+                            "session_id"
+                        ],
+                    "next_step":
+                        "OPEN_FULL_LOCAL_WORKBENCH",
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            return manifest
+
+        except Exception as exc:
+            failure = {
+                "stage":
+                    stage,
+                "type":
+                    type(exc).__name__,
+                "reason":
+                    str(exc),
+            }
+
+            try:
+                run.update(
+                    status="FAILED",
+                    current_stage=
+                        stage,
+                    failure=
+                        failure,
+                )
+
+                audit.append(
+                    stage=stage,
+                    status="FAILED",
+                    details=
+                        failure,
+                )
+            except Exception:
                 pass
 
             raise OrchestrationError(
