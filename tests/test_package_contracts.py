@@ -1,5 +1,6 @@
 """Regression tests for DBabel's cross-file package contracts."""
 import shutil
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -14,10 +15,20 @@ from check_package import (
     REVIEW_WORKBENCH_VERSION,
     cross_contract_errors,
     example_report_errors,
+    package_paths,
 )
 
 
 class PackageContractTests(unittest.TestCase):
+    def test_manifest_excludes_local_untracked_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
+            (root / 'tracked.txt').write_text('tracked', encoding='utf-8')
+            subprocess.run(['git', 'add', 'tracked.txt'], cwd=root, check=True)
+            (root / 'local-backup.txt').write_text('local', encoding='utf-8')
+            self.assertEqual(package_paths(root), ['tracked.txt'])
+
     def assert_rejected_after(self, relative_path, transform, fragment):
         with tempfile.TemporaryDirectory() as temp:
             copy_root = Path(temp) / 'repo'

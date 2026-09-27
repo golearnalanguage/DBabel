@@ -65,10 +65,10 @@ DETERMINISTIC_QA_SAFETY_POLICY = {
 
 
 def package_paths(root=ROOT):
-    """Return package files, respecting Git ignore rules in a checkout."""
+    """Return versioned package files; local untracked files are not deliverables."""
     if (root / '.git').exists():
         names = subprocess.check_output(
-            ['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+            ['git', 'ls-files', '--cached', '-z'],
             cwd=root).decode().split('\0')
         return sorted({name for name in names if name and name != 'MANIFEST.sha256'
                        and (root / name).is_file()})
@@ -77,6 +77,7 @@ def package_paths(root=ROOT):
                'translation_memory_private'}
     return sorted(p.relative_to(root).as_posix() for p in root.rglob('*')
                   if p.is_file() and not (set(p.relative_to(root).parts) & ignored)
+                  and not any(part.startswith('.venv') for part in p.relative_to(root).parts)
                   and p.name not in {'MANIFEST.sha256', '.DS_Store'}
                   and not p.name.startswith('.env'))
 

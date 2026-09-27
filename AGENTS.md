@@ -81,9 +81,13 @@ python scripts/check_package.py
 After intentional package edits, regenerate `MANIFEST.sha256`:
 
 ```bash
+git add <new package files>
 python scripts/check_package.py --write-manifest
 python scripts/check_package.py
 ```
+
+The manifest covers files staged or already tracked by Git. Local untracked
+backups and virtual environments are not package contents.
 
 Then rerun the full test suite and `git diff --check`. If repository instructions
 conflict, `SKILL.md` is authoritative for DBabel workflow behavior.

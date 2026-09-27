@@ -9,6 +9,7 @@
 __pycache__/
 .pytest_cache/
 .venv/
+.venv*/
 output/
 cache/
 source_cache/
