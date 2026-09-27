@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 from typing import Callable, Mapping, Optional, Tuple
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 from urllib.request import (
     HTTPRedirectHandler,
+    ProxyHandler,
     Request,
     build_opener,
 )
@@ -24,6 +26,12 @@ Transport = Callable[
     Tuple[int, bytes],
 ]
 
+_LOCAL_HOSTS = {
+    "localhost",
+    "127.0.0.1",
+    "::1",
+}
+
 
 class _NoRedirect(HTTPRedirectHandler):
     def redirect_request(
@@ -36,6 +44,31 @@ class _NoRedirect(HTTPRedirectHandler):
         newurl,
     ):
         return None
+
+
+def _build_transport_opener(
+    url: str,
+):
+    hostname = (
+        urlparse(url).hostname
+        or ""
+    )
+
+    # Local model/provider traffic must never be sent
+    # through an ambient HTTP(S) proxy. This matters
+    # for localhost OpenAI-compatible servers, Ollama,
+    # and packaged desktop integrations.
+    if hostname in _LOCAL_HOSTS:
+        return build_opener(
+            ProxyHandler({}),
+            _NoRedirect,
+        )
+
+    # Remote providers retain the platform/environment
+    # proxy behaviour supplied by urllib.
+    return build_opener(
+        _NoRedirect
+    )
 
 
 def _default_transport(
@@ -52,7 +85,9 @@ def _default_transport(
         method="POST",
     )
 
-    opener = build_opener(_NoRedirect)
+    opener = _build_transport_opener(
+        url
+    )
 
     try:
         with opener.open(

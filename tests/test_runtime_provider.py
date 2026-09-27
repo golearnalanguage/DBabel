@@ -2,8 +2,11 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+from urllib.request import ProxyHandler
 
 from providers.base import ProviderError
+from providers import openai_compatible
 from providers.openai_compatible import (
     OpenAICompatibleProvider,
 )
@@ -70,6 +73,109 @@ class ProviderConfigTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             config.resolve_api_key({})
+
+
+class TransportPolicyTests(unittest.TestCase):
+    def test_localhost_transport_disables_proxy(
+        self,
+    ):
+        with patch.object(
+            openai_compatible,
+            "build_opener",
+        ) as builder:
+            openai_compatible._build_transport_opener(
+                "http://127.0.0.1:8000/v1/chat/completions"
+            )
+
+        handlers = (
+            builder.call_args.args
+        )
+
+        proxy_handlers = [
+            value
+            for value in handlers
+            if isinstance(
+                value,
+                ProxyHandler,
+            )
+        ]
+
+        self.assertEqual(
+            len(proxy_handlers),
+            1,
+        )
+
+        self.assertEqual(
+            proxy_handlers[0].proxies,
+            {},
+        )
+
+        self.assertTrue(
+            any(
+                value
+                is openai_compatible._NoRedirect
+                for value in handlers
+            )
+        )
+
+    def test_localhost_name_transport_disables_proxy(
+        self,
+    ):
+        with patch.object(
+            openai_compatible,
+            "build_opener",
+        ) as builder:
+            openai_compatible._build_transport_opener(
+                "http://localhost:11434/v1/chat/completions"
+            )
+
+        handlers = (
+            builder.call_args.args
+        )
+
+        self.assertTrue(
+            any(
+                isinstance(
+                    value,
+                    ProxyHandler,
+                )
+                and value.proxies == {}
+                for value in handlers
+            )
+        )
+
+    def test_remote_transport_keeps_default_proxy_policy(
+        self,
+    ):
+        with patch.object(
+            openai_compatible,
+            "build_opener",
+        ) as builder:
+            openai_compatible._build_transport_opener(
+                "https://api.example.com/v1/chat/completions"
+            )
+
+        handlers = (
+            builder.call_args.args
+        )
+
+        self.assertFalse(
+            any(
+                isinstance(
+                    value,
+                    ProxyHandler,
+                )
+                for value in handlers
+            )
+        )
+
+        self.assertTrue(
+            any(
+                value
+                is openai_compatible._NoRedirect
+                for value in handlers
+            )
+        )
 
 
 class ProviderTests(unittest.TestCase):
