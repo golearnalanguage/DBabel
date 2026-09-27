@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -84,7 +85,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--workbench-port",
         type=int,
-        default=8765,
+        default=0,
+        help=(
+            "Local Workbench port. "
+            "0 asks the OS to choose an available port."
+        ),
     )
 
     value.add_argument(
@@ -102,10 +107,16 @@ def parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = parser().parse_args()
 
-    if not 1 <= args.workbench_port <= 65535:
+    if not 0 <= args.workbench_port <= 65535:
         parser().error(
-            "--workbench-port must be from 1 to 65535"
+            "--workbench-port must be from 0 to 65535"
         )
+
+    source = (
+        args.source
+        .expanduser()
+        .resolve()
+    )
 
     try:
         manifest = RuntimeOrchestrator(
@@ -113,7 +124,7 @@ def main() -> int:
             workspace_root=
                 args.workspace_root,
         ).run_translation_to_review(
-            source=args.source,
+            source=source,
             source_language=
                 args.source_language,
             target_language=
@@ -166,33 +177,13 @@ def main() -> int:
         ]
     ).resolve()
 
-    print(
-        "",
-        file=sys.stderr,
-    )
-    print(
-        "Review bundle: {}".format(
-            bundle
-        ),
-        file=sys.stderr,
-    )
-
-    if not args.open_workbench:
-        print(
-            "Open Workbench with:",
-            file=sys.stderr,
+    output = (
+        bundle.parent
+        / (
+            "reviewed-"
+            + source.name
         )
-        print(
-            '"{}" "{}" --bundle "{}"'.format(
-                sys.executable,
-                ROOT
-                / "scripts"
-                / "start_local.py",
-                bundle,
-            ),
-            file=sys.stderr,
-        )
-        return 0
+    ).resolve()
 
     command = [
         sys.executable,
@@ -203,6 +194,10 @@ def main() -> int:
         ),
         "--bundle",
         str(bundle),
+        "--original",
+        str(source),
+        "--output",
+        str(output),
         "--port",
         str(
             args.workbench_port
@@ -213,6 +208,34 @@ def main() -> int:
         command.append(
             "--no-browser"
         )
+
+    print(
+        "",
+        file=sys.stderr,
+    )
+    print(
+        "Review bundle: {}".format(
+            bundle
+        ),
+        file=sys.stderr,
+    )
+    print(
+        "Native output: {}".format(
+            output
+        ),
+        file=sys.stderr,
+    )
+
+    if not args.open_workbench:
+        print(
+            "Open Workbench with:",
+            file=sys.stderr,
+        )
+        print(
+            shlex.join(command),
+            file=sys.stderr,
+        )
+        return 0
 
     try:
         return subprocess.call(

@@ -254,6 +254,33 @@ class RuntimeCliTests(
                 "9876",
             )
 
+            self.assertEqual(
+                command[
+                    command.index(
+                        "--original"
+                    )
+                    + 1
+                ],
+                str(
+                    source.resolve()
+                ),
+            )
+
+            self.assertEqual(
+                command[
+                    command.index(
+                        "--output"
+                    )
+                    + 1
+                ],
+                str(
+                    (
+                        bundle.parent
+                        / "reviewed-source.txt"
+                    ).resolve()
+                ),
+            )
+
     def test_blocked_run_returns_one_without_workbench(
         self,
     ):
