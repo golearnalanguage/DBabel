@@ -36,10 +36,10 @@ round-trip QA. Use the task status defined in `SKILL.md` to make that distinctio
 
 | Task | Implemented behavior | Requirements and limitations |
 |---|---|---|
-| Native document export | DOCX/TXT/MD copies, original hash and anchor checks, text verification, bilingual and Agent handoffs | Other formats require dedicated writers; visual QA is separate |
+| Native document export | DOCX/TXT/MD plus resolved-cell XLSX copies, original hash and anchor checks, text verification, bilingual and Agent handoffs | XLSX formulas are never rewritten; changed rich-text cells need visual review. PPTX/PDF still require dedicated writers; visual QA is separate |
 | Checkpoint export | Apply completed human decisions and list pending IDs in the receipt | Pending text is preserved and listed in the receipt |
 | Post-human review | Download source/target, notes, revisions and text hashes for an Agent | Handoff only; semantic review must actually be performed |
-| Portable review | Offline decisions, views and report download | Import decisions and run fresh local QA before native export |
+| Portable review | Offline decisions and session views | Fallback only: import decisions into the matching Full Local Workbench for glossary upload, fresh QA, review-result export and native export |
 
 | Local Workbench feature | Implemented behavior | Requirements |
 |---|---|---|

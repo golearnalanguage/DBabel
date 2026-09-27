@@ -67,6 +67,21 @@ scope/language requirements fail closed when material context is missing.
 
 ## Run deterministic bilingual QA
 
+For `TRANSLATE` / `BILINGUAL_REVIEW`, never feed a source-only anchor directly to bilingual QA. Materialize the review target first:
+
+```bash
+python scripts/prepare_review_qa.py aligned-units.json --mode TRANSLATE --output review-qa-units.jsonl --receipt qa-target-selection.json
+```
+
+After creating the `.dbreview` session with both `--qa-report` and `--audit-report`, validate the full human-review handoff:
+
+```bash
+python scripts/validate_translate_delivery.py project.en.dbreview --qa-input review-qa-units.jsonl --qa-report qa_report.json --audit-report audit-report.json --surface full --output delivery-receipt.json
+```
+
+A successful receipt means `READY_FOR_HUMAN_REVIEW`, not final completion.
+
+
 Input units must already be aligned according to
 `schemas/bilingual_unit.schema.json`.
 
@@ -119,12 +134,13 @@ git diff --check
 
 ## Local files and services
 
-The Workbench sends uploads to its authenticated local server at 127.0.0.1. New sessions save source copies in inputs/ and extraction details in intake.json. Agent and external parser services use the permissions supplied for the task.
+The Full Local Workbench sends uploads to its authenticated local server at 127.0.0.1. Portable Review is a decisions-only fallback and does not provide glossary upload, fresh local QA or native export. New sessions save source copies in inputs/ and extraction details in intake.json. Agent and external parser services use the permissions supplied for the task.
 
 ## Review, checkpoint export and language-review handoff
 
 ```bash
 python scripts/start_review_workbench.py project.dbreview --original target.docx --output reviewed.docx
+python scripts/start_review_workbench.py project.dbreview --original target.xlsx --output reviewed.xlsx
 python scripts/export_reviewed_document.py project.dbreview --original target.docx --output checkpoint-01.docx --export-mode CHECKPOINT --receipt checkpoint-01.json
 python scripts/build_post_review_report.py project.dbreview --output post-review.json
 ```

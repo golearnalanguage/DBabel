@@ -22,6 +22,7 @@ from review_model import (
     read_json,
     read_jsonl,
     semantic_finding_to_review,
+    review_issue_fingerprint,
     sha256_file,
     utc_now,
     write_json,
@@ -29,6 +30,7 @@ from review_model import (
 )
 from docx_review_adapter import build_anchors
 from text_review_adapter import build_text_anchors
+from xlsx_review_adapter import build_anchors as build_xlsx_anchors
 from version_info import REVIEW_WORKBENCH_VERSION
 from technique_contract import (
     load_translation_registry,
@@ -68,6 +70,7 @@ def _load_units(path: Path) -> List[Dict[str, Any]]:
             "finding_refs": [],
             "qa_issue_refs": [],
             "evidence_refs": [],
+            "term_refs": [],
             "requires_confirmation": True,
         }
 
@@ -146,6 +149,25 @@ def _load_units(path: Path) -> List[Dict[str, Any]]:
         for key in ("source_language", "target_language"):
             if unit.get(key):
                 review[key] = str(unit[key])
+        raw_decision = unit.get(
+            "proposal_decision",
+            unit.get("_decision", unit.get("decision")),
+        )
+        if isinstance(raw_decision, dict):
+            raw_decision = (
+                raw_decision.get("decision")
+                or raw_decision.get("status")
+            )
+        if raw_decision:
+            proposal_decision = str(raw_decision).upper()
+            if proposal_decision in {
+                "KEEP",
+                "REPLACE",
+                "PROTECT",
+                "REVIEW",
+                "OUT_OF_SCOPE_CLAIM",
+            }:
+                review["proposal_decision"] = proposal_decision
         context = unit.get("context")
         if isinstance(context, dict):
             clean_context = {k: str(v) for k, v in context.items() if k in {"vendor", "product", "version", "domain", "text_role"} and v is not None}
@@ -190,6 +212,125 @@ def _aggregate_suggestion(unit: Dict[str, Any], mapped_findings: List[Dict[str, 
         spans.append((start, start + len(new)))
         changed = True
     return proposed if changed and proposed != current else None
+
+
+
+def _candidate_id(
+    candidate: Dict[str, Any],
+    index: int,
+) -> str:
+    return str(
+        candidate.get("entry_id")
+        or candidate.get("id")
+        or "GC{:04d}".format(index)
+    )
+
+
+def _candidate_matches_unit(
+    candidate: Dict[str, Any],
+    unit: Dict[str, Any],
+) -> bool:
+    term = str(
+        candidate.get("term")
+        or candidate.get("source_term")
+        or ""
+    )
+    if not term:
+        return False
+    haystack = "\n".join(
+        str(unit.get(key) or "")
+        for key in (
+            "source",
+            "current_target",
+            "suggested_target",
+        )
+    )
+    return (
+        term in haystack
+        or term.casefold() in haystack.casefold()
+    )
+
+
+def _bind_glossary_candidates(
+    candidates: List[Dict[str, Any]],
+    units: List[Dict[str, Any]],
+    evidence_ids,
+    issues: List[Dict[str, Any]],
+) -> None:
+    """Bind discovered terms into review units without approving them."""
+    for index, candidate in enumerate(candidates, 1):
+        if not isinstance(candidate, dict):
+            continue
+
+        candidate_id = _candidate_id(candidate, index)
+        term = str(
+            candidate.get("term")
+            or candidate.get("source_term")
+            or ""
+        )
+        proposed = str(
+            candidate.get("proposed_target")
+            or candidate.get("preferred_target")
+            or ""
+        )
+        status = str(
+            candidate.get("status")
+            or "DISCOVERED"
+        )
+        refs = sorted(
+            {
+                str(ref)
+                for ref in candidate.get("evidence_refs") or []
+            }
+            & set(evidence_ids)
+        )
+
+        for unit in units:
+            if not _candidate_matches_unit(candidate, unit):
+                continue
+
+            issue = {
+                "id": "TERM_{:04d}_{}".format(
+                    index,
+                    re.sub(
+                        r"[^A-Za-z0-9_.:-]+",
+                        "_",
+                        unit["id"],
+                    ),
+                ),
+                "unit_id": unit["id"],
+                "kind": "SEMANTIC",
+                "label": "TERM_CANDIDATE",
+                "severity": "INFO",
+                "classification":
+                    "PROJECT_GLOSSARY_CANDIDATE",
+                "message": (
+                    "{} → {} [{}; candidate, not "
+                    "project-approved]"
+                ).format(
+                    term or "<empty>",
+                    proposed or "<unresolved>",
+                    status,
+                ),
+                "evidence_refs": refs,
+                "blocking": False,
+            }
+            if proposed:
+                issue["suggestion"] = proposed
+            issue["fingerprint"] = (
+                review_issue_fingerprint(issue)
+            )
+            issues.append(issue)
+
+            unit["labels"].extend(
+                [
+                    "TERM_CANDIDATE",
+                    "PROJECT_GLOSSARY_CANDIDATE",
+                ]
+            )
+            unit["finding_refs"].append(issue["id"])
+            unit["term_refs"].append(candidate_id)
+            unit["evidence_refs"].extend(refs)
 
 
 def main() -> int:
@@ -289,6 +430,13 @@ def main() -> int:
                         unit["evidence_refs"].append(ref)
                 findings_by_unit.setdefault(unit_id, []).append(finding)
 
+            _bind_glossary_candidates(
+                list(audit.get("glossary_candidates") or []),
+                units,
+                evidence_ids,
+                issues,
+            )
+
         for unit in units:
             suggestion = _aggregate_suggestion(unit, findings_by_unit.get(unit["id"], []))
             if suggestion is not None:
@@ -297,6 +445,7 @@ def main() -> int:
             unit["finding_refs"] = sorted(set(unit["finding_refs"]))
             unit["qa_issue_refs"] = sorted(set(unit["qa_issue_refs"]))
             unit["evidence_refs"] = sorted(set(unit["evidence_refs"]))
+            unit["term_refs"] = sorted(set(unit["term_refs"]))
 
         if args.original:
             original = Path(args.original).resolve()
@@ -337,6 +486,8 @@ def main() -> int:
                         ),
                         "original_text": unit["current_target"],
                     }
+            elif original.suffix.lower() == ".xlsx":
+                anchors = build_xlsx_anchors(original, units)
             elif original.suffix.lower() in {'.txt', '.md'}:
                 anchors = build_text_anchors(original, units)
             else:
@@ -368,6 +519,28 @@ def main() -> int:
                 "anchors": "anchors.json"
             },
             "original": original_info,
+            "preparation": {
+                "qa_report_bound": bool(args.qa_report),
+                "audit_report_bound": bool(args.audit_report),
+                **(
+                    {
+                        "qa_report_sha256": sha256_file(
+                            Path(args.qa_report).resolve()
+                        )
+                    }
+                    if args.qa_report
+                    else {}
+                ),
+                **(
+                    {
+                        "audit_report_sha256": sha256_file(
+                            Path(args.audit_report).resolve()
+                        )
+                    }
+                    if args.audit_report
+                    else {}
+                ),
+            },
             "counts": {"units": len(units), "issues": len(issues), "evidence": len(evidence)},
             "export_policy": {
                 "require_all_confirmed": True,

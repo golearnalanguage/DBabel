@@ -52,12 +52,17 @@ The Agent may prepare review units, findings, deterministic issues, evidence, an
 suggestions. It must not fabricate human acceptance, keep, edit, defer, block, or
 waiver decisions.
 
-Create sessions with `scripts/create_review_session.py`. Native export supports DOCX,
-TXT and Markdown: supply the same `--original` when creating the session, then start
-`scripts/start_review_workbench.py` with both `--original` and `--output`.
+Create sessions with `scripts/create_review_session.py`. For `TRANSLATE` /
+`BILINGUAL_REVIEW`, prepare QA targets with `scripts/prepare_review_qa.py`, bind
+the actual QA/audit reports into the session, and require
+`scripts/validate_translate_delivery.py --surface full` before calling the handoff
+ready. Native export supports DOCX, TXT, Markdown and XLSX: supply the same
+`--original` when creating the session, then start `scripts/start_review_workbench.py`
+with both `--original` and `--output`.
 Supported single-target upload sessions configure these paths automatically.
 Review-only sessions export status-bearing review results in six formats. Portable
-Review exports decisions for import. Native delivery includes a receipt, bilingual
+Review exports decisions for import and is a fallback surface, not the Full Local
+Review Workbench. Never claim capability parity between the two. Native delivery includes a receipt, bilingual
 HTML and Markdown/JSON Agent handoff; inspect rendered layout separately.
 
 Portable decisions must be imported into the matching `.dbreview` session and

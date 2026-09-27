@@ -52,6 +52,8 @@
 - [Glossary validator](scripts/validate_glossary.py)
 - [Glossary loader/normalizer](scripts/glossary_io.py)
 - [Bilingual integrity checker](scripts/check_bilingual_integrity.py)
+- [Proposal QA target preparer](scripts/prepare_review_qa.py)
+- [Translation delivery gate](scripts/validate_translate_delivery.py)
 - [Accuracy Core regression tests](tests/test_accuracy_core.py)
 
 ## Review Workbench
@@ -62,10 +64,12 @@
 - [Portable Review builder](scripts/build_portable_review.py)
 - [Portable decision importer](scripts/import_review_decisions.py)
 - [DOCX bilingual-unit extractor](scripts/extract_docx_bilingual_units.py)
-- [DOCX native exporter](scripts/export_reviewed_document.py)
+- [Native document exporter](scripts/export_reviewed_document.py)
+- [XLSX anchored review adapter](scripts/xlsx_review_adapter.py)
 - [Review bundle validator](scripts/validate_review_bundle.py)
 - [Review schemas](schemas/)
 - [Review Workbench regression tests](tests/)
+- [Workflow hardening regression tests](tests/test_workflow_hardening.py)
 
 ## Workflow resources
 

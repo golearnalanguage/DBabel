@@ -40,7 +40,8 @@ REQUIRED_WORKFLOW_STATES = {
     'RESOURCE_ROUTING', 'INGEST', 'INGEST_VALIDATION', 'STRUCTURE', 'CONTEXT',
     'EXTRACTION', 'CLASSIFICATION', 'USER_RESOURCE_RESOLUTION',
     'SOURCE_RESEARCH', 'EVIDENCE_ASSESSMENT', 'ADJUDICATION', 'TRANSLATION',
-    'DETERMINISTIC_QA', 'QA', 'REPAIR', 'ROUND_TRIP_QA',
+    'DETERMINISTIC_QA', 'QA', 'REVIEW_SESSION_BINDING',
+    'DELIVERY_VALIDATION', 'REPAIR', 'ROUND_TRIP_QA',
     'PROJECT_GLOSSARY_CANDIDATE', 'OUTPUT',
 }
 
@@ -51,6 +52,9 @@ WORKFLOW_SAFETY_RULES = {
     'deterministic_qa_is_semantic_verdict': False,
     'deterministic_qa_authorizes_repair': False,
     'global_auto_approval_of_discovered_terms': False,
+    'portable_review_counts_as_full_workbench': False,
+    'cross_language_identity_qa_is_valid_translation_check': False,
+    'translation_completion_without_review_surface': False,
 }
 
 DETERMINISTIC_QA_SAFETY_POLICY = {

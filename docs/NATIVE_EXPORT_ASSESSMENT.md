@@ -22,8 +22,11 @@ Changes spanning styled runs inherit existing run placement. Review formatting w
 
 TXT/MD replace anchored UTF-8 lines, preserving BOM, mixed newline sequences, empty and untouched lines. Edited Markdown syntax requires review. Bilingual HTML is an additional artifact with its own layout.
 
+XLSX uses stable `xl/worksheets/sheetN.xml:CELL` anchors for stored non-formula cells. Approved changes patch only the matching `<c>` element in a copy; all untouched OOXML part payloads must remain byte-identical and changed worksheets must differ only inside approved cell elements. Formula cells fail closed. A changed shared-string/rich-text cell is written as an inline string, so intra-cell rich-text runs are not preserved and require visual review. Workbook relationships, drawings, charts, comments, styles, validation and other untouched package parts are preserved rather than reconstructed.
+
+
 ## Acceptance and next formats
 
 Tests cover namespaces, styled runs, tables, media, headers, exact replacement, original protection, duplicate text, newlines and checkpoint provenance. Each publication document still needs a Word/LibreOffice visual check. No representative customer file or renderer result establishes identical pagination.
 
-XLSX needs preservation tests for cell types, shared strings, formulas, styles and workbook links. PPTX needs runs, relationships, text-box geometry and overflow tests. PDF needs a separate layout/OCR workflow; text-layer replacement cannot promise editable-source fidelity. These formats export review results until dedicated writers pass those checks.
+XLSX now has a bounded resolved-cell writer with tests for anchored replacement, formula refusal and untouched-part fidelity. It still requires visual review for changed rich-text cells and representative customer workbooks. PPTX needs runs, relationships, text-box geometry and overflow tests. PDF needs a separate layout/OCR workflow; text-layer replacement cannot promise editable-source fidelity. PPTX/PDF remain review-result-only until dedicated writers pass those checks.

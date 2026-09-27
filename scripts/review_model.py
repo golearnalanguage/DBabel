@@ -456,6 +456,43 @@ def default_qa_runner(
             qa_unit[key] = unit[key]
     report = core.run_qa([qa_unit], config, glossary)
     converted = [deterministic_issue_to_review(x) for x in report.get("issues") or []]
+    source_text = str(unit.get("source") or "")
+    source_language = str(
+        unit.get("source_language") or ""
+    ).casefold()
+    target_language = str(
+        unit.get("target_language") or ""
+    ).casefold()
+    proposal_decision = str(
+        unit.get("proposal_decision") or ""
+    ).upper()
+    if (
+        source_language
+        and target_language
+        and source_language != target_language
+        and source_text == final_target
+        and proposal_decision not in {"KEEP", "PROTECT"}
+    ):
+        identity_issue = {
+            "id": "QA_IDENTITY_{}".format(unit["id"]),
+            "unit_id": unit["id"],
+            "kind": "DETERMINISTIC",
+            "label": "IDENTITY_TARGET",
+            "severity": "ERROR",
+            "classification": "POTENTIAL_ISSUE",
+            "message": (
+                "Cross-language target is identical to the source. "
+                "A source anchor is not a translated target."
+            ),
+            "source_items": [source_text],
+            "target_items": [final_target],
+            "evidence_refs": [],
+            "blocking": True,
+        }
+        identity_issue["fingerprint"] = (
+            review_issue_fingerprint(identity_issue)
+        )
+        converted.append(identity_issue)
     return {
         "summary": report["summary"],
         "issues": converted,

@@ -18,6 +18,8 @@ states:
   - TRANSLATION
   - DETERMINISTIC_QA
   - QA
+  - REVIEW_SESSION_BINDING
+  - DELIVERY_VALIDATION
   - HUMAN_REVIEW
   - POST_HUMAN_REVIEW
   - EXPORT_GATE
@@ -38,6 +40,9 @@ rules:
   deterministic_qa_authorizes_repair: false
   auto_repair_requires_high_confidence: true
   global_auto_approval_of_discovered_terms: false
+  portable_review_counts_as_full_workbench: false
+  cross_language_identity_qa_is_valid_translation_check: false
+  translation_completion_without_review_surface: false
   technical_claim_verification_separate: true
 conditions:
   FORMAT_PROBE: file_input
@@ -48,6 +53,8 @@ conditions:
   SOURCE_RESEARCH: unresolved_or_requested_and_permitted
   TRANSLATION: translation_requested
   DETERMINISTIC_QA: aligned_bilingual_units_available
+  REVIEW_SESSION_BINDING: proposals_or_evidence_or_terminology_available
+  DELIVERY_VALIDATION: review_session_created
   HUMAN_REVIEW: proposed_changes_require_approval
   POST_HUMAN_REVIEW: human_edits_need_language_recheck
   EXPORT_GATE: final_or_checkpoint_native_export_requested

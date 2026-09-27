@@ -29,11 +29,39 @@ window.installWorkbenchViews = function(ctx) {
     for(const b of document.querySelectorAll('[data-view]')){b.classList.toggle('active',b.dataset.view===name);b.setAttribute('aria-current',b.dataset.view===name?'page':'false');}
     if(isReview)return;
     if(name==='Terminology'){
-      start(name,'Terminology findings and review labels from this session. These labels are not a project glossary.');
-      if(window.renderGlossaryUpload){const c=card('Project glossary','');window.renderGlossaryUpload(c);}
-      const units=state.units.filter(u=>(u.labels||[]).length||issuesFor(u.id).some(i=>/TERM/.test(i.label||i.check_id||'')));
-      for(const u of units)unitCard(u,[...(u.labels||[]),...issuesFor(u.id).filter(i=>/TERM/.test(i.label||i.check_id||'')).map(i=>i.message)].join(' · '));
-      if(!units.length)card('No terminology findings','No terminology labels or findings are attached to this session.');
+      start(name,'Terminology findings, candidate bindings and review labels from this session. Candidates are not project-approved glossary entries.');
+      if(window.renderGlossaryUpload){
+        const c=card('Project glossary','');
+        window.renderGlossaryUpload(c);
+      }else{
+        card(
+          'Portable Review fallback',
+          'Glossary upload and terminology compliance scoring require the Full Local Workbench. Portable Review exchanges decisions only.'
+        );
+      }
+      const units=state.units.filter(
+        u=>(u.term_refs||[]).length||(u.labels||[]).length||
+          issuesFor(u.id).some(
+            i=>/TERM|TERMINOLOGY/.test(
+              i.label||i.check_id||i.classification||''
+            )
+          )
+      );
+      for(const u of units)unitCard(
+        u,
+        [
+          ...(u.term_refs||[]).map(x=>'term:'+x),
+          ...(u.labels||[]),
+          ...issuesFor(u.id)
+            .filter(
+              i=>/TERM|TERMINOLOGY/.test(
+                i.label||i.check_id||i.classification||''
+              )
+            )
+            .map(i=>i.message)
+        ].join(' · ')
+      );
+      if(!units.length)card('No terminology findings','No terminology candidates, labels or findings are attached to this session.');
     }else if(name==='Evidence'){
       start(name,'Inspect the source, scope and linked segments before accepting a wording change.');
       for(const e of state.evidence){const c=card(e.source_title||e.id,e.support_note||trUI('No support note supplied.'),true);c.append(node('p',e.locator||'No locator','evidence-locator'));
@@ -55,11 +83,26 @@ window.installWorkbenchViews = function(ctx) {
       card('Next step','Give the downloaded JSON and docs/POST_REVIEW_QA.md to your Agent. Review its located suggestions, apply accepted edits, then recheck and export.');
     }else if(name==='Project Settings'){
       start(name,'Session scope and local display preferences.');
+      card(
+        'Review surface',
+        getReport
+          ? 'Full Local Workbench: project glossary upload, scoped terminology scoring, evidence/issues, fresh QA, six review-result formats and configured native export are available.'
+          : 'Portable Review fallback: decisions exchange only. Use the matching .dbreview bundle in the Full Local Workbench for glossary upload, fresh QA and native export.'
+      );
       card('Session',`${state.session.title||'Untitled'}\n${state.session.session_id}\n${state.session.mode}`);
       card('Original document',`${state.session.original.filename}\nSHA-256: ${state.session.original.sha256}`);
       const c=card('Appearance','Choose the theme for this browser.');for(const t of ['system','dark','light'])c.append(button(t,()=>{applyTheme(t);window.workbenchNotice('Theme: '+t);}));
       const size=node('select');size.setAttribute('aria-label','Segments per page');for(const n of [25,50,100,200])size.add(new Option(String(n),String(n)));size.value=state.pageSize;size.addEventListener('change',()=>{state.pageSize=Number(size.value);state.page=0;state.selectedUnits.clear();renderTable();});card('Segments per page','Smaller pages keep large reviews easier to navigate.').append(size);
-      card('Export capability',getReport?(state.exportAvailable?'Native DOCX export configured.':'Review snapshots are available in JSON, CSV, TSV, Markdown, HTML and TXT. Configure --original and --output for native DOCX export.'):'Offline decisions only. Import and recheck in a local session before native export.');
+      card(
+        'Export capability',
+        getReport
+          ? (
+              state.exportAvailable
+                ? 'Configured native DOCX/TXT/MD/XLSX export plus six review-result formats.'
+                : 'Review snapshots are available in JSON, CSV, TSV, Markdown, HTML and TXT. Configure --original and --output for native DOCX/TXT/MD/XLSX export.'
+            )
+          : 'Portable decisions only. Import and recheck in a Full Local Workbench before native export.'
+      );
     }else if(name==='Activity'){
       start('Review activity','Current decisions and reviewer notes.');
       const reviewed=state.units.filter(u=>decisionFor(u.id).status!=='UNREVIEWED');for(const u of reviewed)unitCard(u,`${decisionFor(u.id).status} · revision ${decisionFor(u.id).revision}\n${decisionFor(u.id).reviewer_note||''}`);if(!reviewed.length)card('No decisions yet','Select a segment in Review to start.');

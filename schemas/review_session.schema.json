@@ -39,6 +39,26 @@
       },
       "additionalProperties": false
     },
+    "preparation": {
+      "type": "object",
+      "required": [
+        "qa_report_bound",
+        "audit_report_bound"
+      ],
+      "properties": {
+        "qa_report_bound": {"type": "boolean"},
+        "audit_report_bound": {"type": "boolean"},
+        "qa_report_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "audit_report_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
     "counts": {
       "type": "object",
       "required": ["units", "issues", "evidence"],

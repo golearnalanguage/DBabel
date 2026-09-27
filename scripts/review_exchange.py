@@ -1,7 +1,7 @@
 """Document intake, scoped glossary scoring and review-result interchange.
 
 Result exports contain reviewed and pending rows with explicit status; they do not
-rewrite source layouts. Native DOCX delivery remains in export_reviewed_document.
+rewrite source layouts. Native DOCX/TXT/Markdown/XLSX delivery is implemented in export_reviewed_document.
 """
 from __future__ import annotations
 import base64
@@ -153,7 +153,7 @@ def _read_document(path):
     if len(rows) > 20000: raise ValueError('More than 20,000 segments; split the document before intake.')
     return {'filename': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
             'format': fmt, 'probe': probe, 'segments': rows, 'limitations': limitations,
-            'coverage': 'EXTRACTED_SCOPE', 'native_export': fmt in {'docx', 'txt', 'md'}}
+            'coverage': 'EXTRACTED_SCOPE', 'native_export': fmt in {'docx', 'txt', 'md', 'xlsx'}}
 
 
 def read_document(path):

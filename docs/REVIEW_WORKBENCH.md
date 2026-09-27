@@ -3,7 +3,7 @@
 [简体中文](REVIEW_WORKBENCH.zh-CN.md) · [Documentation index](INDEX.md)
 
 For local offline use, begin with [the reviewer walkthrough](WORKFLOW_GUIDE.md).
-Uploaded single-target DOCX/TXT/MD sessions configure native delivery automatically.
+Uploaded single-target DOCX/TXT/MD/XLSX sessions configure native delivery automatically.
 Export downloads a ZIP with the document, receipt, bilingual HTML and Markdown/JSON
 handoff. Source-only input is an unreviewed working copy until translated and reviewed.
 Original-format delivery preserves structure; inspect rendered wrapping and pagination.
@@ -16,7 +16,7 @@ The Review Workbench is part of the DBabel v1.5.0 release contract. A repository
 version change does not by itself create or move a Git tag or GitHub Release;
 those release artifacts are created only after validation succeeds.
 
-The Workbench connects source/target text, proposed changes, evidence and human decisions. Use the local desktop interface for uploads, scoped glossary checks, QA and export; use Portable Review for offline decisions. Both interfaces support English and Simplified Chinese.
+The Workbench connects source/target text, proposed changes, evidence and human decisions. **Full Local Review Workbench** means the local desktop/server surface with project-glossary upload, scoped terminology scoring, evidence/issues, fresh QA, six review-result formats and configured native export. **Portable Review** is an offline fallback for decisions exchange only; it is not capability-equivalent to the Full Local Workbench. Both interfaces support English and Simplified Chinese. In `TRANSLATE` / `BILINGUAL_REVIEW`, `suggested_target` is presented as an explicitly unapproved proposal until a human decision creates `approved_target`.
 
 Start with the [Chinese walkthrough](WORKFLOW_GUIDE.zh-CN.md) for complete executable commands. Consult the [format matrix](DOCUMENT_FORMATS.md) for parser dependencies, extraction coverage and export fidelity.
 
@@ -88,6 +88,16 @@ states remain reviewable but cannot be included in native write-back.
 
 ## Desktop workflow
 
+Before creating a translation review session, materialize the deterministic-QA target from the actual proposal instead of the source anchor:
+
+```bash
+python scripts/prepare_review_qa.py aligned-units.json --mode TRANSLATE --output review-qa-units.jsonl --receipt qa-target-selection.json
+python scripts/check_bilingual_integrity.py review-qa-units.jsonl --output qa-report.json
+```
+
+After session creation, `scripts/validate_translate_delivery.py ... --surface full` must pass. The successful stage is `READY_FOR_HUMAN_REVIEW`, not final completion.
+
+
 ```bash
 python scripts/create_review_session.py units.jsonl \
   --qa-report qa-report.json \
@@ -120,14 +130,14 @@ python scripts/import_review_decisions.py \
 
 Portable review never writes the native document itself.
 
-## DOCX native export
+## Native export
 
-Native delivery supports DOCX, TXT and Markdown. The DOCX adapter uses exact OOXML paragraph anchors,
+Native delivery supports DOCX, TXT, Markdown and XLSX. The DOCX adapter uses exact OOXML paragraph anchors,
 verifies the original package hash and anchor text, patches existing `w:t` nodes rather
 than rebuilding the document, refuses ambiguous anchors, refuses in-place overwrite,
 and verifies reviewed target text, non-target paragraph text, non-text XML and untouched
 package parts after writing. TXT/Markdown use line anchors and retain UTF-8 BOM,
-original newline sequences, blank lines and untouched lines. All three formats produce
+original newline sequences, blank lines and untouched lines. All supported native formats produce
 a receipt, bilingual HTML and Markdown/JSON Agent handoff alongside the native copy.
 
 ```bash
@@ -137,8 +147,10 @@ python scripts/export_reviewed_document.py translated.dbreview \
   --receipt export-receipt.json
 ```
 
-DOCM/PPTX/XLSX/PDF native repair is not implemented. PPTX/XLSX/PDF intake can produce
-review-result exports as described in the [format matrix](DOCUMENT_FORMATS.md).
+DOCM/PPTX/PDF native repair is not implemented. XLSX native write-back is available for
+resolved cell anchors: DBabel patches approved cell elements in a new workbook and
+verifies untouched OOXML part payloads byte-for-byte. PPTX/PDF intake remains
+review-result-only. See the [format matrix](DOCUMENT_FORMATS.md).
 
 For DOCX, ordinary paragraph text inside tables, hyperlinks, and content
 controls is extractable and covered by regression tests. Paragraphs containing

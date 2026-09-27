@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export an approved DOCX, TXT or Markdown copy with bilingual and Agent handoffs."""
+"""Export an approved DOCX, TXT, Markdown or XLSX copy with bilingual and Agent handoffs."""
 
 from __future__ import annotations
 
@@ -25,6 +25,12 @@ from docx_review_adapter import (
 from build_post_review_report import build_report, render_markdown
 from review_exchange import render_result
 from text_review_adapter import apply_reviewed_text
+from xlsx_review_adapter import (
+    XlsxExportError,
+    apply_reviewed_xlsx,
+    round_trip_verify_xlsx,
+    verify_package_fidelity_xlsx,
+)
 from review_model import (
     evaluate_export_gate,
     fresh_recheck_all,
@@ -84,9 +90,12 @@ def export_bundle(
         return gate
 
     suffix = original.suffix.lower()
-    if suffix not in {'.docx', '.txt', '.md'} or output.suffix.lower() != suffix:
+    if suffix not in {'.docx', '.txt', '.md', '.xlsx'} or output.suffix.lower() != suffix:
         gate["status"] = "FAILED"
-        gate["blockers"].append("native export requires matching .docx, .txt or .md input/output extensions")
+        gate["blockers"].append(
+            "native export requires matching .docx, .txt, .md or .xlsx "
+            "input/output extensions"
+        )
         if receipt_path:
             write_json(receipt_path, gate)
         return gate
@@ -98,27 +107,63 @@ def export_bundle(
         if export_mode == "CHECKPOINT":
             included = set(gate["review_scope"]["included_unit_ids"])
             export_units = [unit for unit in export_units if unit["id"] in included]
-            omitted_anchors = {
-                _anchor_identity(anchor) for uid, anchor in data["anchors"].items()
-                if uid not in included and anchor.get("status") == "RESOLVED"
-            }
-            for unit in export_units:
-                anchor = data["anchors"].get(unit["id"])
-                changed_target = decisions_by_id[unit["id"]].get("approved_target") != unit["current_target"]
-                if changed_target and anchor and anchor.get("status") == "RESOLVED" and _anchor_identity(anchor) in omitted_anchors:
-                    raise DocxExportError("checkpoint change overlaps an unreviewed paragraph")
+            if suffix == ".docx":
+                omitted_anchors = {
+                    _anchor_identity(anchor) for uid, anchor in data["anchors"].items()
+                    if uid not in included and anchor.get("status") == "RESOLVED"
+                }
+                for unit in export_units:
+                    anchor = data["anchors"].get(unit["id"])
+                    changed_target = decisions_by_id[unit["id"]].get("approved_target") != unit["current_target"]
+                    if changed_target and anchor and anchor.get("status") == "RESOLVED" and _anchor_identity(anchor) in omitted_anchors:
+                        raise DocxExportError("checkpoint change overlaps an unreviewed paragraph")
         output.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=output.parent) as staging:
             staged = Path(staging)/output.name
             if suffix == '.docx':
-                changed = apply_reviewed_docx(original, staged, export_units, decisions_by_id, data['anchors'])
-                checks = round_trip_verify(staged, export_units, decisions_by_id, data['anchors'])
-                checks.extend(verify_non_target_text_unchanged(original, staged, data['anchors'], decisions_by_id, export_units))
-                checks.extend(verify_package_fidelity(original, staged))
+                changed = apply_reviewed_docx(
+                    original, staged, export_units,
+                    decisions_by_id, data['anchors']
+                )
+                checks = round_trip_verify(
+                    staged, export_units,
+                    decisions_by_id, data['anchors']
+                )
+                checks.extend(
+                    verify_non_target_text_unchanged(
+                        original, staged, data['anchors'],
+                        decisions_by_id, export_units
+                    )
+                )
+                checks.extend(
+                    verify_package_fidelity(original, staged)
+                )
+            elif suffix == '.xlsx':
+                changed = apply_reviewed_xlsx(
+                    original, staged, export_units,
+                    decisions_by_id, data['anchors']
+                )
+                checks = round_trip_verify_xlsx(
+                    staged, export_units,
+                    decisions_by_id, data['anchors']
+                )
+                checks.extend(
+                    verify_package_fidelity_xlsx(
+                        original, staged, export_units,
+                        decisions_by_id, data['anchors']
+                    )
+                )
             else:
-                changed = apply_reviewed_text(original, staged, export_units, decisions_by_id, data['anchors'])
-                checks = ['UTF-8 BOM, original line endings, blank lines and all unmodified lines preserved',
-                          'Approved text changes round-trip verified; Markdown markup in edited lines needs review']
+                changed = apply_reviewed_text(
+                    original, staged, export_units,
+                    decisions_by_id, data['anchors']
+                )
+                checks = [
+                    'UTF-8 BOM, original line endings, blank lines '
+                    'and all unmodified lines preserved',
+                    'Approved text changes round-trip verified; '
+                    'Markdown markup in edited lines needs review'
+                ]
             with output.open('xb') as stream:
                 created.append(output)
                 stream.write(staged.read_bytes())
@@ -146,7 +191,7 @@ def export_bundle(
                 created.append(path)
                 stream.write(content)
             gate['artifacts'].append({'kind': kind, 'path': str(path), 'sha256': sha256_file(path)})
-    except (OSError, DocxExportError, ValueError) as exc:
+    except (OSError, DocxExportError, XlsxExportError, ValueError) as exc:
         for path in created:
             path.unlink()
         gate.pop('artifacts', None)
@@ -164,7 +209,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bundle", help=".dbreview directory")
     parser.add_argument("--repo-root", default=str(HERE.parent), help="DBabel repository root")
-    parser.add_argument("--original", required=True, help="Original DOCX, TXT or MD whose SHA-256 must match the session")
+    parser.add_argument("--original", required=True, help="Original DOCX, TXT, MD or XLSX whose SHA-256 must match the session")
     parser.add_argument("--output", required=True, help="New document path with the same extension; original is never overwritten")
     parser.add_argument("--glossary")
     parser.add_argument("--receipt")

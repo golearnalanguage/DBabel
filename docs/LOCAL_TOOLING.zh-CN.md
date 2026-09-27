@@ -29,6 +29,21 @@ python scripts/preflight_document.py manual.docx --intent audit --declare-backen
 
 ## 术语、双语 QA 和报告
 
+`TRANSLATE` / `BILINGUAL_REVIEW` 禁止直接把 source-only 的原文锚点送入双语 QA。先生成真实审核目标：
+
+```bash
+python scripts/prepare_review_qa.py aligned-units.json --mode TRANSLATE --output review-qa-units.jsonl --receipt qa-target-selection.json
+```
+
+建会话时必须绑定 `--qa-report` 和 `--audit-report`，再验证完整本地工作台交付：
+
+```bash
+python scripts/validate_translate_delivery.py project.en.dbreview --qa-input review-qa-units.jsonl --qa-report qa_report.json --audit-report audit-report.json --surface full --output delivery-receipt.json
+```
+
+门禁通过只表示 `READY_FOR_HUMAN_REVIEW`，不代表最终完成。
+
+
 ```bash
 python scripts/validate_glossary.py project_glossary.csv
 python scripts/check_bilingual_integrity.py bilingual_units.jsonl --glossary project_glossary.csv --output qa_report.json
@@ -43,11 +58,12 @@ python scripts/validate_report.py examples/audit_report.json
 ```bash
 python scripts/export_review_results.py manual.multilingual.dbreview --format html --output manual.review.html
 python scripts/start_review_workbench.py project.dbreview --original target.docx --output reviewed.docx
+python scripts/start_review_workbench.py project.dbreview --original target.xlsx --output reviewed.xlsx
 python scripts/export_reviewed_document.py project.dbreview --original target.docx --output checkpoint-01.docx --export-mode CHECKPOINT
 python scripts/build_post_review_report.py project.dbreview --format md --output post-review.md
 ```
 
-CLI 导出使用新文件名。默认 FINAL 要求完整审核，CHECKPOINT 保留待审文字。原格式支持 DOCX/TXT/MD，附回执、双语 HTML 和 Markdown/JSON 交接；其他格式见[矩阵](DOCUMENT_FORMATS.zh-CN.md)。`NOT_RUN` 代表 Agent 尚未复核，执行步骤见[复核说明](POST_REVIEW_QA.zh-CN.md)。
+CLI 导出使用新文件名。默认 FINAL 要求完整审核，CHECKPOINT 保留待审文字。原格式支持 DOCX/TXT/MD 以及已解析单元格锚点的 XLSX，附回执、双语 HTML 和 Markdown/JSON 交接；PPTX/PDF 等其他格式见[矩阵](DOCUMENT_FORMATS.zh-CN.md)。`NOT_RUN` 代表 Agent 尚未复核，执行步骤见[复核说明](POST_REVIEW_QA.zh-CN.md)。
 
 ## 开发与包校验
 

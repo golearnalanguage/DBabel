@@ -2,6 +2,15 @@
 
 ## Unreleased — review workflow refinement
 
+### Translation review hardening
+
+- Make proposal-first review explicit without fabricating approval: translation review shows `suggested_target` while the human decision remains `UNREVIEWED`.
+- Add fail-closed source↔proposal QA target preparation and a delivery validator that requires a Full Local Workbench handoff.
+- Bind glossary candidates and their evidence into `.dbreview` units instead of leaving terminology/evidence only in an audit report.
+- Define Portable Review as a decisions-only fallback rather than a full Workbench substitute.
+- Add anchored XLSX write-back that changes only approved worksheet cell elements and verifies untouched OOXML part payloads.
+
+
 ### Original-format delivery and local reviewer workflow
 
 - Synchronize README, Agent entry instructions and Workbench documentation with the supported native formats and delivery artifacts; distinguish merged repository changes from a tagged release.

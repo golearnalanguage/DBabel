@@ -39,7 +39,7 @@ python scripts/start_local.py
 
 已有译文时可同时上传一个目标文档，并核对两侧单元的顺序和数量。确认一一对应后勾选对齐确认框；数量不同的文档应先交由 Agent 建立对齐映射。仅上传原文时，工作台建立待翻译单元，由 Agent 提供对应目标语言的译文。
 
-只有一种目标语言且输入为 DOCX、TXT 或 MD 时，当前译文区先保留原文作为原格式工作副本，状态仍为未审核。手动编辑或接受真正的翻译建议后才能交付。多目标语言会话用于独立的各语言对照审核；需要多个原格式成品时，按语言分别建立单目标会话。
+只有一种目标语言且输入为 DOCX、TXT、MD 或 XLSX 时，当前译文区先保留原文作为原格式工作副本，状态仍为未审核。手动编辑或接受真正的翻译建议后才能交付。多目标语言会话用于独立的各语言对照审核；需要多个原格式成品时，按语言分别建立单目标会话。
 
 命令行可执行相同流程：
 
@@ -92,6 +92,18 @@ python scripts/start_review_workbench.py output/agent-proposals.dbreview \
 
 ## 5. 审核与 QA
 
+`TRANSLATE` / `BILINGUAL_REVIEW` 在交给人工审核前，Agent 必须把确定性 QA 指向真实建议译文，并通过完整工作台交付门禁：
+
+```bash
+python scripts/prepare_review_qa.py aligned-units.json --mode TRANSLATE --output review-qa-units.jsonl --receipt qa-target-selection.json
+python scripts/check_bilingual_integrity.py review-qa-units.jsonl --output qa-report.json
+python scripts/create_review_session.py aligned-units.json --qa-report qa-report.json --audit-report audit-report.json --original source.xlsx --output output/proposals.en.dbreview --mode TRANSLATE
+python scripts/validate_translate_delivery.py output/proposals.en.dbreview --qa-input review-qa-units.jsonl --qa-report qa-report.json --audit-report audit-report.json --surface full --output delivery-receipt.json
+```
+
+门禁必须返回 `READY_FOR_HUMAN_REVIEW`。Portable Review 不能替代完整本地 Workbench 的交付门禁。
+
+
 按状态、问题类型、位置或标签筛选，点击行打开右侧详情。核对建议、原因、参考证据与术语后，选择接受建议、保留当前译文、编辑、暂缓、阻断或豁免。点击“编辑”后修改译文，再点击“保存修改”；备注单独点击“保存备注”。豁免须填写理由。
 
 每个单元都有建议译文或具体修改指引。只有确实提供了 `suggested_target` 才能点击“接受建议”。可选择本页或全部匹配项，批量保留当前译文或暂缓。
@@ -111,7 +123,7 @@ python scripts/export_review_results.py output/manual.dbreview \
 
 ## 7. 导出原格式副本与交接包
 
-通过上传面板创建的单目标 DOCX/TXT/MD 会话会自动使用 `inputs/` 中保存的原件副本建立导出配置。点击原格式导出可下载 ZIP，包含修订文件、回执、Markdown/JSON 交接记录和 HTML 双语对照。交接记录区分已改、保持和未纳入的单元；“未纳入”表示阶段版仍保留原文，不表示从文件中删除。
+通过上传面板创建的单目标 DOCX/TXT/MD/XLSX 会话会自动使用 `inputs/` 中保存的原件副本建立导出配置。点击原格式导出可下载 ZIP，包含修订文件、回执、Markdown/JSON 交接记录和 HTML 双语对照。交接记录区分已改、保持和未纳入的单元；“未纳入”表示阶段版仍保留原文，不表示从文件中删除。
 
 保留版式时只修改原有段落或行中的文字，不新建段落、表格或列表。DOCX 的样式、表格结构和未修改部件经过程序比对，但译文变长仍可能改变换行和分页；请在 Word 或 LibreOffice 核对。TXT/MD 保留换行符和空行，被修改行的 Markdown 标记也需检查。
 

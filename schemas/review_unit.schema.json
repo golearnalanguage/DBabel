@@ -104,6 +104,24 @@
       },
       "uniqueItems": true
     },
+    "term_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "proposal_decision": {
+      "type": "string",
+      "enum": [
+        "KEEP",
+        "REPLACE",
+        "PROTECT",
+        "REVIEW",
+        "OUT_OF_SCOPE_CLAIM"
+      ]
+    },
     "anchor_ref": {
       "type": "string",
       "minLength": 1

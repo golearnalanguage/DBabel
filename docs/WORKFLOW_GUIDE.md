@@ -32,7 +32,7 @@ Select **Upload documents**, choose the source and set language tags such as `zh
 
 An existing target file requires one target language and matching segment counts. Check semantic correspondence, then confirm alignment. Equal counts alone do not establish alignment. Split or merged content needs an Agent's explicit alignment map.
 
-Source-only DOCX/TXT/MD with one target language keeps source text as an unreviewed layout template. Enter or accept actual translations before delivery. Multiple languages such as `en,ja` create independent review units; use one session per language for native documents.
+Source-only DOCX/TXT/MD/XLSX with one target language keeps source text as an unreviewed layout template. Enter or accept actual translations before delivery. Multiple languages such as `en,ja` create independent review units; use one session per language for native documents.
 
 Equivalent CLI intake:
 
@@ -76,6 +76,18 @@ The score is passed applicable term/unit checks divided by all applicable checks
 
 ## 5. Review and run QA
 
+Before a TRANSLATE/BILINGUAL_REVIEW session is handed to a reviewer, the Agent must prepare deterministic-QA input from the proposal and run the delivery gate:
+
+```bash
+python scripts/prepare_review_qa.py aligned-units.json --mode TRANSLATE --output review-qa-units.jsonl --receipt qa-target-selection.json
+python scripts/check_bilingual_integrity.py review-qa-units.jsonl --output qa-report.json
+python scripts/create_review_session.py aligned-units.json --qa-report qa-report.json --audit-report audit-report.json --original source.xlsx --output output/proposals.en.dbreview --mode TRANSLATE
+python scripts/validate_translate_delivery.py output/proposals.en.dbreview --qa-input review-qa-units.jsonl --qa-report qa-report.json --audit-report audit-report.json --surface full --output delivery-receipt.json
+```
+
+The gate must report `READY_FOR_HUMAN_REVIEW`. Portable Review does not satisfy the full-surface gate.
+
+
 Filter units, select a row and inspect the source, target, suggestion, reason and evidence. Accept a suggestion, keep current text, edit, defer, block or waive with a reason. Edited text and notes have separate save buttons. Bulk keep/defer applies to your selected units; review the count before confirmation. The interface provides guidance when no actual translation suggestion is available.
 
 Run **Quality Check → Rerun QA** after changes. Inspect numerical, terminology and protected-token findings against the source. A technical claim or meaning check still needs evidence and judgment. Only actual human decisions authorize reviewed text.
@@ -101,7 +113,7 @@ python scripts/start_review_workbench.py output/docx-review.dbreview --original 
 python scripts/export_reviewed_document.py output/docx-review.dbreview --original target.docx --output output/target.checkpoint-01.docx --export-mode CHECKPOINT
 ```
 
-CLI output names must be new. DOCX structure and non-text formatting definitions are checked; text length and fonts can still affect wrapping and pagination. Inspect in Word/LibreOffice. TXT/MD preserve line endings and blank lines; review markup in edited lines. Other formats currently produce review results; see the [assessment](NATIVE_EXPORT_ASSESSMENT.md).
+CLI output names must be new. DOCX structure and non-text formatting definitions are checked; text length and fonts can still affect wrapping and pagination. Inspect in Word/LibreOffice. TXT/MD preserve line endings and blank lines; review markup in edited lines. XLSX patches only approved resolved cell anchors, refuses formulas and verifies untouched OOXML part payloads; visually inspect changed rich-text cells. PPTX/PDF remain review-result-only; see the [assessment](NATIVE_EXPORT_ASSESSMENT.md).
 
 ## 8. Agent recheck and portable review
 

@@ -11,7 +11,7 @@ DBabel 分别记录提取范围、审核结果和原格式交付。上传面板�
 | CSV、TSV | `csv` | 非空单元格和表头，带行列位置 | 仅导出审核结果，不重建原表 |
 | JSON、JSONL | `json` | 带 JSON Pointer 的字符串值，不含键名、数字及布尔值 | 仅导出审核结果 |
 | HTML | `HTMLParser` | 按源码顺序提取 script/style/template 以外的文本 | 仅导出审核结果；不处理属性、CSS 版式及动态 DOM |
-| XLSX | ZIP/XML | 已存储的非公式单元格，含隐藏工作表 | 仅导出审核结果；不含公式、批注、图表及显示格式 |
+| XLSX | ZIP/XML | 已存储的非公式单元格，含隐藏工作表 | 显式锚点审核会话可把已批准单元格写入新的 XLSX。适配器只修改被批准的工作表单元格 XML，并逐字节校验所有未触及 OOXML 部件的内容；公式单元格绝不回写。被修改单元格内部的富文本 runs 会收敛为批准后的单元格文本，因此仍需目视复核。 |
 | PPTX | ZIP/XML | 按幻灯片 XML 顺序提取段落 | 仅导出审核结果；不含备注、图表、SmartArt、母版及图中文字 |
 | PDF | 可选 `pypdf` | 按页提取文字层 | 仅导出审核结果；核对阅读顺序和表格，扫描件先做 OCR，不重建 PDF 版式 |
 | XML、DOC/XLS/PPT、含宏 Office、ODF、图片 | 格式探测器 | 可识别，尚无内置上传提取器 | 转换副本，或由适用解析器提供带定位单元 |
@@ -28,4 +28,4 @@ PDF 提取在同一环境执行 `python -m pip install pypdf`。文本格式可�
 
 已建立锚点的受支持会话可导出 **FINAL 最终版** 或 **CHECKPOINT 阶段版**。最终版要求相应审核完成；阶段版应用已批准修改，未审部分保持原样。交付包含原格式文件、`.receipt.json` 回执、`.handoff.json`、`.handoff.md` 交接说明及 `.bilingual.html` 双语对照，浏览器自动下载 ZIP。交接记录列出已改、保持、未纳入的单元，以及人工决定、备注、版本、哈希、QA 和尚未执行的 Agent 复核。已有文件不会被覆盖，浏览器连续导出自动编号。
 
-DOCX 校验对比包内容、非文本 XML、修改目标和未修改文字，可确认结构和格式定义保留。译文长度、字体和打开文件的软件仍会影响换行及分页，交付前需在 Word 或 LibreOffice 检查版面。详见[实现评估](NATIVE_EXPORT_ASSESSMENT.zh-CN.md)和[本地教程](WORKFLOW_GUIDE.zh-CN.md)。
+DOCX 校验对比包内容、非文本 XML、修改目标和未修改文字。XLSX 校验批准单元格回读、ZIP 条目集合、未修改 OOXML 部件内容逐字节一致，以及目标工作表除批准单元格元素外不发生变化。译文长度、字体和打开文件的软件仍会影响换行及分页，交付前需在 Word 或 LibreOffice 检查版面。详见[实现评估](NATIVE_EXPORT_ASSESSMENT.zh-CN.md)和[本地教程](WORKFLOW_GUIDE.zh-CN.md)。

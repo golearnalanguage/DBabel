@@ -4,7 +4,7 @@
 
 Skill/包和工作台契约版本均为 **1.5.0**。版本字段不自动创建 Git 标签或 GitHub Release。初次使用请从[本地教程](WORKFLOW_GUIDE.zh-CN.md)开始；[格式矩阵](DOCUMENT_FORMATS.zh-CN.md)说明实际依赖和覆盖。
 
-工作台连接原译文、建议、证据与人工决定。本地界面提供上传、术语检查、QA 和导出，便携 HTML 提供离线审阅。两者支持中英文界面。上传的单目标 DOCX/TXT/MD 会话自动配置原格式输出；仅原文输入仍是待翻译的工作副本。
+工作台连接原译文、建议、证据与人工决定。**完整本地 Review Workbench** 指本地服务界面：包含项目术语表上传、范围化术语符合率、证据/问题、重新 QA、六种审核结果以及已配置的原格式导出。**Portable Review** 只作为离线决策交换的降级界面，不能视为完整工作台的等价替代。`TRANSLATE` / `BILINGUAL_REVIEW` 在人工决定前优先展示 `suggested_target`，并明确保持“未批准建议”语义；只有人工决定才能形成 `approved_target`。
 
 ## 审核与导出规则
 
@@ -34,6 +34,16 @@ Skill/包和工作台契约版本均为 **1.5.0**。版本字段不自动创建 
 
 ## 本地流程
 
+`TRANSLATE` / `BILINGUAL_REVIEW` 在建会话前必须先把 QA 目标切到真实建议译文，禁止拿中文原文锚点做“中→英”完整性检查：
+
+```bash
+python scripts/prepare_review_qa.py aligned-units.json --mode TRANSLATE --output review-qa-units.jsonl --receipt qa-target-selection.json
+python scripts/check_bilingual_integrity.py review-qa-units.jsonl --output qa-report.json
+```
+
+建好会话后必须通过 `scripts/validate_translate_delivery.py ... --surface full`。通过后的阶段是 `READY_FOR_HUMAN_REVIEW`，不是最终 `COMPLETED`。
+
+
 ```bash
 python scripts/create_review_session.py units.jsonl --qa-report qa-report.json --audit-report audit-report.json --original translated.docx --output translated.dbreview
 python scripts/start_review_workbench.py translated.dbreview --original translated.docx --output translated.reviewed.docx
@@ -62,6 +72,6 @@ python scripts/import_review_decisions.py translated.dbreview translated.docx.de
 python scripts/export_reviewed_document.py translated.dbreview --original translated.docx --output translated.checkpoint-01.docx --export-mode CHECKPOINT
 ```
 
-FINAL 是默认模式；CHECKPOINT 只应用已审核且通过检查的文字，待审内容保留。CLI 使用新名称，浏览器重复导出自动编号。下载 ZIP 包含原格式文件、回执、Markdown/JSON 交接和双语 HTML。导出校验原件、锚点和新 QA；DOCX 比较未修改部件和非文本 XML，TXT/MD 保留行结构。文字增长仍可能导致换行分页，需检查实际版面。
+FINAL 是默认模式；CHECKPOINT 只应用已审核且通过检查的文字，待审内容保留。CLI 使用新名称，浏览器重复导出自动编号。下载 ZIP 包含原格式文件、回执、Markdown/JSON 交接和双语 HTML。导出校验原件、锚点和新 QA；DOCX 比较未修改部件和非文本 XML，TXT/MD 保留行结构；显式配置的 XLSX 会话只修改已批准的锚定单元格，并逐字节校验所有未触及 OOXML 部件的内容。文字增长仍可能导致换行分页，需检查实际版面。
 
 回执和交接记录列出修改、保持和未纳入单元；未纳入并非从文件中删除。人工修改后按[复核说明](POST_REVIEW_QA.zh-CN.md)让 Agent 返回绑定版本的建议，用户采纳后重新 QA 和导出。交接文件本身不执行模型，`NOT_RUN` 保留这一事实。

@@ -15,7 +15,7 @@
 
 **Database terminology review and bilingual quality checks for AI agents.**
 
-DBabel helps reviewers check technical translations against the right product, version and context. An Agent prepares located findings, evidence and suggested wording; a human reviews the changes in a local workbench. Reviewed DOCX, TXT and Markdown copies are exported with integrity checks, an audit receipt, bilingual comparison and Agent handoff.
+DBabel helps reviewers check technical translations against the right product, version and context. An Agent prepares located findings, evidence and suggested wording; a human reviews the changes in a local workbench. Reviewed DOCX, TXT, Markdown and anchored XLSX copies are exported with integrity checks, an audit receipt, bilingual comparison and Agent handoff.
 
 DBabel supplies the review workflow, local tools and document adapters. You provide documents and scoped reference material; your Agent generates translations and evaluates evidence. The Workbench records human decisions and checks their outputs.
 
@@ -38,7 +38,7 @@ Read the source and target side by side, inspect the supporting evidence, then *
 
 Use **Upload documents** to inspect and import TXT, Markdown, CSV/TSV, JSON/JSONL, HTML, DOCX, XLSX, PPTX or text-layer PDF. Set one or several target languages, then review each language separately. **Terminology → Upload project glossary** validates CSV/JSON project terms and reports scoped terminology compliance.
 
-All local sessions, including the demo and review-only sessions, export **JSON, CSV, TSV, Markdown, HTML and TXT** review results. Original-format delivery supports **DOCX, TXT and Markdown**, with a receipt, bilingual HTML and Markdown/JSON Agent handoff. See [format dependencies and fidelity](docs/DOCUMENT_FORMATS.md).
+All local sessions, including the demo and review-only sessions, export **JSON, CSV, TSV, Markdown, HTML and TXT** review results. Original-format delivery supports **DOCX, TXT, Markdown and anchored XLSX**, with a receipt, bilingual HTML and Markdown/JSON Agent handoff. See [format dependencies and fidelity](docs/DOCUMENT_FORMATS.md).
 
 ## Workflow
 
@@ -49,7 +49,7 @@ All local sessions, including the demo and review-only sessions, export **JSON, 
 | Diagnose | Run applicable integrity checks, assess semantics and inspect evidence | Findings and suggested wording |
 | Review | Record explicit human decisions in the Workbench | Reviewed targets and pending scope |
 | Recheck | Review human edits for spelling and word misuse, then rerun QA | New suggestions for human confirmation |
-| Deliver | Export a checkpoint or final DOCX/TXT/Markdown copy and verify the result | Document, receipt, bilingual view and Agent handoff |
+| Deliver | Export a checkpoint or final DOCX/TXT/Markdown/XLSX copy and verify the result | Document, receipt, bilingual view and Agent handoff |
 
 Load only resources needed for the current step. The [18 worked cases](examples/technical_translation_review_examples.zh-CN.md) are split into individual files across five problem categories. The router returns exact `example_files`; examples are diagnostic patterns, never evidence for the current document.
 

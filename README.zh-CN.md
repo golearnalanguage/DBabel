@@ -2,7 +2,7 @@
 
 **面向 AI Agent 的数据库术语核查与双语技术审校工具。**
 
-DBabel 帮助团队按产品、版本和上下文核对技术译文。Agent 准备有定位的发现、证据和建议，审校人员在本地工作台确认修改，再导出经过完整性校验的 DOCX、TXT 或 Markdown 副本，附带审核回执、双语对照和 Agent 交接记录。
+DBabel 帮助团队按产品、版本和上下文核对技术译文。Agent 准备有定位的发现、证据和建议，审校人员在本地工作台确认修改，再导出经过完整性校验的 DOCX、TXT、Markdown 或锚定 XLSX 副本，附带审核回执、双语对照和 Agent 交接记录。
 
 DBabel 提供审核流程、本地工具和格式适配器。用户提供文档与项目参考资料，Agent 生成译文并核实证据；工作台记录人工决策、运行检查并导出结果。
 
@@ -25,7 +25,7 @@ DBabel 提供审核流程、本地工具和格式适配器。用户提供文档�
 
 在左侧 **上传文档** 中导入 TXT、Markdown、CSV/TSV、JSON/JSONL、HTML、DOCX、XLSX、PPTX 或带文字层的 PDF，先检查提取范围，再建立单语言或多目标语言会话。**术语 → 上传项目术语表** 支持 CSV/JSON 验证及适用范围内的术语符合率评分。
 
-所有本地会话，包括演示和 review-only 会话，都可以导出 **JSON、CSV、TSV、Markdown、HTML、TXT** 审核结果。原格式交付支持 **DOCX、TXT 和 Markdown**，附带回执、HTML 双语对照和 Markdown/JSON Agent 交接记录。详见[格式依赖与保真度](docs/DOCUMENT_FORMATS.zh-CN.md)。
+所有本地会话，包括演示和 review-only 会话，都可以导出 **JSON、CSV、TSV、Markdown、HTML、TXT** 审核结果。原格式交付支持 **DOCX、TXT、Markdown 和锚定 XLSX**，附带回执、HTML 双语对照和 Markdown/JSON Agent 交接记录。详见[格式依赖与保真度](docs/DOCUMENT_FORMATS.zh-CN.md)。
 
 ## 工作流程
 
@@ -36,7 +36,7 @@ DBabel 提供审核流程、本地工具和格式适配器。用户提供文档�
 | 判断 | 执行完整性检查、分析语义、核实证据 | 发现与建议译文 |
 | 审核 | 人工明确记录接受、保留、修改或未决状态 | 已审核目标与待处理范围 |
 | 复核 | 检查人工修改后的拼写和用词，再运行 QA | 需要再次确认的新建议 |
-| 交付 | 导出阶段或完整 DOCX/TXT/Markdown 副本并验证 | 修订文档、回执、双语对照和 Agent 交接记录 |
+| 交付 | 导出阶段或完整 DOCX/TXT/Markdown/XLSX 副本并验证 | 修订文档、回执、双语对照和 Agent 交接记录 |
 
 按当前阶段加载文件，不预读整个资料库。[18 个案例](examples/technical_translation_review_examples.zh-CN.md)已分成五类独立文件，路由输出精确的 `example_files`。案例帮助诊断；当前文档结论使用对应产品与版本的证据。
 

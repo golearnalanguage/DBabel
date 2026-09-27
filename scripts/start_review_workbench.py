@@ -80,7 +80,7 @@ class WorkbenchState:
         layout_copy = info.get('layout_copy') is True
         target = info.get('source' if layout_copy else 'target') or {}
         fmt = target.get('format')
-        if (layout_copy or info.get('alignment_confirmed')) and fmt in {'docx', 'txt', 'md'}:
+        if (layout_copy or info.get('alignment_confirmed')) and fmt in {'docx', 'txt', 'md', 'xlsx'}:
             original = self.bundle / 'inputs' / (('source.' if layout_copy else 'target.') + fmt)
             if original.is_file():
                 self.original = original
