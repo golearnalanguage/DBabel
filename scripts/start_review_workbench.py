@@ -67,6 +67,25 @@ class WorkbenchState:
         self.receipt = receipt.resolve() if receipt else (self.bundle / "export_receipt.json")
         self.lock = threading.RLock()
         self.origin = ""
+        self.configure_intake_export()
+
+    def configure_intake_export(self):
+        """Restore native export for a saved, aligned upload using its local copy."""
+        if self.original or self.output:
+            return
+        intake = self.bundle / 'intake.json'
+        if not intake.is_file():
+            return
+        info = json.loads(intake.read_text(encoding='utf-8'))
+        layout_copy = info.get('layout_copy') is True
+        target = info.get('source' if layout_copy else 'target') or {}
+        fmt = target.get('format')
+        if (layout_copy or info.get('alignment_confirmed')) and fmt in {'docx', 'txt', 'md'}:
+            original = self.bundle / 'inputs' / (('source.' if layout_copy else 'target.') + fmt)
+            if original.is_file():
+                self.original = original
+                self.output = self.bundle / ('reviewed.' + fmt)
+                self.receipt = Path(str(self.output) + '.receipt.json')
 
     def data(self):
         return load_bundle(self.bundle)
@@ -270,6 +289,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.state.output = None
                     self.state.glossary = None
                     self.state.receipt = bundle/"export_receipt.json"
+                    self.state.configure_intake_export()
                     self.state.token = secrets.token_urlsafe(32)
                     self._json(200, {"session_id": self.state.data()["session"]["session_id"], "bundle": str(bundle), "token": self.state.token})
                 return
@@ -517,13 +537,13 @@ class Handler(BaseHTTPRequestHandler):
                     mode = body.get("export_mode", "FINAL")
                     export_output = self.state.output
                     export_receipt = self.state.receipt
-                    if mode == "CHECKPOINT":
+                    if mode == "CHECKPOINT" or export_output.exists() or export_receipt.exists():
                         index = 1
                         while True:
-                            candidate = self.state.output.with_name(self.state.output.stem + ".checkpoint-{}.docx".format(index))
-                            if not candidate.exists() and not candidate.with_suffix(".receipt.json").exists():
+                            candidate = self.state.output.with_name(self.state.output.stem + ".{}-{}".format(mode.lower(), index) + self.state.output.suffix)
+                            if not candidate.exists() and not candidate.with_suffix('.receipt.json').exists():
                                 export_output = candidate
-                                export_receipt = candidate.with_suffix(".receipt.json")
+                                export_receipt = candidate.with_suffix('.receipt.json')
                                 break
                             index += 1
                     receipt = export_bundle(
@@ -545,7 +565,18 @@ class Handler(BaseHTTPRequestHandler):
                             "event": "ROUND_TRIP_VERIFIED", "at": utc_now(), "revision": 0,
                             "actor": "SYSTEM", "detail": receipt["output"]["sha256"]
                         })
-                    self._json(200, receipt)
+                    response = dict(receipt)
+                    if receipt['status'] == 'VERIFIED':
+                        import base64
+                        import io
+                        archive = io.BytesIO()
+                        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as package:
+                            paths = [export_output, export_receipt] + [Path(a['path']) for a in receipt.get('artifacts', [])]
+                            for path in paths:
+                                package.writestr(path.name, path.read_bytes())
+                        response['delivery_archive'] = {'filename': export_output.name + '.delivery.zip',
+                            'content_base64': base64.b64encode(archive.getvalue()).decode('ascii')}
+                    self._json(200, response)
                 return
             self._error(404, "not found")
         except (ValueError, RuntimeError, OSError, json.JSONDecodeError, zipfile.BadZipFile, ET.ParseError, KeyError, IndexError) as exc:
@@ -589,8 +620,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bundle")
     parser.add_argument("--repo-root", default=str(ROOT))
-    parser.add_argument("--original", help="Original DOCX for export; runtime-only and not written into bundle")
-    parser.add_argument("--output", help="Reviewed output DOCX path")
+    parser.add_argument("--original", help="Original DOCX, TXT or MD for export")
+    parser.add_argument("--port", type=int, default=0, help="Local port; 0 chooses an available port")
+    parser.add_argument("--output", help="Reviewed output path with the original document extension")
     parser.add_argument("--glossary")
     parser.add_argument("--receipt")
     parser.add_argument("--no-browser", action="store_true")
@@ -608,7 +640,9 @@ def main() -> int:
         Path(args.glossary) if args.glossary else None,
         Path(args.receipt) if args.receipt else None,
     )
-    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    if not 0 <= args.port <= 65535:
+        parser.error('Port must be between 0 and 65535')
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     server.state = state  # type: ignore[attr-defined]
     host, port = server.server_address[:2]
     state.origin = "http://{}:{}".format(host, port)

@@ -1,11 +1,13 @@
 /* Translate UI copy only. Document text, evidence and reviewer notes stay verbatim. */
 (() => {
   const dictionary = {
+    'Delivery downloaded: original-format copy, bilingual view, Agent handoff and receipt.':'已下载交付包：原格式副本、双语对照、Agent 交接记录和回执。',
+    'For one target language, DOCX, TXT and Markdown retain the source text as an unreviewed working copy. Edit or accept a translation before exporting. Original-format exports include a bilingual view and Agent handoff.':'单一目标语言的 DOCX、TXT 和 Markdown 会保留原文作为待审核工作副本；请编辑或接受译文后导出。原格式导出附带双语对照和 Agent 交接记录。',
     'Download decisions before switching language; browser storage is unavailable.':'浏览器存储不可用，请先下载决策文件再切换语言。','Language':'语言','Interface language':'界面语言','Review':'审核','Terminology':'术语','Evidence':'证据','Quality Check':'质量检查','Reports':'报告','Project Settings':'项目设置','Upload documents':'上传文档',
     'Filters':'筛选','Clear all':'清除筛选','Review Status':'审核状态','To Review':'待审核','Reviewed':'已审核','With Issues':'有问题','Issue Type':'问题类型','Location':'位置','Tag':'标签','All locations':'所有位置','All tags':'所有标签',
     'Theme':'主题','System':'跟随系统','Light':'浅色','Dark':'深色','Appearance':'外观','Appearance theme':'外观主题','Review activity':'审核记录','Notifications':'审核通知','Technical Documentation':'技术文档',
     'Total Segments':'单元总数','All Segments':'所有单元','Final · all reviewed':'最终版 · 全部已审核','Checkpoint · reviewed changes':'阶段版 · 已审核修改','Export mode':'导出模式','Export Translation...':'导出译文…','Export Translation':'导出译文','Export Checkpoint':'导出阶段版','Export review snapshot':'导出审核快照',
-    'Complete all required reviews to enable export.':'完成必要审核后可导出最终版。','Includes pending rows and decision status. Native DOCX export requires an original and output path.':'包含待审核单元和决策状态。DOCX 原格式导出需配置原文件与输出路径。',
+    'Complete all required reviews to enable export.':'完成必要审核后可导出最终版。','Includes pending rows and decision status. Native DOCX, TXT or MD export requires an original and output path.':'包含待审核单元和决策状态。DOCX、TXT 或 MD 原格式导出需配置原件与输出路径。',
     'Select all matches':'选择全部匹配项','Keep Current':'保留当前译文','Defer':'暂缓','Clear':'清除','Sort: Document Order':'排序：文档顺序','Sort: Review Status':'排序：审核状态','Sort: Issues':'排序：问题','Previous page':'上一页','Next page':'下一页','Comfortable rows':'宽松行距','Compact rows':'紧凑行距','Select page':'选择本页',
     'Source':'原文','Target':'译文','Status':'状态','Issues':'问题','Edit':'编辑','Editing':'编辑中','Use Edit':'保存修改','Copy source':'复制原文','Close inspector':'关闭详情','Suggested Translation':'建议译文','DBabel Suggestion':'DBabel 建议','Human confirmation required':'请人工确认','Technique reasoning':'翻译方法说明','Diagnostic · human decision unchanged':'分析依据 · 保留人工决策',
     'Evidence from Reference Documents':'参考文档证据','Terminology & QA labels':'术语与 QA 标签','Reviewer note':'审核备注','Optional note':'填写备注（可选）','Save note':'保存备注','Waiver reason':'豁免理由','Required when waiving unresolved ERROR':'豁免未解决的 ERROR 时须填写','Confirm waiver':'确认豁免','Accept Suggestion':'接受建议','Block':'阻断','Waive':'豁免','Export gate':'导出检查','Checking…':'正在检查…',

@@ -109,7 +109,18 @@
 - `scripts/export_review_results.py`: six review-result formats, including pending states.
 - `review_workbench/static/i18n.js`: shared English/Chinese interface messages and per-unit review guidance.
 - `review_workbench/static/exchange.js`: document/glossary upload and result-download controls.
-- `assets/dbabel-logo-light.svg`, `assets/dbabel-logo-dark.svg`: theme-specific vector brand resources.
-- `docs/DOCUMENT_FORMATS.md`: bilingual dependency, coverage and fidelity matrix.
+- `review_workbench/static/dbabel-workbench-logo.png`: original Workbench branding used by local and portable views. Legacy vector resources remain available but are not active branding.
+- `docs/DOCUMENT_FORMATS.md`, `docs/DOCUMENT_FORMATS.zh-CN.md`: separate English/Chinese dependency, coverage and fidelity matrices.
 - `templates/project_glossary.json`: JSON companion to the canonical CSV template.
 - `tests/test_review_exchange.py`, `tests/workbench_exchange_smoke.cjs`: intake, scoring, export, UI-language and layout regressions.
+
+## Original-format delivery and paired manuals
+
+- [Documentation index](docs/INDEX.md) · [中文文档目录](docs/INDEX.zh-CN.md).
+- `scripts/start_local.py`: resume a separate demo or an existing local session from any directory.
+- `scripts/xml_text_patch.py`: namespace-aware text edits without serializing surrounding OOXML.
+- `scripts/text_review_adapter.py`: anchored UTF-8 TXT/Markdown line replacement.
+- `scripts/export_reviewed_document.py`: native copy plus bilingual HTML, Markdown/JSON handoff and receipt.
+- `scripts/check_documentation.py`: language counterparts, links, heading anchors and CJK prose checks.
+- `docs/NATIVE_EXPORT_ASSESSMENT.md`: preservation contract and upstream library evaluation, with Chinese counterpart.
+- `tests/test_native_delivery.py`, `tests/workbench_native_smoke.cjs`: structure, provenance, original branding, comment hit targets and native download regression.

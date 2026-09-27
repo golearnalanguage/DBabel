@@ -1,25 +1,46 @@
 #!/usr/bin/env python3
-"""Check local Markdown links, heading anchors and unintended CJK line breaks."""
+"""Check paired current manuals, local Markdown links and language entry points."""
+import re
 from pathlib import Path
-import re,json
 from urllib.parse import unquote
-R=Path(__file__).resolve().parents[1];rows=[];bad=[]
-for p in sorted(R.rglob('*.md')):
- if any(part.startswith('.') for part in p.relative_to(R).parts):continue
- s=p.read_text();prose=re.sub(r'^```[^\n]*\n.*?^```[^\n]*$','',s,flags=re.M|re.S)
- problems=[]
- for target in re.findall(r'\]\(([^\s)]+)(?:\s+"[^"]*")?\)',prose):
-  if re.match(r'^[a-zA-Z]+:',target):continue
-  path,_,anchor=unquote(target.strip('<>')).partition('#');dest=(p.parent/path).resolve() if path else p
-  if not dest.exists():problems.append('Missing local link: '+target)
-  elif anchor and dest.suffix=='.md':
-   headings=re.findall(r'^#{1,6} (.+)$',dest.read_text(),re.M)
-   slugs=[re.sub(r'[^\w\- ]','',x.lower()).replace(' ','-') for x in headings]
-   if anchor not in slugs:problems.append('Missing heading: '+target)
- if re.search(r'[\u3400-\u9fff]\n[\u3400-\u9fff]',prose):problems.append('CJK paragraph soft break')
- rows.append({'file':str(p.relative_to(R)),'problems':problems})
- bad.extend([str(p.relative_to(R))+': '+x for x in problems])
 
-print('\n'.join(bad) or f'{len(rows)} Markdown files: local links, headings and CJK paragraph breaks passed')
+ROOT = Path(__file__).resolve().parents[1]
 
-raise SystemExit(1 if bad else 0)
+
+def check(root=ROOT):
+    errors = []
+    for path in sorted((root/'docs').glob('*.md')):
+        peer = path.with_name(path.name.replace('.zh-CN.md', '.md')) if path.name.endswith('.zh-CN.md') else path.with_name(path.stem+'.zh-CN.md')
+        text = path.read_text(encoding='utf-8')
+        if not peer.exists():
+            errors.append(str(path.relative_to(root))+': missing language counterpart '+peer.name)
+        if peer.name not in text:
+            errors.append(str(path.relative_to(root))+': missing language link')
+    ignored = {'output', 'cache', 'source_cache', 'private', 'customer_data', '__pycache__'}
+    for path in sorted(root.rglob('*.md')):
+        parts = path.relative_to(root).parts
+        if any(part.startswith('.') or part in ignored for part in parts):
+            continue
+        prose = re.sub(r'^```[^\n]*\n.*?^```[^\n]*$', '', path.read_text(encoding='utf-8'), flags=re.M|re.S)
+        for link in re.findall(r'\]\(([^\s)]+)(?:\s+"[^"]*")?\)', prose):
+            if re.match(r'^[a-zA-Z]+:', link):
+                continue
+            target, _, anchor = unquote(link.strip('<>')).partition('#')
+            dest = (path.parent/target).resolve() if target else path
+            if not dest.exists():
+                errors.append(str(path.relative_to(root))+': broken link '+link)
+            elif anchor and dest.suffix == '.md':
+                headings = re.findall(r'^#{1,6} (.+)$', dest.read_text(encoding='utf-8'), re.M)
+                slugs = [re.sub(r'[^\w\- ]', '', h.lower()).replace(' ', '-') for h in headings]
+                if anchor not in slugs:
+                    errors.append(str(path.relative_to(root))+': missing heading '+link)
+        if re.search(r'[\u3400-\u9fff]\n[\u3400-\u9fff]', prose):
+            errors.append(str(path.relative_to(root))+': CJK paragraph soft break')
+    return errors
+
+
+if __name__ == '__main__':
+    errors = check()
+    if errors:
+        raise SystemExit('\n'.join(errors))
+    print('Documentation checks passed: language pairs, entry points, local links, headings and CJK paragraphs.')

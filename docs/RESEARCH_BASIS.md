@@ -1,5 +1,14 @@
 # Research basis
 
+[简体中文](RESEARCH_BASIS.zh-CN.md) · [Documentation index](INDEX.md)
+
+## Technical translation and scannable specifications
+
+- Jody Byrne, *Technical Translation: Usability Strategies for Translating Technical Documentation*, Springer, 2006. DOI [10.1007/1-4020-4653-7](https://link.springer.com/book/10.1007/1-4020-4653-7). The publisher's overview and contents connect technical translation with usability and technical communication. We inspected that public material, not the complete book; no specific colon, symbol or CPU example is attributed to it.
+- Microsoft Style Guide: [Lists](https://learn.microsoft.com/en-us/style-guide/scannable-content/lists) supports concise, consistent list structures for scanning; [Tables](https://learn.microsoft.com/en-us/style-guide/scannable-content/tables) discusses compact presentation of related information. These are publisher-maintained writing guidelines, not evidence of any database product's requirements.
+
+DBabel's `SCANNABLE_SPECIFICATION_PRESENTATION` is our implementation choice: expose attribute/value pairs while preserving object, quantity, unit, comparator, modal force and scope. B3 demonstrates it on synthetic server specifications. In layout-preserving mode, wording stays inside existing cells or paragraphs. Adding a list or table is a separate editing decision. Product values and terminology still require scoped product evidence. Sources checked on 2026-09-27.
+
 These references explain the design of DBabel's concepts, scope, evidence and protected-content handling. Implemented interchange formats are documented in the format matrix; standards-based adapters are tracked separately.
 
 ## Terminology and localization references

@@ -16,6 +16,7 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 from xml.etree import ElementTree as ET
+from xml_text_patch import patch_xml_text, markup_skeleton
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
@@ -88,10 +89,15 @@ def _writeback_blockers(
     ):
         blockers.append("TRACKED_CHANGE")
 
+    if sum(1 for _ in paragraph.iter(W_P)) > 1:
+        blockers.append("NESTED_PARAGRAPH")
+    if any('{%s}%s' % (W_NS, name) in tags for name in ('tab', 'br', 'cr', 'fldSimple', 'sym')):
+        blockers.append("STRUCTURAL_INLINE_CONTENT")
+
     return blockers
 
 
-def extract_paragraphs(path: Path) -> List[Dict[str, Any]]:
+def extract_paragraphs(path: Path, include_empty=False) -> List[Dict[str, Any]]:
     _supported_docx(path)
     rows: List[Dict[str, Any]] = []
     with zipfile.ZipFile(path, "r") as zf:
@@ -100,7 +106,7 @@ def extract_paragraphs(path: Path) -> List[Dict[str, Any]]:
             ordinal = 0
             for paragraph in root.iter(W_P):
                 text = _visible_text(paragraph)
-                if not text:
+                if not text and not include_empty:
                     ordinal += 1
                     continue
                 rows.append({
@@ -356,6 +362,7 @@ def apply_reviewed_docx(
     anchors: Dict[str, Dict[str, Any]],
 ) -> List[str]:
     _supported_docx(original)
+    _supported_docx(output)
     if output.resolve() == original.resolve():
         raise DocxExportError("refusing to overwrite original DOCX")
     units_by_id = {x["id"]: x for x in units}
@@ -375,12 +382,20 @@ def apply_reviewed_docx(
         edits.setdefault(anchor["part"], []).append((anchor, current, final))
         changed_units.append(unit_id)
 
-    with zipfile.ZipFile(original, "r") as zin, zipfile.ZipFile(output, "w") as zout:
+    with zipfile.ZipFile(original, "r") as zin, zipfile.ZipFile(output, "x") as zout:
+        if len(zin.namelist()) != len(set(zin.namelist())):
+            raise DocxExportError("duplicate ZIP entries in original DOCX")
+        if any(n.startswith('_xmlsignatures/') or n.lower().endswith('vbaproject.bin') for n in zin.namelist()):
+            raise DocxExportError("signed or macro-enabled packages require a separate workflow")
+        zout.comment = zin.comment
         replacement_parts: Dict[str, bytes] = {}
         for part, part_edits in edits.items():
             if part not in zin.namelist():
                 raise DocxExportError("OOXML part disappeared: {}".format(part))
-            root = _parse_part(zin.read(part))
+            raw = zin.read(part)
+            root = _parse_part(raw)
+            all_nodes = list(root.iter(W_T))
+            before_text = [node.text or '' for node in all_nodes]
             seen_anchors = set()
             for anchor, current, final in part_edits:
                 ordinal = int(anchor["paragraph_ordinal"])
@@ -395,6 +410,10 @@ def apply_reviewed_docx(
 
                 seen_anchors.add(anchor_key)
                 paragraph = _paragraph_by_anchor(root, anchor)
+                if _writeback_blockers(paragraph):
+                    raise DocxExportError("unsupported inline structure in changed paragraph")
+                if any(c in final for c in '\n\r\t'):
+                    raise DocxExportError("text-only export cannot insert line breaks or tabs; keep the existing paragraph structure")
                 actual = _visible_text(paragraph)
                 if _sha_text(actual) != anchor["original_text_sha256"] or actual != current:
                     raise DocxExportError("DOCX anchor changed for {}#{}".format(part, ordinal))
@@ -402,7 +421,9 @@ def apply_reviewed_docx(
                 patch_text_nodes(nodes, current, final)
                 if _visible_text(paragraph) != final:
                     raise DocxExportError("post-patch text mismatch for {}#{}".format(part, ordinal))
-            replacement_parts[part] = _serialize_xml(root)
+            replacements = {i: node.text or '' for i, node in enumerate(all_nodes)
+                            if (node.text or '') != before_text[i]}
+            replacement_parts[part] = patch_xml_text(raw, W_NS, replacements)
 
         for info in zin.infolist():
             data = replacement_parts.get(info.filename, zin.read(info.filename))
@@ -455,11 +476,11 @@ def verify_non_target_text_unchanged(
 ) -> List[str]:
     before = {
         _paragraph_identity(x): x["text"]
-        for x in extract_paragraphs(original)
+        for x in extract_paragraphs(original, include_empty=True)
     }
     after = {
         _paragraph_identity(x): x["text"]
-        for x in extract_paragraphs(output)
+        for x in extract_paragraphs(output, include_empty=True)
     }
     if set(before) != set(after):
         raise DocxExportError("DOCX paragraph structure changed during export")
@@ -484,6 +505,21 @@ def verify_non_target_text_unchanged(
                 )
             )
     return ["non-target DOCX paragraph text remained unchanged"]
+
+
+def verify_package_fidelity(original: Path, output: Path) -> List[str]:
+    with zipfile.ZipFile(original) as before, zipfile.ZipFile(output) as after:
+        if before.namelist() != after.namelist() or before.comment != after.comment:
+            raise DocxExportError('DOCX package entries or archive comment changed')
+        for name in before.namelist():
+            a, b = before.read(name), after.read(name)
+            if a == b:
+                continue
+            if not PART_RE.match(name) or markup_skeleton(a, W_NS) != markup_skeleton(b, W_NS):
+                raise DocxExportError('Non-text document structure changed: ' + name)
+    return ['Package entries, styles, numbering, images and relationships preserved; '
+            'changed XML differs only in text nodes and xml:space',
+            'Visual pagination not assessed; longer translations can reflow within preserved formatting']
 
 def main() -> None:
     import argparse

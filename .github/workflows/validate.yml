@@ -47,6 +47,9 @@ jobs:
       - name: Validate package contracts and manifest
         run: python scripts/check_package.py
 
+      - name: Validate documentation pairs and links
+        run: python scripts/check_documentation.py
+
       - name: Validate project glossary JSON
         run: python scripts/validate_glossary.py tests/fixtures/project_glossary.json
 

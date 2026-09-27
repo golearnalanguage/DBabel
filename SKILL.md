@@ -106,6 +106,24 @@ python scripts/start_review_workbench.py manual.en.dbreview --glossary project_g
 
 For anchored DOCX export, add `--original target.docx` when creating the session, and launch with both `--original target.docx` and `--output target.reviewed.docx`. Keep the same original file throughout review.
 
+For a person starting locally, use `scripts/start_local.py`, with an absolute script path when their current directory is unknown. It resumes a separate demo copy or the supplied `--bundle`. Explain the printed local URL, terminal lifetime and offline operation. The Workbench itself does not generate translations.
+
+When preserving layout, use a single target language per native document. Source-only DOCX/TXT/MD intake retains source text as the unreviewed working copy; that text is an anchor, not a translation. Preserve it in `target` and put proposed translations in `suggested_target`. Use the identical original file when creating a new proposal session. Never turn an empty target into an ungrounded native anchor.
+
+Use this delivery constraint in the task prompt when requested:
+
+```text
+Replace only approved text in a new copy of the original file. Preserve paragraph,
+table, cell and formatting structure; do not insert lists or new paragraph breaks.
+For specifications, preserve object, quantity, unit, comparator, modal force and
+scope, using concise attribute/value wording inside existing structures.
+Keep source and target languages separate and explain every proposal. Retain
+human decisions and notes. Report extraction gaps, changed/unchanged/pending IDs,
+checks actually performed and the visual review still needed. Deliver the native
+copy, bilingual comparison, receipt and Markdown/JSON Agent handoff. Do not claim
+pixel-identical pagination from text or XML checks alone.
+```
+
 The reviewer checks proposals, edits text, records decisions and reruns QA. Preserve existing decisions and notes during further Agent work. Import Portable Review decisions into the matching session and run fresh local QA.
 
 ### 6. Deliver results and verify native copies
@@ -118,7 +136,7 @@ python scripts/export_review_results.py manual.en.dbreview --format json --outpu
 
 JSON retains decisions, revisions, issues and evidence. CSV/TSV/Markdown/HTML/TXT provide bilingual or multilingual review documents with explicit statuses. Pending targets remain unchanged; unaccepted proposals stay proposals.
 
-Native DOCX export uses exact anchors, the original hash, fresh QA and text round-trip verification. `CHECKPOINT` applies completed decisions and records pending IDs. `FINAL` requires all necessary reviews. Write to a new file, then inspect layout when publication fidelity matters. For a repair finding, require a located `REPLACE`, HIGH confidence, adequate current evidence or an explicit scoped project rule, and resolved conflicts before applying the authorized change.
+Native DOCX/TXT/MD export uses exact anchors, the original hash, fresh QA and output verification. DOCX additionally compares non-text XML and untouched package parts. `CHECKPOINT` applies completed decisions and records pending IDs; `FINAL` requires all necessary reviews. Deliver the receipt, bilingual HTML and Markdown/JSON handoffs generated beside the native copy. Explain what changed, what remained and what was excluded. Write to a new file, then inspect layout when publication fidelity matters. For a repair finding, require a located `REPLACE`, HIGH confidence, adequate current evidence or an explicit scoped project rule, and resolved conflicts before applying the authorized change.
 
 ### 7. Recheck human edits with an Agent
 

@@ -1,10 +1,13 @@
 # DBabel 中文使用流程
 
-本指南从上传原文开始，依次说明预检、建立会话、审核、QA、导出和 Agent 复核。命令在 DBabel 仓库根目录运行。示例使用合成内容，可直接执行；真实文件替换示例路径即可。
+[English](WORKFLOW_GUIDE.md) · [文档目录](INDEX.zh-CN.md)
+
+本指南面向本地审校人员，从上传原文开始，说明预检、建立会话、双语审核、QA、导出和 Agent 复核。先进入下载后的 DBabel 文件夹。示例使用合成内容；实际使用时替换文件路径。
 
 ## 1. 安装并准备独立演示副本
 
 ```bash
+cd /Users/eric/Downloads/DBabel-submit
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 ```
@@ -13,20 +16,30 @@ macOS/Linux 激活环境后运行下文命令：
 
 ```bash
 source .venv/bin/activate
-mkdir -p output
-python -c "import shutil; shutil.copytree('examples/review_workbench_demo.dbreview', 'output/demo.dbreview')"
-python scripts/start_review_workbench.py output/demo.dbreview
+python scripts/start_local.py
 ```
 
-Windows PowerShell 使用 `py -m venv .venv`、`.venv\Scripts\Activate.ps1`，其余 Python 命令相同。复制命令要求目标目录不存在；再次试用时选择新目录名。
+上面的路径是本次项目位置，其他电脑请换成实际解压路径。Windows PowerShell 先用 `Set-Location "C:\你的目录\DBabel"` 进入项目，再用 `py -m venv .venv`、`.venv\Scripts\Activate.ps1`；后续 Python 命令相同。启动器首次复制演示到 `output/local-demo.dbreview`，以后继续该副本，不会重置已保存的审核。
+
+在任意目录也可以直接启动，无需记住当前终端在哪个文件夹：
+
+```bash
+/Users/eric/Downloads/DBabel-submit/.venv/bin/python /Users/eric/Downloads/DBabel-submit/scripts/start_local.py
+```
+
+依赖安装完成后，本地审核、术语检查、QA 和导出不需要联网或 API key。工作台本身不调用翻译模型；可手动编辑，也可将快照交给外部或本地 Agent 生成建议。首次安装依赖以及外部证据查询可能需要联网。
 
 工作台会输出含会话令牌的本地 URL 并打开浏览器。右上角 **Language → 简体中文** 切换界面，主题可选浅色、深色或跟随系统。文档正文与审核备注不会随界面语言变化。
 
+终端保持运行。重新打开时使用本次打印的完整 URL，包含 `#token=`；旧 URL 的令牌可能已失效。停止服务按 `Ctrl+C`。端口被占用时运行 `python scripts/start_local.py --port 8766`。提示找不到脚本时先检查目录，提示缺少模块时使用同一个 `.venv` Python 安装依赖。已有会话用 `python scripts/start_local.py --bundle /绝对路径/manual.en.dbreview`，数据会继续保存到该会话目录。
+
 ## 2. 上传原文与预检
 
-左侧点击 **上传文档**，在“原文文档”选择文件，在“原文语言”填写 `zh-CN` 等语言标签，目标语言填写 `en` 或 `en,ja,de`。点击 **预检文档** 查看识别格式、单元数、哈希和提取限制。支持的依赖与提取范围见[格式说明](DOCUMENT_FORMATS.md)。
+左侧点击 **上传文档**，在“原文文档”选择文件，在“原文语言”填写 `zh-CN` 等语言标签，目标语言填写 `en` 或 `en,ja,de`。点击 **预检文档** 查看识别格式、单元数、哈希和提取限制。支持的依赖与提取范围见[格式说明](DOCUMENT_FORMATS.zh-CN.md)。
 
 已有译文时可同时上传一个目标文档，并核对两侧单元的顺序和数量。确认一一对应后勾选对齐确认框；数量不同的文档应先交由 Agent 建立对齐映射。仅上传原文时，工作台建立待翻译单元，由 Agent 提供对应目标语言的译文。
+
+只有一种目标语言且输入为 DOCX、TXT 或 MD 时，当前译文区先保留原文作为原格式工作副本，状态仍为未审核。手动编辑或接受真正的翻译建议后才能交付。多目标语言会话用于独立的各语言对照审核；需要多个原格式成品时，按语言分别建立单目标会话。
 
 命令行可执行相同流程：
 
@@ -96,7 +109,11 @@ python scripts/export_review_results.py output/manual.dbreview \
   --format csv --output output/manual-review.csv
 ```
 
-## 7. 导出 DOCX 原格式副本
+## 7. 导出原格式副本与交接包
+
+通过上传面板创建的单目标 DOCX/TXT/MD 会话会自动使用 `inputs/` 中保存的原件副本建立导出配置。点击原格式导出可下载 ZIP，包含修订文件、回执、Markdown/JSON 交接记录和 HTML 双语对照。交接记录区分已改、保持和未纳入的单元；“未纳入”表示阶段版仍保留原文，不表示从文件中删除。
+
+保留版式时只修改原有段落或行中的文字，不新建段落、表格或列表。DOCX 的样式、表格结构和未修改部件经过程序比对，但译文变长仍可能改变换行和分页；请在 Word 或 LibreOffice 核对。TXT/MD 保留换行符和空行，被修改行的 Markdown 标记也需检查。
 
 已有源、目标 DOCX 时，先生成明确的双语对齐单元。相同段落数量仍需核对语义对应关系。分拆、合并等情况用[对齐映射](REVIEW_WORKBENCH.md#bilingual-docx-alignment)。
 
@@ -126,7 +143,7 @@ python scripts/build_post_review_report.py output/docx-review.dbreview \
   --output output/post-review.json
 ```
 
-将报告与 [Agent 复核说明](POST_REVIEW_QA.md) 交给 Agent，检查人工修改中的错字、误用、遗漏、否定和技术标记。Agent 返回定位、原文本、建议文本、理由及版本指纹；审核后修改，再运行 QA 和最终导出。报告中的 `NOT_RUN` 表示尚未执行 Agent 复核。
+将报告与 [Agent 复核说明](POST_REVIEW_QA.zh-CN.md) 交给 Agent，检查人工修改中的错字、误用、遗漏、否定和技术标记。Agent 返回定位、原文本、建议文本、理由及版本指纹；审核后修改，再运行 QA 和最终导出。报告中的 `NOT_RUN` 表示尚未执行 Agent 复核。可添加 `--format md` 输出可读交接说明，原格式导出已自动包含它。
 
 离线审核使用 `scripts/build_portable_review.py` 生成 HTML；将其导出的决策通过 `scripts/import_review_decisions.py` 导入原会话后重新检查。详细命令见[工作台手册](REVIEW_WORKBENCH.md)。
 

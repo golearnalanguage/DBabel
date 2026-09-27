@@ -45,6 +45,33 @@ transformations:
   risk: LOW
   description: Adapt punctuation to target-language conventions without changing executable or UI syntax.
 techniques:
+- id: SCANNABLE_SPECIFICATION_PRESENTATION
+  category: STYLE
+  risk: MEDIUM
+  summary: Present specification values in concise parallel phrases while preserving quantity, scope and modal force.
+  applies_to_modes: [TRANSLATE, BILINGUAL_REVIEW]
+  text_roles: [TABLE, PROSE, PROCEDURE]
+  triggers: [numeric_specification]
+  required_actions:
+  - Confirm that the passage is a specification or reference entry before applying this technique.
+  - Bind each value to its object, unit, comparator, condition and recommendation or requirement.
+  - Retain the existing cell, paragraph and list structure in text-only layout-preserving mode.
+  - Explain each presentation change and check adjacent headings and notes.
+  forbidden_actions:
+  - Convert a recommendation into a mandatory limit or an exact value into a minimum.
+  - Change CPU sockets into cores, or change workload qualifiers into unconditional claims.
+  - Add a table, paragraph break or list structure without layout-edit authorization.
+  allowed_transformations: [CLAUSE_REORDERING, PUNCTUATION_LOCALIZATION]
+  restricted_transformations: [IMPLICITATION, EXPLICITATION, SENTENCE_MERGE]
+  qa_mapping:
+    deterministic_checks: [NUMBER_UNIT_INTEGRITY, PROTECTED_LITERAL]
+    semantic_dimensions: [ACCURACY, STYLE, DESIGN_AND_MARKUP]
+  on_uncertainty: REVIEW
+  example:
+    source: 服务器（物理机或虚拟机）1 台；建议 CPU 插槽数不超过 2。
+    unsafe_target: At least one server is required. The server must have no more than two CPU cores.
+    preferred_target: 'Servers (physical or virtual): 1; CPU sockets (recommended): ≤ 2.'
+    explanation: This synthetic specification keeps the exact count, hardware object and recommendation while exposing the values for scanning. It is not a vendor requirement.
 - id: TECHNICAL_TOKEN_SHIELDING
   category: PROTECTION
   risk: HIGH

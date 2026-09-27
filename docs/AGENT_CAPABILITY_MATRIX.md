@@ -1,5 +1,7 @@
 # Task capabilities
 
+[简体中文](AGENT_CAPABILITY_MATRIX.zh-CN.md) · [Documentation index](INDEX.md)
+
 | Task | Required capability | If unavailable |
 |---|---|---|
 | Task/resource routing | Read validated task context and router config | Follow the `SKILL.md` kernel manually and disclose that machine routing was not run |
@@ -34,7 +36,7 @@ round-trip QA. Use the task status defined in `SKILL.md` to make that distinctio
 
 | Task | Implemented behavior | Requirements and limitations |
 |---|---|---|
-| Native document export | DOCX copy, original hash and target-anchor checks, text round-trip validation | Other formats require a dedicated writer; visual QA is separate |
+| Native document export | DOCX/TXT/MD copies, original hash and anchor checks, text verification, bilingual and Agent handoffs | Other formats require dedicated writers; visual QA is separate |
 | Checkpoint export | Apply completed human decisions and list pending IDs in the receipt | Pending text is preserved and listed in the receipt |
 | Post-human review | Download source/target, notes, revisions and text hashes for an Agent | Handoff only; semantic review must actually be performed |
 | Portable review | Offline decisions, views and report download | Import decisions and run fresh local QA before native export |

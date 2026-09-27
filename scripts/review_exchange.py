@@ -89,7 +89,7 @@ def _read_document(path):
             if fmt == 'docx':
                 ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
                 for n, p in enumerate(xml('word/document.xml').findall('.//w:body//w:p', ns), 1):
-                    add('body:p:{}'.format(n), ''.join(t.text or '' for t in p.findall('.//w:t', ns)))
+                    add('docx:word/document.xml:p={}'.format(n-1), ''.join(t.text or '' for t in p.findall('.//w:t', ns)))
                 limitations = ['Body paragraphs and table paragraphs only; headers, footnotes, comments, drawings and revision semantics require Agent extraction.']
             elif fmt == 'pptx':
                 ns = {'a': 'http://schemas.openxmlformats.org/drawingml/2006/main'}
@@ -145,7 +145,7 @@ def _read_document(path):
         elif fmt == 'xml':
             raise ValueError('XML is recognized. Use an Agent to select translatable elements and supply aligned units JSON.')
         else:
-            for n, line in enumerate(text.splitlines(), 1): add('line:{}'.format(n), line)
+            for n, line in enumerate(re.split(r'\r\n|\r|\n', text), 1): add('line:{}'.format(n), line)
             limitations = ['Non-empty lines; Markdown markup and code remain in the text and need protected-token review.']
     else:
         raise ValueError('Recognized format {} has no upload extractor. Convert a copy or supply aligned units JSON.'.format(fmt))
@@ -153,7 +153,7 @@ def _read_document(path):
     if len(rows) > 20000: raise ValueError('More than 20,000 segments; split the document before intake.')
     return {'filename': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
             'format': fmt, 'probe': probe, 'segments': rows, 'limitations': limitations,
-            'coverage': 'EXTRACTED_SCOPE', 'native_export': fmt == 'docx'}
+            'coverage': 'EXTRACTED_SCOPE', 'native_export': fmt in {'docx', 'txt', 'md'}}
 
 
 def read_document(path):
@@ -171,20 +171,24 @@ def create_intake(source, output, source_language, target_languages, target=None
         raise ValueError('Use explicit language tags, for example zh-CN, en, ja.')
     if target and (len(languages) != 1 or len(source_info['segments']) != len(target_info['segments'])):
         raise ValueError('A target document requires one target language and equal segment counts; align other documents with an Agent.')
+    layout_copy = not target and len(languages) == 1 and source_info['native_export']
     units = []
     for lang in languages:
         for n, row in enumerate(source_info['segments'], 1):
-            units.append({'id': 'U{:05d}_{}'.format(n, lang), 'location': row['location'],
-                          'source': row['text'], 'target': target_info['segments'][n-1]['text'] if target else '',
+            units.append({'id': 'U{:05d}_{}'.format(n, lang), 'location': target_info['segments'][n-1]['location'] if target else row['location'],
+                          'source_refs': [row['location']],
+                          'target_refs': [target_info['segments'][n-1]['location']] if target else [],
+                          'source': row['text'], 'target': target_info['segments'][n-1]['text'] if target else (row['text'] if layout_copy else ''),
+                          'suggestion_reason': ('Translate this source text into ' + lang + '. The current target is the original text retained for layout-preserving replacement; it has not been translated or approved.') if layout_copy else 'Compare the aligned meaning, terminology, numbers and constraints before confirming this unit.',
                           'source_language': source_language, 'target_language': lang,
-                          'alignment': 'ALIGNED' if target and alignment_confirmed else 'UNALIGNED'})
+                          'alignment': 'ALIGNED' if layout_copy or (target and alignment_confirmed) else 'UNALIGNED'})
     if len(units) > 20000: raise ValueError('More than 20,000 language/segment pairs; split this intake.')
     output = Path(output)
     with tempfile.TemporaryDirectory() as td:
         units_path = Path(td) / 'units.json'; write_json(units_path, units)
         command = [sys.executable, str(ROOT/'scripts/create_review_session.py'), str(units_path),
                    '--output', str(output), '--title', source_info['filename'], '--mode', 'BILINGUAL_REVIEW' if target else 'TRANSLATE']
-        if target: command += ['--original', str(target)]
+        if target or layout_copy: command += ['--original', str(target or source)]
         result = subprocess.run(command, capture_output=True, text=True)
         if result.returncode: raise ValueError(result.stderr.strip())
     if not target:
@@ -195,10 +199,11 @@ def create_intake(source, output, source_language, target_languages, target=None
         (output/'original.sha256').write_text(source_info['sha256']+'  '+source_info['filename']+'\n', encoding='utf-8')
     # Keep source inputs and extraction report inside the new session for later Agent work.
     inputs = output/'inputs'; inputs.mkdir()
-    (inputs/('source'+Path(source).suffix)).write_bytes(Path(source).read_bytes())
-    if target: (inputs/('target'+Path(target).suffix)).write_bytes(Path(target).read_bytes())
+    (inputs/('source.'+source_info['format'])).write_bytes(Path(source).read_bytes())
+    if target: (inputs/('target.'+target_info['format'])).write_bytes(Path(target).read_bytes())
     write_json(output/'intake.json', {'source': source_info, 'target': target_info, 'languages': languages,
-                                    'alignment_confirmed': bool(target and alignment_confirmed)})
+                                    'alignment_confirmed': bool(target and alignment_confirmed),
+                                    'layout_copy': layout_copy})
     return output
 
 
@@ -247,10 +252,13 @@ def result_snapshot(data):
             'units': rows, 'issues': data['issues'], 'evidence': data['evidence'], 'decisions': data['decisions']}
 
 
-def render_result(data, fmt):
+def render_result(data, fmt, exported_targets=None):
     if not isinstance(fmt, str) or fmt not in RESULT_FORMATS: raise ValueError('Unsupported result format.')
     snapshot = result_snapshot(data)
     rows = snapshot['units']
+    if exported_targets is not None:
+        for row in rows:
+            row['target'] = exported_targets[row['id']]
     if fmt == 'json': return json.dumps(snapshot, ensure_ascii=False, indent=2)+'\n'
     if fmt in {'csv', 'tsv'}:
         stream = io.StringIO(newline=''); writer = csv.writer(stream, delimiter='\t' if fmt == 'tsv' else ',')
@@ -262,9 +270,11 @@ def render_result(data, fmt):
         return stream.getvalue()
     title = 'DBabel review snapshot / 审核快照'
     if fmt == 'html':
-        parts = ['<!doctype html><html lang="en"><meta charset="utf-8"><title>'+title+'</title><body><h1>'+title+'</h1>', '<p>'+html.escape(snapshot['session_id'])+'</p>']
+        parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+title+'</title>',
+                 '<style>body{font:16px/1.6 system-ui,sans-serif;max-width:1200px;margin:auto;padding:24px;color:#172033;background:#fff}section{border:1px solid #cbd5e1;border-radius:8px;padding:20px;margin:24px 0}.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.pair>div{min-width:0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}h2{font-size:18px}h3{font-size:15px}p{overflow-wrap:anywhere}@media(max-width:600px){.pair{grid-template-columns:1fr}}@media print{section{break-inside:avoid}}</style></head><body><h1>'+title+'</h1>',
+                 '<p>'+html.escape(snapshot['session_id'])+'</p><p>REVIEW_SNAPSHOT · Agent: NOT_RUN. Pending rows retain their current text; proposals are separate from approvals.</p>']
         for row in rows:
-            parts.append('<section><h2>'+html.escape(row['id']+' · '+row['status'])+'</h2><p>'+html.escape(row['location'])+'</p><h3>'+html.escape(row['source_language'])+'</h3><pre>'+html.escape(row['source'])+'</pre><h3>'+html.escape(row['target_language'])+'</h3><pre>'+html.escape(row['target'])+'</pre><p>QA: '+html.escape(row['qa_status'])+'</p></section>')
+            parts.append('<section><h2>'+html.escape(row['id']+' · '+row['status'])+'</h2><p>'+html.escape(row['location'])+'</p><div class="pair"><div><h3>Source · '+html.escape(row['source_language'])+'</h3><pre dir="auto">'+html.escape(row['source'])+'</pre></div><div><h3>Target · '+html.escape(row['target_language'])+'</h3><pre dir="auto">'+html.escape(row['target'])+'</pre></div></div><p>QA: '+html.escape(row['qa_status'])+'</p></section>')
         return ''.join(parts)+'</body></html>'
     literal = lambda value: '\n'.join('    '+line for line in str(value).splitlines())
     parts = [title, literal(snapshot['session_id']), 'REVIEW_SNAPSHOT · Agent: NOT_RUN', '']

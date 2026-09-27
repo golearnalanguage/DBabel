@@ -38,7 +38,7 @@ Read the source and target side by side, inspect the supporting evidence, then *
 
 Use **Upload documents** to inspect and import TXT, Markdown, CSV/TSV, JSON/JSONL, HTML, DOCX, XLSX, PPTX or text-layer PDF. Set one or several target languages, then review each language separately. **Terminology → Upload project glossary** validates CSV/JSON project terms and reports scoped terminology compliance.
 
-All local sessions, including the demo and review-only sessions, export **JSON, CSV, TSV, Markdown, HTML and TXT** review results. Native DOCX export additionally preserves the document package and validates changed paragraphs. See [format dependencies and fidelity](docs/DOCUMENT_FORMATS.md).
+All local sessions, including the demo and review-only sessions, export **JSON, CSV, TSV, Markdown, HTML and TXT** review results. Original-format delivery supports **DOCX, TXT and Markdown**, with a receipt, bilingual HTML and Markdown/JSON Agent handoff. See [format dependencies and fidelity](docs/DOCUMENT_FORMATS.md).
 
 ## Workflow
 
@@ -55,17 +55,16 @@ Load only resources needed for the current step. The [18 worked cases](examples/
 
 ## Start a local review
 
-Python 3.9+:
+Python 3.9+. First enter your downloaded DBabel directory (replace this example path on another computer):
 
 ```bash
+cd /Users/eric/Downloads/DBabel-submit
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
-mkdir -p output
-.venv/bin/python -c "import shutil; shutil.copytree('examples/review_workbench_demo.dbreview', 'output/demo.dbreview')"
-.venv/bin/python scripts/start_review_workbench.py output/demo.dbreview
+.venv/bin/python scripts/start_local.py
 ```
 
-The demo supports decisions and review-result downloads. Use a new copy for each trial so that the bundled example stays reproducible. For a real document, open **Upload documents**, inspect the extracted scope, and create a session. The [Chinese walkthrough](docs/WORKFLOW_GUIDE.zh-CN.md) includes runnable intake, multilingual review, glossary, QA, export and Agent-review commands.
+The launcher creates a separate demo copy once, then resumes it. For a real document, open **Upload documents**, inspect the scope and create a session. The [local walkthrough](docs/WORKFLOW_GUIDE.md) covers offline use, starting from any directory, translation proposals, terminology, QA and delivery. The [documentation index](docs/INDEX.md) links separate English and Chinese manuals.
 
 For an existing DOCX translation, prepare aligned units with `scripts/create_review_session.py`, then launch with `--original target.docx --output reviewed.docx`. The [Workbench manual](docs/REVIEW_WORKBENCH.md) describes native export and portable review.
 

@@ -1,5 +1,13 @@
 # DBabel Review Workbench
 
+[简体中文](REVIEW_WORKBENCH.zh-CN.md) · [Documentation index](INDEX.md)
+
+For local offline use, begin with [the reviewer walkthrough](WORKFLOW_GUIDE.md).
+Uploaded single-target DOCX/TXT/MD sessions configure native delivery automatically.
+Export downloads a ZIP with the document, receipt, bilingual HTML and Markdown/JSON
+handoff. Source-only input is an unreviewed working copy until translated and reviewed.
+Original-format delivery preserves structure; inspect rendered wrapping and pagination.
+
 Current DBabel Skill/package version: **1.5.0**.
 
 Current Review Workbench version: **1.5.0**.
@@ -173,7 +181,7 @@ Reports are available without finishing all reviews. Follow [post-review QA](POS
 
 Choose **Upload documents** in the left navigation. Inspect the source, set explicit language tags and create a session. Uploading a target requires a single target language and equal segment counts; select the alignment checkbox only after checking correspondence. Multiple target languages create separate pending units. An Agent supplies translations and reasons through aligned-unit JSON; the server does not call a model.
 
-Use **Download review results** at any stage. Review-only and demo sessions export JSON, CSV, TSV, Markdown, HTML and TXT, including pending rows and explicit decisions. JSON additionally retains suggestions, issues, evidence and reviewer notes. See [format fidelity](DOCUMENT_FORMATS.md#review-result-formats--审核结果格式).
+Use **Download review results** at any stage. Review-only and demo sessions export JSON, CSV, TSV, Markdown, HTML and TXT, including pending rows and explicit decisions. JSON additionally retains suggestions, issues, evidence and reviewer notes. See [format fidelity](DOCUMENT_FORMATS.md#working-copies-and-bilingual-results).
 
 ```bash
 python scripts/intake_document.py source.txt --inspect

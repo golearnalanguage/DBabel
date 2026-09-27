@@ -1,5 +1,7 @@
 # Architecture
 
+[简体中文](ARCHITECTURE.zh-CN.md) · [Documentation index](INDEX.md)
+
 DBabel separates runtime context, terminology evidence, review decisions and document delivery.
 
 ```text

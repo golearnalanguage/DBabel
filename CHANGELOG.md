@@ -2,6 +2,15 @@
 
 ## Unreleased — review workflow refinement
 
+### Original-format delivery and local reviewer workflow
+
+- Restore existing PNG branding in both Workbenches and the Chinese README; preserve the user-selected preview images.
+- Keep the comment column visible and separate inspector navigation from segment counts.
+- Patch DOCX text without reserializing surrounding XML; verify non-text structure and untouched package parts. Add UTF-8 TXT/Markdown line-preserving delivery.
+- Configure supported uploaded sessions for native export and download the document, receipt, bilingual HTML and Markdown/JSON Agent handoff together.
+- Add a directory-independent local launcher and paired English/Chinese manuals with documentation checks in CI.
+- Add a scoped scannable-specification technique and B3 examples, with published/official sources and an explicit distinction between preserved structure and rendered pagination.
+
 ### Workbench language, intake and delivery
 
 - Add English/Simplified Chinese UI to desktop and Portable Review, with persisted language preference and unchanged document text.
@@ -9,7 +18,7 @@
 - Export review snapshots from every local session as JSON, CSV, TSV, Markdown, HTML or TXT; keep pending decisions and unaccepted suggestions separate.
 - Add project glossary CSV/JSON upload, validation, scope-aware compliance scoring and reuse during QA.
 - Preserve Agent-authored suggestion reasons and show actionable guidance for every review unit.
-- Refine pane spacing and scrolling at desktop, tablet and mobile widths; provide light/dark vector logos with a coloured tower.
+- Refine pane spacing and scrolling at desktop, tablet and mobile widths; restore original Workbench branding.
 - Rewrite the Agent skill and user guides around executable intake, review, QA, export and post-human language review.
 
 

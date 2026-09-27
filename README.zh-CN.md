@@ -8,10 +8,7 @@ DBabel 提供审核流程、本地工具和格式适配器。用户提供文档�
 
 [English](README.md) · [工作流导航](docs/WORKFLOW_GUIDE.zh-CN.md) · [Agent 入口](SKILL.md) · [案例索引](examples/technical_translation_review_examples.zh-CN.md)
 
-<p align="center"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/dbabel-logo-dark.svg">
-  <img src="assets/dbabel-logo-light.svg" alt="DBabel Review Workbench" width="420">
-</picture></p>
+<p align="center"><img src="assets/dbabel-social-preview.png" alt="DBabel" width="100%"></p>
 
 ## 审核工作台
 
@@ -28,7 +25,7 @@ DBabel 提供审核流程、本地工具和格式适配器。用户提供文档�
 
 在左侧 **上传文档** 中导入 TXT、Markdown、CSV/TSV、JSON/JSONL、HTML、DOCX、XLSX、PPTX 或带文字层的 PDF，先检查提取范围，再建立单语言或多目标语言会话。**术语 → 上传项目术语表** 支持 CSV/JSON 验证及适用范围内的术语符合率评分。
 
-所有本地会话，包括演示和 review-only 会话，都可以导出 **JSON、CSV、TSV、Markdown、HTML、TXT** 审核结果。DOCX 原格式导出另行验证包结构与段落内容。详见[格式依赖与保真度](docs/DOCUMENT_FORMATS.md)。
+所有本地会话，包括演示和 review-only 会话，都可以导出 **JSON、CSV、TSV、Markdown、HTML、TXT** 审核结果。原格式交付支持 **DOCX、TXT 和 Markdown**，附带回执、HTML 双语对照和 Markdown/JSON Agent 交接记录。详见[格式依赖与保真度](docs/DOCUMENT_FORMATS.zh-CN.md)。
 
 ## 工作流程
 
@@ -45,17 +42,16 @@ DBabel 提供审核流程、本地工具和格式适配器。用户提供文档�
 
 ## 启动本地演示
 
-需要 Python 3.9+：
+需要 Python 3.9+。先进入下载的 DBabel 文件夹，其他电脑请替换下面的示例路径：
 
 ```bash
+cd /Users/eric/Downloads/DBabel-submit
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
-mkdir -p output
-.venv/bin/python -c "import shutil; shutil.copytree('examples/review_workbench_demo.dbreview', 'output/demo.dbreview')"
-.venv/bin/python scripts/start_review_workbench.py output/demo.dbreview
+.venv/bin/python scripts/start_local.py
 ```
 
-演示副本支持审核和结果下载。真实文档可从“上传文档”开始，按[完整中文流程](docs/WORKFLOW_GUIDE.zh-CN.md)完成预检、建立会话、术语检查和导出。已有目标 DOCX 时，以 `--original target.docx --output reviewed.docx` 启动工作台启用原格式导出。每次试用请复制到新的输出目录。
+启动器首次建立独立演示副本，以后继续保存的进度。真实文档从“上传文档”开始；[完整中文流程](docs/WORKFLOW_GUIDE.zh-CN.md)包含离线使用、任意目录启动、译文建议、术语检查、QA 和导出。[文档目录](docs/INDEX.zh-CN.md)提供分开的中英文手册入口。
 
 ## 交给 Agent 使用
 

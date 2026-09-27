@@ -1,5 +1,7 @@
 # Agent integration
 
+[简体中文](AGENT_INTEGRATION.zh-CN.md) · [Documentation index](INDEX.md)
+
 Clone the complete repository as a skill folder named
 `dbabel-database-terminology-audit` and keep the relative directory structure
 intact.

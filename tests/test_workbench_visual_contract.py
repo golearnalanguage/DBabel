@@ -8,7 +8,7 @@ class VisualContractTests(unittest.TestCase):
         html=(ROOT/'review_workbench'/'static'/'index.html').read_text(encoding='utf-8')
         css=(ROOT/'review_workbench'/'static'/'style.css').read_text(encoding='utf-8')
         for marker in [
-            'dbabel-logo-light.svg','dbabel-logo-dark.svg','class="sidebar"','class="document-bar"',
+            'dbabel-workbench-logo.png','class="sidebar"','class="document-bar"',
             'class="metrics-strip"','id="segmentRows"','class="inspector"',
             'Suggested Translation','Evidence from Reference Documents','Accept Suggestion',
             'Keep Current','Quality Check','Project Settings','id="themeSelect"',

@@ -1,5 +1,7 @@
 # Post-human language review
 
+[简体中文](POST_REVIEW_QA.zh-CN.md) · [Documentation index](INDEX.md)
+
 Use this workflow after a reviewer edits target text or before final delivery. The Workbench's Reports view downloads a JSON handoff; the equivalent command is:
 
 ```bash

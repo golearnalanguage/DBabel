@@ -28,6 +28,7 @@ from review_model import (
     write_jsonl,
 )
 from docx_review_adapter import build_anchors
+from text_review_adapter import build_text_anchors
 from version_info import REVIEW_WORKBENCH_VERSION
 from technique_contract import (
     load_translation_registry,
@@ -336,6 +337,8 @@ def main() -> int:
                         ),
                         "original_text": unit["current_target"],
                     }
+            elif original.suffix.lower() in {'.txt', '.md'}:
+                anchors = build_text_anchors(original, units)
             else:
                 anchors = {}
         else:

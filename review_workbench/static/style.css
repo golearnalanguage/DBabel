@@ -305,6 +305,15 @@ button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-vis
 .primary-actions,.secondary-actions{gap:8px}.primary-actions button,.secondary-actions button{padding:9px 6px;white-space:normal;line-height:1.5}
 .metrics-strip{min-height:138px}.export-summary{min-width:0}.result-export{display:flex;gap:8px;width:100%}.result-export select{flex:0 1 95px;border:1px solid var(--line);border-radius:6px}.result-export button{flex:1;font-size:11px;padding:4px 8px;height:auto;min-height:34px}
 .segment-table{min-width:720px}.table-wrap{overflow:auto}.table-toolbar{align-content:start}.bulk-actions{flex-wrap:wrap}
+/* Keep the note affordance inside its own cell, including horizontal scroll. */
+.segment-table .comment-col{width:44px;padding:10px 8px;position:sticky;right:0;background:var(--surface);box-shadow:-1px 0 var(--line);z-index:1}
+.segment-table .comment-col svg{display:block;margin:auto;flex-shrink:0}
+.segment-table tr.active .comment-col{background:var(--blue-soft)}
+.segment-table thead .comment-col{z-index:3}
+.segment-panel{overflow:hidden}.table-toolbar>*{flex-shrink:0}
+.table-toolbar select,.table-toolbar #sortSelect{min-width:0;max-width:100%;flex:0 1 175px}
+.inspector-head{height:auto;min-height:42px;flex-wrap:wrap}.inspector-head>div{flex-shrink:0}
+.brand-lockup img{object-fit:contain;background:#fff;border-radius:8px}
 .exchange-panel{position:fixed;inset:6vh max(16px,calc((100vw - 850px)/2));z-index:30;max-height:88vh;overflow:auto;background:var(--surface);border:2px solid var(--line-strong);border-radius:16px;box-shadow:0 16px 100px #0008;padding:24px}
 .exchange-panel h2{margin:0}.exchange-panel p{line-height:1.6}.exchange-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
 .intake-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:20px 0}.intake-grid label{min-width:0;display:grid;gap:8px}.intake-grid input{min-width:0;width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--surface-2)}.alignment-control{display:flex;gap:8px;line-height:1.6}

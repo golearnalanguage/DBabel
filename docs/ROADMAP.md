@@ -1,5 +1,7 @@
 # Roadmap
 
+[简体中文](ROADMAP.zh-CN.md) · [Documentation index](INDEX.md)
+
 The roadmap tracks the review workflow, schemas, validators, document adapters and synthetic regression coverage.
 
 ## v1.4 — Accuracy and runtime control
@@ -33,7 +35,7 @@ Implemented in the v1.5 line:
   non-destructive output, and round-trip verification;
 - explicit review-only versus native-export launch modes.
 
-Current working-tree refinements add English/Chinese UI, document upload, multilingual sessions, project glossary upload and scoring, six review-result formats, explained suggestions, responsive panes, theme-aware vector logos, checkpoint DOCX delivery and a post-human Agent review handoff.
+Current working-tree refinements add English/Chinese UI, document upload, multilingual sessions, glossary upload and scoring, six review-result formats, explained suggestions, responsive panes, restored original branding, DOCX/TXT/MD delivery, bilingual comparisons and Markdown/JSON Agent handoffs. DOCX writes preserve non-text XML bytes; the local launcher and paired language manuals support offline reviewers.
 These changes are unreleased until a validated release is created.
 
 Further work includes richer alignment, additional native-format adapters and

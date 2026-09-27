@@ -37,12 +37,13 @@
     </div>
     <label class="alignment-control"><input type="checkbox" id="confirmAlignment">I checked that source and target segments correspond in order.</label>
     <p>For multiple target languages, upload only the source. An Agent supplies translations for each language.</p>
+    <p>For one target language, DOCX, TXT and Markdown retain the source text as an unreviewed working copy. Edit or accept a translation before exporting. Original-format exports include a bilingual view and Agent handoff.</p>
     <button id="inspectDocument" class="view-action">Inspect document</button><button id="createIntake" class="view-action">Create session</button>
     <pre id="intakeStatus" role="status"></pre>
   </section>
 <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand-lockup"><img class="brand-light" src="/dbabel-logo-light.svg" alt="DBabel Review Workbench"><img class="brand-dark" src="/dbabel-logo-dark.svg" alt="DBabel Review Workbench"></div>
+    <div class="brand-lockup"><img src="/dbabel-workbench-logo.png" alt="DBabel Review Workbench"></div>
     <nav class="main-nav" aria-label="Workbench sections">
       <button class="nav-item" id="openIntake"><svg><use href="#i-doc"></use></svg><span>Upload documents</span></button>
       <button class="nav-item active" data-view="Review"><svg><use href="#i-review"></use></svg><span>Review</span></button>

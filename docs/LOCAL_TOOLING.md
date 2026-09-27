@@ -1,5 +1,7 @@
 # Local tooling
 
+[简体中文](LOCAL_TOOLING.zh-CN.md) · [Documentation index](INDEX.md)
+
 DBabel's local scripts provide reproducible contracts around routing, format
 preflight, glossary handling, deterministic QA, ingest coverage, and structured
 reports. Use their structured outputs as inputs to Agent source reading and semantic review.

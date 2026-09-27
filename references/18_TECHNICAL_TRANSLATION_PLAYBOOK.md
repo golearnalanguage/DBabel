@@ -501,6 +501,25 @@ Surface contradictions, ambiguity, and probable source defects instead of silent
 
 **Unresolved context:** `REVIEW`.
 
+### 16. `SCANNABLE_SPECIFICATION_PRESENTATION`
+
+For specification cells and reference entries, expose the attribute and value in
+parallel phrases. First map object, quantity, unit, comparator, modal force and
+scope. Preserve every mapped element. For example: “Servers (physical or virtual):
+1; CPU sockets (recommended): ≤ 2.” A recommended limit is not a mandatory one;
+CPU sockets are not CPU cores. Do not add an “at least” qualifier to an exact count.
+
+When the task requires layout preservation, shorten wording within existing cells
+or paragraphs. New tables, bullets, paragraph breaks and reordered procedures need
+separate layout-edit authorization. Longer translated text may still wrap. Explain
+the proposed change; automated number checks do not establish semantic equivalence
+between a spelled-out comparator and a symbol.
+
+DBabel calls this a presentation technique, with related modal-strength, scope and
+token-preservation checks. It is an application of technical-communication
+principles, not a named universal translation law. See [research basis](../docs/RESEARCH_BASIS.md)
+and the [B3 numerical specification case](../examples/cases/semantics/B3.zh-CN.md).
+
 ## Controlled transformation model
 
 Translation is not treated as an unconstrained rewrite. DBabel records a small
