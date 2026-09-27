@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Prepare a traceable DBabel TRANSLATE project run."""
+"""Run a traceable DBabel TRANSLATE project to the Full Local Workbench gate."""
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -23,51 +24,95 @@ from runtime.orchestrator import (  # noqa: E402
 )
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(
+def parser() -> argparse.ArgumentParser:
+    value = argparse.ArgumentParser(
         description=__doc__
     )
 
-    parser.add_argument(
+    value.add_argument(
         "source",
         type=Path,
     )
 
-    parser.add_argument(
+    value.add_argument(
         "--source-language",
         required=True,
     )
 
-    parser.add_argument(
+    value.add_argument(
         "--target-language",
         required=True,
     )
 
-    parser.add_argument(
+    value.add_argument(
+        "--text-role",
+        required=True,
+        help=(
+            "Concrete text role for this bounded CLI run, "
+            "for example PROSE. ANY is not allowed."
+        ),
+    )
+
+    value.add_argument(
         "--provider-config",
         required=True,
         type=Path,
     )
 
-    parser.add_argument(
+    value.add_argument(
         "--workspace-root",
         type=Path,
-        default=ROOT / "output" / "runtime",
+        default=
+            ROOT / "output" / "runtime",
     )
 
-    parser.add_argument(
+    value.add_argument(
         "--declare-backend",
         action="append",
         default=[],
     )
 
-    args = parser.parse_args()
+    value.add_argument(
+        "--open-workbench",
+        action="store_true",
+        help=(
+            "After READY_FOR_HUMAN_REVIEW, "
+            "start the Full Local Workbench."
+        ),
+    )
+
+    value.add_argument(
+        "--workbench-port",
+        type=int,
+        default=8765,
+    )
+
+    value.add_argument(
+        "--no-browser",
+        action="store_true",
+        help=(
+            "With --open-workbench, print the local URL "
+            "without opening a browser."
+        ),
+    )
+
+    return value
+
+
+def main() -> int:
+    args = parser().parse_args()
+
+    if not 1 <= args.workbench_port <= 65535:
+        parser().error(
+            "--workbench-port must be from 1 to 65535"
+        )
 
     try:
         manifest = RuntimeOrchestrator(
             repo_root=ROOT,
-            workspace_root=args.workspace_root,
-        ).prepare_translation(
+            workspace_root=
+                args.workspace_root,
+        ).run_translation_to_review(
             source=args.source,
             source_language=
                 args.source_language,
@@ -75,6 +120,8 @@ def main() -> int:
                 args.target_language,
             provider_config_path=
                 args.provider_config,
+            default_text_role=
+                args.text_role,
             declared_backends=
                 args.declare_backend,
         )
@@ -84,12 +131,12 @@ def main() -> int:
         ValueError,
         OrchestrationError,
     ) as exc:
-        parser.exit(
-            2,
-            "DBabel runtime preparation failed: "
-            + str(exc)
-            + "\n",
+        print(
+            "DBabel project run failed: "
+            + str(exc),
+            file=sys.stderr,
         )
+        return 2
 
     print(
         json.dumps(
@@ -103,10 +150,77 @@ def main() -> int:
     if manifest["status"] == "BLOCKED":
         return 1
 
-    if manifest["status"] != "READY_FOR_INGEST":
+    if (
+        manifest["status"]
+        != "READY_FOR_HUMAN_REVIEW"
+    ):
         return 2
 
-    return 0
+    bundle = Path(
+        manifest[
+            "artifacts"
+        ][
+            "review_bundle"
+        ][
+            "path"
+        ]
+    ).resolve()
+
+    print(
+        "",
+        file=sys.stderr,
+    )
+    print(
+        "Review bundle: {}".format(
+            bundle
+        ),
+        file=sys.stderr,
+    )
+
+    if not args.open_workbench:
+        print(
+            "Open Workbench with:",
+            file=sys.stderr,
+        )
+        print(
+            '"{}" "{}" --bundle "{}"'.format(
+                sys.executable,
+                ROOT
+                / "scripts"
+                / "start_local.py",
+                bundle,
+            ),
+            file=sys.stderr,
+        )
+        return 0
+
+    command = [
+        sys.executable,
+        str(
+            ROOT
+            / "scripts"
+            / "start_local.py"
+        ),
+        "--bundle",
+        str(bundle),
+        "--port",
+        str(
+            args.workbench_port
+        ),
+    ]
+
+    if args.no_browser:
+        command.append(
+            "--no-browser"
+        )
+
+    try:
+        return subprocess.call(
+            command,
+            cwd=str(ROOT),
+        )
+    except KeyboardInterrupt:
+        return 130
 
 
 if __name__ == "__main__":
