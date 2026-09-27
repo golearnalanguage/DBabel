@@ -6,8 +6,20 @@ import sys
 from pathlib import Path
 from typing import Iterable, Optional
 
+from providers.base import TextGenerationProvider
+from providers.openai_compatible import (
+    OpenAICompatibleProvider,
+)
 from runtime.audit import AuditTrail
+from runtime.ingest import ingest_for_translation
 from runtime.models import ProviderConfig
+from runtime.post_translation import (
+    prepare_post_translation,
+)
+from runtime.translation import (
+    TranslationLimits,
+    translate_units,
+)
 from runtime.project import (
     ProjectRun,
     atomic_write_json,
@@ -319,4 +331,374 @@ class RuntimeOrchestrator:
 
             raise OrchestrationError(
                 str(exc)
+            ) from exc
+    def run_translation_to_qa(
+        self,
+        *,
+        source: Path,
+        source_language: str,
+        target_language: str,
+        provider_config_path: Path,
+        default_text_role: str,
+        declared_backends: Optional[
+            Iterable[str]
+        ] = None,
+        provider: Optional[
+            TextGenerationProvider
+        ] = None,
+        limits: TranslationLimits = TranslationLimits(),
+    ) -> dict:
+        """Run TRANSLATE through deterministic post-translation QA.
+
+        This method deliberately stops before semantic adjudication,
+        review-session creation, human approval, or export.
+        """
+
+        manifest = self.prepare_translation(
+            source=source,
+            source_language=source_language,
+            target_language=target_language,
+            provider_config_path=
+                provider_config_path,
+            declared_backends=
+                declared_backends,
+        )
+
+        if manifest["status"] == "BLOCKED":
+            return manifest
+
+        if (
+            manifest["status"]
+            != "READY_FOR_INGEST"
+        ):
+            raise OrchestrationError(
+                "unexpected preparation state: {}".format(
+                    manifest["status"]
+                )
+            )
+
+        run_root = Path(
+            manifest["artifacts"]
+            ["runtime_plan"]["path"]
+        ).parent
+
+        run = ProjectRun(
+            run_id=manifest["run_id"],
+            root=run_root,
+            manifest_path=
+                run_root / "run.json",
+            audit_path=
+                run_root / "audit.jsonl",
+            runtime_plan_path=
+                run_root
+                / "runtime-plan.json",
+        )
+
+        audit = AuditTrail(
+            run.audit_path,
+            run.run_id,
+        )
+
+        def artifact_record(path: Path):
+            return {
+                "path": str(path),
+                "sha256": sha256_file(path),
+            }
+
+        stage = "INGEST"
+
+        try:
+            run.assert_source_unchanged()
+
+            plan = json.loads(
+                run.runtime_plan_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            backend = (
+                plan.get("runtime")
+                or {}
+            ).get("selected_backend")
+
+            if not backend:
+                raise OrchestrationError(
+                    "runtime plan has no selected backend"
+                )
+
+            # ---------------------------------------------
+            # INGEST
+            # ---------------------------------------------
+
+            audit.append(
+                stage="INGEST",
+                status="STARTED",
+                details={
+                    "backend": backend,
+                    "text_role":
+                        default_text_role,
+                },
+            )
+
+            ingest = ingest_for_translation(
+                source=source,
+                source_language=
+                    source_language,
+                target_language=
+                    target_language,
+                backend=backend,
+                default_text_role=
+                    default_text_role,
+            )
+
+            ingest_path = (
+                run.root / "ingest.json"
+            )
+
+            atomic_write_json(
+                ingest_path,
+                ingest,
+            )
+
+            run.assert_source_unchanged()
+
+            audit.append(
+                stage="INGEST",
+                status="PASS",
+                details={
+                    "ingest_status":
+                        ingest[
+                            "ingest_report"
+                        ]["status"],
+                    "units_extracted":
+                        len(
+                            ingest["units"]
+                        ),
+                },
+            )
+
+            run.update(
+                status="READY_FOR_TRANSLATION",
+                current_stage="INGEST",
+                artifacts={
+                    "ingest":
+                        artifact_record(
+                            ingest_path
+                        ),
+                },
+                failure=None,
+            )
+
+            # ---------------------------------------------
+            # TRANSLATION GENERATION
+            # ---------------------------------------------
+
+            stage = "TRANSLATION"
+
+            audit.append(
+                stage=stage,
+                status="STARTED",
+                details={
+                    "unit_count":
+                        len(
+                            ingest["units"]
+                        ),
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            config = ProviderConfig.from_path(
+                Path(
+                    provider_config_path
+                )
+            )
+
+            effective_provider = (
+                provider
+                if provider is not None
+                else OpenAICompatibleProvider(
+                    config
+                )
+            )
+
+            translation = translate_units(
+                provider=
+                    effective_provider,
+                units=ingest["units"],
+                source_language=
+                    source_language,
+                target_language=
+                    target_language,
+                limits=limits,
+            )
+
+            translation_path = (
+                run.root
+                / "translation-proposals.json"
+            )
+
+            atomic_write_json(
+                translation_path,
+                translation,
+            )
+
+            run.assert_source_unchanged()
+
+            audit.append(
+                stage=stage,
+                status="PASS",
+                details={
+                    "batch_count":
+                        translation[
+                            "batch_count"
+                        ],
+                    "unit_count":
+                        translation[
+                            "unit_count"
+                        ],
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            run.update(
+                status=
+                    "TRANSLATION_PROPOSED",
+                current_stage=
+                    "TRANSLATION",
+                artifacts={
+                    "translation_proposals":
+                        artifact_record(
+                            translation_path
+                        ),
+                },
+                failure=None,
+            )
+
+            # ---------------------------------------------
+            # POST-TRANSLATION DETERMINISTIC QA
+            # ---------------------------------------------
+
+            stage = "POST_TRANSLATION_QA"
+
+            audit.append(
+                stage=stage,
+                status="STARTED",
+                details={
+                    "qa_target":
+                        "suggested_target",
+                },
+            )
+
+            post_translation = (
+                prepare_post_translation(
+                    translation,
+                    source_language=
+                        source_language,
+                    target_language=
+                        target_language,
+                    default_text_role=
+                        default_text_role,
+                )
+            )
+
+            post_path = (
+                run.root
+                / "post-translation.json"
+            )
+
+            atomic_write_json(
+                post_path,
+                post_translation,
+            )
+
+            run.assert_source_unchanged()
+
+            summary = (
+                post_translation[
+                    "deterministic_qa"
+                ].get("summary")
+                or {}
+            )
+
+            audit.append(
+                stage=stage,
+                status="PASS",
+                details={
+                    "units_checked":
+                        summary.get(
+                            "units_checked"
+                        ),
+                    "error_count":
+                        summary.get(
+                            "error_count"
+                        ),
+                    "warning_count":
+                        summary.get(
+                            "warning_count"
+                        ),
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            manifest = run.update(
+                status=
+                    "READY_FOR_SEMANTIC_ADJUDICATION",
+                current_stage=
+                    "POST_TRANSLATION_QA",
+                artifacts={
+                    "post_translation":
+                        artifact_record(
+                            post_path
+                        ),
+                },
+                failure=None,
+            )
+
+            audit.append(
+                stage=
+                    "SEMANTIC_ADJUDICATION",
+                status="READY",
+                details={
+                    "next_step":
+                        "REVIEW_SESSION_BINDING",
+                    "completion_allowed":
+                        False,
+                },
+            )
+
+            return manifest
+
+        except Exception as exc:
+            failure = {
+                "stage": stage,
+                "type":
+                    type(exc).__name__,
+                "reason": str(exc),
+            }
+
+            try:
+                run.update(
+                    status="FAILED",
+                    current_stage=stage,
+                    failure=failure,
+                )
+
+                audit.append(
+                    stage=stage,
+                    status="FAILED",
+                    details=failure,
+                )
+            except Exception:
+                # Preserve the original execution failure
+                # even if failure recording itself breaks.
+                pass
+
+            raise OrchestrationError(
+                "{} failed: {}".format(
+                    stage,
+                    exc,
+                )
             ) from exc
