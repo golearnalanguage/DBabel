@@ -280,8 +280,34 @@ def _protected_numeric_spans(text, unit_allowlist):
 
 
 def extract_plain_numbers(text, unit_allowlist):
-    masked = _mask_spans(text, _protected_numeric_spans(text, unit_allowlist))
-    return [m.group(0).strip() for m in NUMBER_RE.finditer(masked)]
+    masked = _mask_spans(
+        text,
+        _protected_numeric_spans(
+            text,
+            unit_allowlist,
+        ),
+    )
+
+    # NUMBER_RE intentionally avoids consuming a dot after a
+    # number so filenames and other dotted tokens are not
+    # accidentally treated as standalone numbers. An ASCII
+    # full stop used purely as sentence punctuation therefore
+    # needs to be neutralized before extraction.
+    #
+    # Examples:
+    #   "port 5237."   -> detect 5237
+    #   "value 3.14."  -> detect 3.14
+    #   "123.txt"      -> leave unchanged
+    masked = re.sub(
+        r'(?<=\d)\.(?=$|[\s)\]}>\\"\'])',
+        " ",
+        masked,
+    )
+
+    return [
+        m.group(0).strip()
+        for m in NUMBER_RE.finditer(masked)
+    ]
 
 
 def _counter_diff(source_items, target_items):

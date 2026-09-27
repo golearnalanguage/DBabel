@@ -120,6 +120,52 @@ class AccuracyCoreTests(unittest.TestCase):
         self.assertIn("NUMBER_INTEGRITY", self.ids(
             "Processed 1000 rows.", "Processed 999 rows."))
 
+    def test_plain_number_sentence_final_period_change(self):
+        issues = self.issues(
+            "端口为 5236。",
+            "The port is 5237.",
+        )
+
+        number_issues = [
+            item
+            for item in issues
+            if item["check_id"]
+            == "NUMBER_INTEGRITY"
+        ]
+
+        self.assertEqual(
+            len(number_issues),
+            1,
+        )
+
+        self.assertEqual(
+            number_issues[0]["source_items"],
+            ["5236"],
+        )
+
+        self.assertEqual(
+            number_issues[0]["target_items"],
+            ["5237"],
+        )
+
+    def test_plain_number_sentence_final_period_same(self):
+        self.assertNotIn(
+            "NUMBER_INTEGRITY",
+            self.ids(
+                "端口为 5236。",
+                "The port is 5236.",
+            ),
+        )
+
+    def test_decimal_sentence_final_period_same(self):
+        self.assertNotIn(
+            "NUMBER_INTEGRITY",
+            self.ids(
+                "值为 3.14。",
+                "The value is 3.14.",
+            ),
+        )
+
     def test_percentage_is_number_unit(self):
         self.assertIn("NUMBER_UNIT_INTEGRITY", self.ids(
             "Usage is 50%.", "Usage is 60%."))
