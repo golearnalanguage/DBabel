@@ -1,0 +1,8 @@
+{
+  "provider": "openai-compatible",
+  "base_url": "https://api.example.com/v1",
+  "api_key_env": "DBABEL_API_KEY",
+  "model": "replace-with-model-id",
+  "timeout_seconds": 120,
+  "max_response_bytes": 2000000
+}
