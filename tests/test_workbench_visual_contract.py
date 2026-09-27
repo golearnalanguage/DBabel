@@ -149,6 +149,84 @@ class VisualContractTests(unittest.TestCase):
         )
 
 
+    def test_authorized_export_has_clear_enabled_visual_state(self):
+        html=(
+            ROOT/'review_workbench/static/index.html'
+        ).read_text(encoding='utf-8')
+
+        js=(
+            ROOT/'review_workbench/static/app.js'
+        ).read_text(encoding='utf-8')
+
+        css=(
+            ROOT/'review_workbench/static/style.css'
+        ).read_text(encoding='utf-8')
+
+        # Initial state is fail-closed.
+        self.assertIn(
+            'id="exportButton" disabled',
+            html,
+        )
+        self.assertIn(
+            'href="#i-lock"',
+            html,
+        )
+
+        # Authorization enables the control and changes
+        # its semantic icon away from a lock.
+        self.assertIn(
+            "state.gate.status==='AUTHORIZED'",
+            js,
+        )
+        self.assertIn(
+            "el('exportButton').disabled=!authorized",
+            js,
+        )
+        self.assertIn(
+            "'#i-check'",
+            js,
+        )
+        self.assertIn(
+            "'#i-lock'",
+            js,
+        )
+        self.assertIn(
+            "'authorized'",
+            js,
+        )
+
+        # Authorized state must look enabled rather than
+        # like a pale disabled/focus state.
+        self.assertIn(
+            '#exportButton.authorized{',
+            css,
+        )
+        self.assertIn(
+            'background:#7657d8',
+            css,
+        )
+        self.assertIn(
+            'border-color:#7657d8',
+            css,
+        )
+        self.assertIn(
+            'color:#ffffff',
+            css,
+        )
+        self.assertIn(
+            'box-shadow:none',
+            css,
+        )
+        self.assertIn(
+            '#exportButton.authorized:hover',
+            css,
+        )
+        self.assertIn(
+            '#exportButton.authorized:active',
+            css,
+        )
+
+
     def test_technique_reasoning_is_visible_but_not_a_decision(self):
         desktop_html=(
             ROOT/'review_workbench/static/index.html'

@@ -40,12 +40,24 @@ button,input,select,textarea{font:inherit;color:inherit}button,select,input,text
 .metric-card{min-height:64px;border-radius:9px;background:linear-gradient(135deg,var(--surface-3),var(--surface-2));display:flex;align-items:center;gap:12px;padding:10px 15px;border:1px solid color-mix(in srgb,var(--line) 55%,transparent)}.metric-card>div{min-width:0}.metric-card span:not(.metric-icon):not(.metric-pct){display:block;color:var(--muted);font-size:11.5px}.metric-card strong{display:flex;align-items:baseline;gap:5px;margin-top:2px;font-size:18px;line-height:1.15;white-space:nowrap}.metric-pct{font-size:12px!important;color:var(--muted)!important;font-weight:600}.metric-card.reviewed .metric-pct{color:var(--green)!important}
 .metric-icon{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;font-weight:800}.metric-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9}.metric-icon.blue{color:var(--blue);background:var(--blue-soft)}.metric-icon.green{color:var(--green);background:var(--green-soft)}.metric-icon.coral{color:var(--red);background:var(--red-soft)}.metric-icon.slate{color:#70819a;background:var(--surface-2)}
 .export-summary{display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:7px;padding-left:8px}.export-summary button{height:40px;border:1px solid var(--line-strong);border-radius:8px;background:var(--blue);color:white;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:700}.export-summary button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}#exportButton.authorized{
-  box-shadow:
-    0 0 0 2px
-    color-mix(in srgb,var(--green) 28%,transparent);
+  background:#7657d8;
+  border-color:#7657d8;
+  color:#ffffff;
+  box-shadow:none;
+}
+
+#exportButton.authorized:hover{
+  background:#6848cb;
+  border-color:#6848cb;
+}
+
+#exportButton.authorized:active{
+  background:#5c3fba;
+  border-color:#5c3fba;
 }
 
 #exportButton.authorized svg{
+  stroke:#ffffff;
   stroke-width:2.2;
 }
 
