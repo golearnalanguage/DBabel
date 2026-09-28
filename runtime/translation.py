@@ -19,6 +19,7 @@ from providers.base import (
     TextGenerationProvider,
 )
 from runtime.models import GenerationRequest
+from runtime.checkpoint import checkpoint_digest, load_checkpoint, save_checkpoint
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -300,6 +301,11 @@ Obey the supplied JSON contract exactly.
 Preserve protected literals byte-for-byte.
 Translate ordinary words inside quotations and around slashes or arrows; keep the structural separators.
 Do not leave source-language prose in an English translation.
+Apply the unit's text role: headings and labels stay concise; procedural prose keeps each action and condition explicit.
+For dense technical instructions, keep distinct requirements in source order with short clauses or line breaks.
+Keep every number, unit, inequality, multiplier, path, command and configuration value attached to its correct subject.
+Never merge a server count with a CPU-socket limit or turn a recommendation into a requirement.
+In each reason, briefly name the key wording choice and any numeric or terminology uncertainty; do not invent evidence.
 Return one JSON object and no surrounding prose or Markdown fences."""
 
 
@@ -515,6 +521,8 @@ def translate_units(
     target_language: str,
     limits: TranslationLimits = TranslationLimits(),
     on_progress: Optional[Callable[[dict], None]] = None,
+    checkpoint_path: Optional[Path] = None,
+    checkpoint_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     if (
         not source_language
@@ -526,20 +534,27 @@ def translate_units(
             "translation requires distinct explicit languages"
         )
 
-    batches = batch_units(
-        units,
-        limits,
-    )
-
-    proposal_by_id: Dict[
-        str,
-        Dict[str, Any]
-    ] = {}
-
-    receipts = []
-
-    pending = list(batches)
-    completed = 0
+    expected_ids = [unit["id"] for unit in units]
+    digest = checkpoint_digest({
+        "units": units,
+        "source_language": source_language,
+        "target_language": target_language,
+        "limits": vars(limits),
+        "context": checkpoint_context,
+    })
+    saved: List[Dict[str, Any]] = []
+    receipts: List[Dict[str, Any]] = []
+    if checkpoint_path is not None:
+        saved, receipts = load_checkpoint(
+            checkpoint_path, stage="TRANSLATION",
+            input_digest=digest, expected_ids=expected_ids,
+        )
+    proposal_by_id = {item["id"]: item for item in saved}
+    completed = len(saved)
+    if completed and on_progress:
+        on_progress({"stage": "TRANSLATION", "state": "RESUMED",
+                     "completed_units": completed, "total_units": len(units)})
+    pending = list(batch_units(units[completed:], limits))
     literal_retries: Dict[str, int] = {}
     while pending:
         batch = pending.pop(0)
@@ -662,6 +677,12 @@ def translate_units(
                 dict(response.usage),
         })
         completed += len(batch)
+        if checkpoint_path is not None:
+            save_checkpoint(
+                checkpoint_path, stage="TRANSLATION",
+                input_digest=digest, items=list(proposal_by_id.values()),
+                receipts=receipts,
+            )
         if on_progress:
             on_progress({
                 "stage": "TRANSLATION", "state": "BATCH_COMPLETED",
@@ -669,11 +690,6 @@ def translate_units(
                 "unit_id": batch[-1]["id"],
                 "location": batch[-1].get("location", ""),
             })
-
-    expected_ids = [
-        unit["id"]
-        for unit in units
-    ]
 
     if list(proposal_by_id) != expected_ids:
         raise RuntimeTranslationError(

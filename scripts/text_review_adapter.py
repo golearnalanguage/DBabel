@@ -40,7 +40,7 @@ def apply_reviewed_text(original, output, units, decisions, anchors):
     changed, seen = [], set()
     for u in units:
         d = decisions[u['id']]
-        if d['status'] not in {'ACCEPT_SUGGESTION', 'KEEP_CURRENT', 'USER_EDITED', 'WAIVED'}:
+        if d['status'] not in {'ACCEPT_SUGGESTION', 'KEEP_CURRENT', 'USER_EDITED', 'WAIVED', 'DRAFT_SUGGESTION'}:
             raise ValueError('Text unit is not export-approved: ' + u['id'])
         new, old = d['approved_target'], u['current_target']
         if new == old:

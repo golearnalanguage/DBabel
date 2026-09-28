@@ -46,6 +46,40 @@ class StagedReviewTests(unittest.TestCase):
         self.assertEqual(validate_against_schema(receipt,ROOT/'schemas/export_receipt.schema.json'),[])
         self.assertEqual(receipt['qa_summary']['units_checked'],1)
 
+    def test_draft_exports_all_suggestions_in_original_layout_without_approval(self):
+        original = self.root / 'draft-source.docx'
+        make_docx(original, ['原文第一段。', '原文第二段。'])
+        units = self.root / 'draft-units.jsonl'
+        rows = [
+            {'id': 'D1', 'source': '原文第一段。', 'target': '原文第一段。',
+             'suggested_target': 'Translated first paragraph.',
+             'location': 'docx:word/document.xml:p=0',
+             'source_language': 'zh-CN', 'target_language': 'en'},
+            {'id': 'D2', 'source': '原文第二段。', 'target': '原文第二段。',
+             'suggested_target': 'Translated second paragraph.',
+             'location': 'docx:word/document.xml:p=1',
+             'source_language': 'zh-CN', 'target_language': 'en'},
+        ]
+        units.write_text('\n'.join(json.dumps(row, ensure_ascii=False) for row in rows) + '\n')
+        bundle = self.root / 'draft.dbreview'
+        subprocess.run([sys.executable, str(ROOT/'scripts/create_review_session.py'),
+                        str(units), '--original', str(original), '--output', str(bundle)],
+                       check=True, capture_output=True)
+        before = (bundle/'decisions.json').read_bytes()
+        output = self.root / 'translated.draft.docx'
+        receipt = export_bundle(bundle, ROOT, original, output, export_mode='DRAFT')
+        self.assertEqual(receipt['status'], 'DRAFT_EXPORTED', receipt.get('blockers'))
+        self.assertEqual(receipt['round_trip']['status'], 'PASS')
+        self.assertEqual(receipt['review_scope']['unreviewed_unit_ids'], ['D1', 'D2'])
+        self.assertEqual([p['text'] for p in extract_paragraphs(output)],
+                         ['Translated first paragraph.', 'Translated second paragraph.'])
+        self.assertEqual(before, (bundle/'decisions.json').read_bytes())
+        self.assertEqual(validate_against_schema(receipt, ROOT/'schemas/export_receipt.schema.json'), [])
+        handoff = json.loads(Path(str(output)+'.handoff.json').read_text())
+        self.assertEqual(handoff['report_type'], 'DRAFT_TRANSLATION_HANDOFF')
+        self.assertEqual(handoff['units'][0]['status'], 'UNREVIEWED')
+        self.assertEqual(handoff['units'][0]['exported_target'], 'Translated first paragraph.')
+
     def test_final_still_blocks_pending(self):
         self.approve_first()
         result=export_bundle(self.bundle,ROOT,self.original,self.root/'final.docx',qa_runner=qa_pass)

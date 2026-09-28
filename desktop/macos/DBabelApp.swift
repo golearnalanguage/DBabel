@@ -132,6 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     private var browser: WKWebView?
     private var currentURL: URL?
     private var source: URL?
+    private var pendingResume: DesktopController.ResumableRun?
     private var existingTarget: URL?
     private var providerSettings: ProviderSettings?
     private var pendingApiKeyEnv = "DBABEL_API_KEY"
@@ -159,6 +160,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     private let providerName = NSTextField(labelWithString: "")
     private let apiBaseURL = NSTextField(string: "")
     private let apiModel = NSTextField(string: "")
+    private let apiProviderPreset = NSPopUpButton()
+    private let apiModelPreset = NSPopUpButton()
     private let apiProxy = NSTextField(string: "")
     private let apiStatus = NSTextField(labelWithString: "")
     private let from = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -213,6 +216,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         return true
     }
 
+    private func matchingResumeRun() -> DesktopController.ResumableRun? {
+        guard let settings = providerSettings else { return nil }
+        return desktop.resumableRuns().first { run in
+            run.provider["base_url"] as? String == settings.baseURL &&
+            run.provider["model"] as? String == settings.model &&
+            run.provider["api_key_env"] as? String == settings.apiKeyEnv &&
+            run.provider["timeout_seconds"] as? Int == settings.timeoutSeconds &&
+            run.provider["max_response_bytes"] as? Int == settings.maxResponseBytes
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1120, height: 760),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -249,6 +263,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
             self?.controls.forEach { $0.isEnabled = !busy }
         }
         desktop.onWorkbench = { [weak self] url in self?.showWorkbench(url) }
+        desktop.chatProvider = { [weak self] in
+            guard let self = self, let settings = self.providerSettings else { return nil }
+            let key = ProviderCredentialStore.key(for: settings.baseURL)
+                ?? ProcessInfo.processInfo.environment[settings.apiKeyEnv]
+                ?? (settings.isLocal ? "local" : "")
+            guard !key.isEmpty, let config = try? settings.temporaryFile() else { return nil }
+            return (config: config, keyName: settings.apiKeyEnv, key: key)
+        }
         desktop.onProgress = { [weak self] event in self?.updateProgress(event) }
         desktop.onTranslationFailure = { [weak self] message in self?.showProgressFailure(message) }
         window.makeKeyAndOrderFront(nil)
@@ -274,22 +296,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
                  willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         if identifier == appearanceItem {
-            let item = NSMenuToolbarItem(itemIdentifier: identifier)
+            let item = NSToolbarItem(itemIdentifier: identifier)
             item.label = "Appearance / 外观"
             item.image = NSImage(systemSymbolName: "circle.lefthalf.filled",
                                  accessibilityDescription: item.label)
-            item.showsIndicator = false
-            let menu = NSMenu(title: item.label)
-            for (title, selector) in [
-                ("Follow System / 跟随系统", #selector(appearanceSystemAction)),
-                ("Light / 浅色", #selector(appearanceLightAction)),
-                ("Dark / 深色", #selector(appearanceDarkAction))
-            ] {
-                let option = NSMenuItem(title: title, action: selector, keyEquivalent: "")
-                option.target = self
-                menu.addItem(option)
-            }
-            item.menu = menu
+            item.target = self
+            item.action = #selector(appearanceToggleAction)
             return item
         }
         let item = NSToolbarItem(itemIdentifier: identifier)
@@ -391,6 +403,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         alignmentConfirmed.isHidden = existingTarget == nil
         providerName.stringValue = providerSettings.map { "\($0.model) · \($0.baseURL)" }
             ?? local("尚未配置 API 服务", "API service not configured")
+        pendingResume = matchingResumeRun()
         if !homeFieldConstraintsSet {
             [from, to, role, sourceName, targetName].forEach {
                 $0.translatesAutoresizingMaskIntoConstraints = false
@@ -412,11 +425,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
             "也可用上方选定的原文建立本地审核会话；已有译文可在此选择。此入口不调用 API，也不会自动生成译文。",
             "Create a local review session from the source selected above; optionally choose an existing translation. This path does not call an API or generate a translation."))
         uploadHelp.textColor = .secondaryLabelColor
-        let greeting = label("Happy you are here.", size: 44)
+        let greeting = label("HELLO,THERE!", size: 44)
         greeting.font = NSFont.systemFont(ofSize: 44, weight: .medium)
         greeting.textColor = .labelColor
         status.lineBreakMode = .byWordWrapping
         status.maximumNumberOfLines = 0
+        let resumeRow = row(button(local("继续上次运行", "Resume previous run"), #selector(resumeAction)),
+                            label(pendingResume?.source.lastPathComponent ?? ""))
+        resumeRow.isHidden = pendingResume == nil
         let stack = NSStackView(views: [
             greeting,
             row(label(local("翻译文档", "Translate a document"), size: 30),
@@ -428,6 +444,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
             row(label(local("文本角色", "Text role")), role),
             row(button(local("配置 API 服务", "Configure API service"), #selector(providerAction)), providerName),
             button(local("翻译并打开审核工作台", "Translate and open Workbench"), #selector(translateAction)),
+            resumeRow,
             label(local("上传文档并建立审核会话", "Upload documents for review"), size: 22),
             uploadHelp,
             row(button(local("选择现有译文（可选）", "Choose existing target (optional)"), #selector(targetAction)),
@@ -441,6 +458,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 12
+        stack.addArrangedSubview(label(local("最近任务", "Recent tasks"), size: 22))
+        stack.addArrangedSubview(button(local("新建并行任务窗口", "New parallel task window"),
+                                       #selector(newTaskWindowAction)))
+        for saved in desktop.savedSessions().prefix(12) {
+            let open = button(local("恢复工作台", "Reopen Workbench"),
+                              #selector(openSavedSessionAction(_:)))
+            open.identifier = NSUserInterfaceItemIdentifier(saved.bundle.path)
+            let title = label(saved.title)
+            title.lineBreakMode = .byTruncatingMiddle
+            stack.addArrangedSubview(row(open, title))
+        }
         stack.translatesAutoresizingMaskIntoConstraints = false
         let scroll = NSScrollView()
         scroll.drawsBackground = false
@@ -596,6 +624,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         let back = button(local("返回首页", "Back to home"), #selector(homeAction))
         back.translatesAutoresizingMaskIntoConstraints = false
         body.addSubview(back)
+        let resume = button(local("继续本次运行", "Resume this run"), #selector(resumeAction))
+        resume.translatesAutoresizingMaskIntoConstraints = false
+        if let candidate = matchingResumeRun(), candidate.source == source {
+            pendingResume = candidate
+            body.addSubview(resume)
+            NSLayoutConstraint.activate([
+                resume.leadingAnchor.constraint(equalTo: back.trailingAnchor, constant: 12),
+                resume.centerYAnchor.constraint(equalTo: back.centerYAnchor)
+            ])
+        }
         NSLayoutConstraint.activate([
             back.leadingAnchor.constraint(equalTo: body.leadingAnchor, constant: 52),
             back.bottomAnchor.constraint(equalTo: body.bottomAnchor, constant: -40)
@@ -646,14 +684,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         case .light: window.appearance = NSAppearance(named: .aqua)
         case .dark: window.appearance = NSAppearance(named: .darkAqua)
         }
-        if let menu = (window.toolbar?.items.first { $0.itemIdentifier == appearanceItem }
-                       as? NSMenuToolbarItem)?.menu {
-            for (index, option) in menu.items.enumerated() {
-                option.state = index == [DesktopAppearance.system, .light, .dark]
-                    .firstIndex(of: value) ? .on : .off
-            }
-        }
         browser?.evaluateJavaScript("window.dbabelSetDesktopTheme?.('\(value.rawValue)')")
+    }
+    @objc private func appearanceToggleAction() {
+        let effectiveDark = appearance == .dark ||
+            (appearance == .system && window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua)
+        setAppearance(effectiveDark ? .light : .dark)
     }
     @objc private func appearanceSystemAction() { setAppearance(.system) }
     @objc private func appearanceLightAction() { setAppearance(.light) }
@@ -739,6 +775,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         pendingMaxBytes = providerSettings?.maxResponseBytes ?? 2_000_000
         apiBaseURL.placeholderString = "https://api.example.com/v1"
         apiModel.placeholderString = local("服务中可用的模型 ID", "Model ID available from your service")
+        apiProviderPreset.removeAllItems()
+        apiProviderPreset.addItems(withTitles: [local("自定义兼容服务／网关", "Custom compatible service / gateway"),
+                                                "DeepSeek", "OpenAI"])
+        if apiBaseURL.stringValue == "https://api.deepseek.com" {
+            apiProviderPreset.selectItem(at: 1)
+        } else if apiBaseURL.stringValue == "https://api.openai.com/v1" {
+            apiProviderPreset.selectItem(at: 2)
+        } else { apiProviderPreset.selectItem(at: 0) }
+        apiProviderPreset.target = self
+        apiProviderPreset.action = #selector(providerPresetAction)
+        populateModelPresets()
         apiStatus.stringValue = ""
         apiStatus.textColor = .systemRed
         apiStatus.maximumNumberOfLines = 0
@@ -749,7 +796,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
             }
             providerFieldConstraintsSet = true
         }
-        let sheet = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 610, height: 600),
+        let sheet = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 610, height: 690),
                             styleMask: [.titled], backing: .buffered, defer: false)
         sheet.title = local("API 服务设置", "API service settings")
         sheet.appearance = window.appearance
@@ -781,8 +828,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         let stack = NSStackView(views: [
             label(local("连接 API 服务", "Connect an API service"), size: 24),
             explanation,
+            label(local("服务商预设（也可自填）", "Service preset (optional)")), apiProviderPreset,
             label(local("服务地址（Base URL）", "API base URL")), apiBaseURL,
             examples,
+            label(local("常见模型（也可自填）", "Suggested models (optional)")), apiModelPreset,
             label(local("模型 ID（支持 Chat Completions）", "Model ID (Chat Completions)")), apiModel,
             label(local("API 密钥／网关令牌（保存在 macOS 钥匙串）",
                         "API key / gateway token (saved in macOS Keychain)")), apiKey,
@@ -808,6 +857,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         window.beginSheet(sheet)
     }
 
+    private func populateModelPresets() {
+        apiModelPreset.removeAllItems()
+        let models: [String]
+        switch apiProviderPreset.indexOfSelectedItem {
+        case 1: models = ["deepseek-v4-flash", "deepseek-v4-pro"]
+        case 2: models = ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"]
+        default: models = []
+        }
+        apiModelPreset.addItems(withTitles: [local("自定义模型 ID", "Custom model ID")] + models)
+        apiModelPreset.selectItem(withTitle: apiModel.stringValue)
+        if apiModelPreset.indexOfSelectedItem < 0 { apiModelPreset.selectItem(at: 0) }
+        apiModelPreset.target = self
+        apiModelPreset.action = #selector(modelPresetAction)
+    }
+
+    @objc private func providerPresetAction() {
+        switch apiProviderPreset.indexOfSelectedItem {
+        case 1: apiBaseURL.stringValue = "https://api.deepseek.com"
+        case 2: apiBaseURL.stringValue = "https://api.openai.com/v1"
+        default: break
+        }
+        populateModelPresets()
+    }
+
+    @objc private func modelPresetAction() {
+        if apiModelPreset.indexOfSelectedItem > 0 {
+            apiModel.stringValue = apiModelPreset.titleOfSelectedItem ?? ""
+        }
+    }
+
     @objc private func importProviderAction() {
         guard let path = chooseFile(extensions: ["json"]) else { return }
         guard let data = try? Data(contentsOf: path),
@@ -822,6 +901,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         }
         apiBaseURL.stringValue = baseURL
         apiModel.stringValue = model
+        apiProviderPreset.selectItem(at: 0)
+        populateModelPresets()
         pendingApiKeyEnv = environment
         pendingTimeout = object["timeout_seconds"] as? Int ?? 120
         pendingMaxBytes = object["max_response_bytes"] as? Int ?? 2_000_000
@@ -915,7 +996,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         }
     }
 
-    @objc private func translateAction() {
+    @objc private func translateAction() { startTranslation(resumeRun: nil) }
+
+    @objc private func resumeAction() {
+        guard let run = matchingResumeRun() else {
+            status.stringValue = local("未找到可继续的运行记录。", "No resumable run was found.")
+            return
+        }
+        pendingResume = run
+        source = run.source
+        if let sourceItem = from.itemArray.first(where: { $0.representedObject as? String == run.sourceLanguage }),
+           let targetItem = to.itemArray.first(where: { $0.representedObject as? String == run.targetLanguage }) {
+            from.select(sourceItem)
+            to.select(targetItem)
+        } else {
+            status.stringValue = local("上次运行的语言不在当前列表中。", "The saved languages are not in the current menu.")
+            return
+        }
+        startTranslation(resumeRun: run.root)
+    }
+
+    private func startTranslation(resumeRun: URL?) {
         guard let source = source, let settings = providerSettings else {
             status.stringValue = local("请先选择原文并配置 API 服务。", "Choose a source and configure the API service first.")
             return
@@ -935,7 +1036,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
             desktop.translate(source: source, from: languageCode(from), to: languageCode(to),
                               role: role.stringValue, provider: provider,
                               apiKey: key, proxyURL: settings.proxyURL,
-                              temporaryProvider: true)
+                              temporaryProvider: true, resumeRun: resumeRun)
         } catch {
             status.stringValue = error.localizedDescription
         }
@@ -943,6 +1044,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     }
     @objc private func sessionAction() {
         if let bundle = chooseFile(extensions: [], directory: true) { desktop.openSession(bundle) }
+    }
+    @objc private func openSavedSessionAction(_ sender: NSButton) {
+        guard let path = sender.identifier?.rawValue else { return }
+        desktop.openSession(URL(fileURLWithPath: path))
+    }
+    @objc private func newTaskWindowAction() {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL,
+                                           configuration: configuration) { [weak self] _, error in
+            if let error = error {
+                DispatchQueue.main.async { self?.status.stringValue = error.localizedDescription }
+            }
+        }
     }
     @objc private func demoAction() { desktop.openDemo() }
 
@@ -959,8 +1074,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         }
     }
 
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        (webView as? MaterialWebView)?.allowWindowMaterialToShowThrough()
+        webView.evaluateJavaScript("window.dbabelSetDesktopTheme?.('\(appearance.rawValue)')")
+    }
+
     func webView(_ webView: WKWebView, navigationAction: WKNavigationAction,
                  didBecome download: WKDownload) { download.delegate = self }
+
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+                 for navigationAction: WKNavigationAction,
+                 windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if let url = navigationAction.request.url, url.scheme == "https" {
+            NSWorkspace.shared.open(url)
+        }
+        return nil
+    }
 
     func download(_ download: WKDownload, decideDestinationUsing response: URLResponse,
                   suggestedFilename: String, completionHandler: @escaping (URL?) -> Void) {

@@ -13,6 +13,10 @@ import tempfile
 import uuid
 import shutil
 import zipfile
+try:
+    import fcntl
+except ImportError:  # Windows has no fcntl; the macOS App uses this lock.
+    fcntl = None
 from xml.etree import ElementTree as ET
 import webbrowser
 from http import HTTPStatus
@@ -26,6 +30,8 @@ ROOT = HERE.parent
 STATIC_ROOT = ROOT / "review_workbench" / "static"
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from review_exchange import upload_file, read_document, create_intake, glossary_score, render_result, RESULT_FORMATS
 from glossary_io import load_glossary, validate_glossary
@@ -41,7 +47,12 @@ from review_model import (
     recheck_decision,
     save_decisions,
     utc_now,
+    write_json,
+    read_json,
 )
+from review_chat import append_message, chat_request, load_messages, prepare_attachments
+from providers.openai_compatible import OpenAICompatibleProvider
+from runtime.models import ProviderConfig
 
 MAX_BODY = 48 * 1024 * 1024
 
@@ -56,6 +67,7 @@ class WorkbenchState:
         output: Optional[Path] = None,
         glossary: Optional[Path] = None,
         receipt: Optional[Path] = None,
+        chat_provider: Optional[OpenAICompatibleProvider] = None,
     ):
         self.bundle = bundle.resolve()
         self.repo_root = repo_root.resolve()
@@ -65,6 +77,7 @@ class WorkbenchState:
         self.glossary = glossary.resolve() if glossary else next((p for p in [self.bundle / "project-glossary.json", self.bundle / "project-glossary.csv"] if p.exists()), None)
         self.upload_root = self.bundle.parent / "dbabel-sessions"
         self.receipt = receipt.resolve() if receipt else (self.bundle / "export_receipt.json")
+        self.chat_provider = chat_provider
         self.lock = threading.RLock()
         self.origin = ""
         self.configure_intake_export()
@@ -172,6 +185,22 @@ class Handler(BaseHTTPRequestHandler):
                     "glossary_name": self.state.glossary.name if self.state.glossary else None,
                 })
             return
+        if parsed.path == "/api/chat":
+            with self.state.lock:
+                self._json(200, {"available": self.state.chat_provider is not None,
+                                 "messages": load_messages(self.state.bundle)})
+            return
+        if parsed.path == "/api/ui-state":
+            with self.state.lock:
+                try:
+                    value = read_json(self.state.bundle / "ui_state.json")
+                except (OSError, json.JSONDecodeError):
+                    try:
+                        value = read_json(self.state.bundle / "ui_state.backup.json")
+                    except (OSError, json.JSONDecodeError):
+                        value = {}
+                self._json(200, value)
+            return
         if parsed.path == "/api/post-review-report":
             with self.state.lock:
                 self._json(200, build_report(self.state.data()))
@@ -208,6 +237,31 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized_api():
             return
         parsed = urlparse(self.path)
+        if parsed.path == "/api/ui-state":
+            try:
+                incoming = self._body_json()
+                selected = incoming.get("selected")
+                page = incoming.get("page", 0)
+                page_size = incoming.get("page_size", 50)
+                view = incoming.get("view", "Review")
+                scroll_top = incoming.get("scroll_top", 0)
+                if (selected is not None and not isinstance(selected, str)) or (
+                    type(page) is not int or not 0 <= page <= 100000) or (
+                    type(page_size) is not int or page_size not in {25, 50, 100, 200}) or (
+                    view not in {"Review", "Terminology", "Evidence", "Quality Check", "Reports", "Project Settings", "Activity"}) or (
+                    type(scroll_top) not in {int, float} or not 0 <= scroll_top <= 10000000):
+                    raise ValueError("invalid saved workspace position")
+                with self.state.lock:
+                    if selected is not None and selected not in self.state.data()["units_by_id"]:
+                        raise ValueError("selected unit does not belong to this session")
+                    value = {"selected": selected, "page": page, "page_size": page_size,
+                             "view": view, "scroll_top": scroll_top, "updated_at": utc_now()}
+                    write_json(self.state.bundle / "ui_state.json", value)
+                    write_json(self.state.bundle / "ui_state.backup.json", value)
+                    self._json(200, value)
+            except (ValueError, OSError, json.JSONDecodeError) as exc:
+                self._error(400, str(exc))
+            return
         if not parsed.path.startswith("/api/decisions/"):
             self._error(404, "not found")
             return
@@ -227,7 +281,27 @@ class Handler(BaseHTTPRequestHandler):
                     saved, recheck_issues = recheck_decision(
                         self.state.repo_root, unit, saved, self.state.glossary
                     )
-                decisions = [saved if x["unit_id"] == unit_id else x for x in data["decisions"]]
+                linked = []
+                if saved["status"] in {"ACCEPT_SUGGESTION", "KEEP_CURRENT"}:
+                    for candidate in data["units"]:
+                        if candidate["id"] == unit_id:
+                            continue
+                        prior = data["decisions_by_id"][candidate["id"]]
+                        if prior["status"] != "UNREVIEWED":
+                            continue
+                        if any(candidate.get(field) != unit.get(field) for field in (
+                            "source", "current_target", "suggested_target",
+                            "source_language", "target_language", "text_role", "labels"
+                        )):
+                            continue
+                        proposed = normalize_decision(candidate, {"status": saved["status"]}, prior)
+                        proposed, candidate_issues = recheck_decision(
+                            self.state.repo_root, candidate, proposed, self.state.glossary
+                        )
+                        linked.append((candidate, prior, proposed, candidate_issues))
+                replacements = {unit_id: saved}
+                replacements.update({candidate["id"]: proposed for candidate, _, proposed, _ in linked})
+                decisions = [replacements.get(x["unit_id"], x) for x in data["decisions"]]
                 save_decisions(self.state.bundle, decisions)
                 event = {
                     "event": "DECISION_CHANGED",
@@ -237,8 +311,21 @@ class Handler(BaseHTTPRequestHandler):
                     "actor": "HUMAN",
                     "from_status": previous["status"],
                     "to_status": saved["status"],
+                    "before_target": previous.get("approved_target", unit.get("current_target", "")),
+                    "after_target": saved.get("approved_target", unit.get("current_target", "")),
+                    "location": unit.get("location"),
                 }
                 append_event(self.state.bundle / "events.jsonl", event)
+                for candidate, prior, proposed, _ in linked:
+                    append_event(self.state.bundle / "events.jsonl", {
+                        "event": "DECISION_CHANGED", "unit_id": candidate["id"],
+                        "at": utc_now(), "revision": proposed["revision"],
+                        "actor": "HUMAN_LINKED", "linked_from": unit_id,
+                        "from_status": prior["status"], "to_status": proposed["status"],
+                        "before_target": prior.get("approved_target", candidate.get("current_target", "")),
+                        "after_target": proposed.get("approved_target", candidate.get("current_target", "")),
+                        "location": candidate.get("location"),
+                    })
                 if saved["status"] == "USER_EDITED":
                     append_event(self.state.bundle / "events.jsonl", {
                         "event": "TARGET_EDITED", "unit_id": unit_id, "at": utc_now(),
@@ -249,12 +336,53 @@ class Handler(BaseHTTPRequestHandler):
                     "revision": saved["revision"], "actor": "SYSTEM",
                     "detail": saved["recheck"]["status"]
                 })
-                self._json(200, {"decision": saved, "recheck_issues": recheck_issues})
+                self._json(200, {"decision": saved, "recheck_issues": recheck_issues,
+                                 "linked_decisions": [{"decision": proposed, "recheck_issues": issues}
+                                                      for _, _, proposed, issues in linked]})
         except (ValueError, RuntimeError, OSError, json.JSONDecodeError, zipfile.BadZipFile, ET.ParseError, KeyError, IndexError) as exc:
             self._error(400, str(exc))
 
-    @session_locked
     def do_POST(self) -> None:
+        if urlparse(self.path).path == "/api/chat":
+            self._post_chat()
+            return
+        self._post_locked()
+
+    def _post_chat(self) -> None:
+        if not self._authorized_api():
+            return
+        try:
+            body = self._body_json()
+            with self.state.lock:
+                provider = self.state.chat_provider
+                if provider is None:
+                    self._error(503, "Configure an API service in the App to use review chat.")
+                    return
+                bundle = self.state.bundle
+                unit_id = body.get("unit_id")
+                if unit_id is not None and not isinstance(unit_id, str):
+                    raise ValueError("unit_id must be a string")
+                message = body.get("message")
+                if not isinstance(message, str) or not message.strip() or len(message) > 4000:
+                    raise ValueError("message must contain 1–4000 characters")
+                records, documents, images = prepare_attachments(bundle, body.get("attachments"))
+                request = chat_request(self.state.data(), load_messages(bundle),
+                                       unit_id, message, documents, images)
+                user_message = append_message(bundle, "user", message.strip(),
+                                              unit_id, records)
+            try:
+                response = provider.generate(request)
+            except Exception as exc:
+                self._error(502, "AI service request failed: {}".format(exc))
+                return
+            with self.state.lock:
+                answer = append_message(bundle, "assistant", response.text[:20000], unit_id)
+            self._json(200, {"question": user_message, "answer": answer})
+        except (ValueError, OSError, json.JSONDecodeError) as exc:
+            self._error(400, str(exc))
+
+    @session_locked
+    def _post_locked(self) -> None:
         if not self._authorized_api():
             return
         parsed = urlparse(self.path)
@@ -470,6 +598,9 @@ class Handler(BaseHTTPRequestHandler):
                                     previous["status"],
                                 "to_status":
                                     saved["status"],
+                                "before_target": previous.get("approved_target", data["units_by_id"][unit_id].get("current_target", "")),
+                                "after_target": saved.get("approved_target", data["units_by_id"][unit_id].get("current_target", "")),
+                                "location": data["units_by_id"][unit_id].get("location"),
                             },
                         )
 
@@ -513,17 +644,20 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/export-gate":
                 with self.state.lock:
                     data = self.state.data()
-                    updated, qa_by_unit = fresh_recheck_all(
-                        data, self.state.repo_root, self.state.glossary
-                    )
-                    save_decisions(self.state.bundle, updated)
-                    data = self.state.data()
+                    mode = body.get("export_mode", "DRAFT")
+                    updated, qa_by_unit = None, None
+                    if mode != "DRAFT":
+                        updated, qa_by_unit = fresh_recheck_all(
+                            data, self.state.repo_root, self.state.glossary
+                        )
+                        save_decisions(self.state.bundle, updated)
+                        data = self.state.data()
                     gate = evaluate_export_gate(
                         data, fresh_qa_by_unit=qa_by_unit, original_path=self.state.original,
-                        export_mode=body.get("export_mode", "FINAL")
+                        export_mode=mode
                     )
                     self._json(200, dict(gate, review_decisions=updated,
-                        qa_issues=[issue for rows in qa_by_unit.values() for issue in rows]))
+                        qa_issues=[issue for rows in (qa_by_unit or {}).values() for issue in rows]))
                 return
             if parsed.path == "/api/export":
                 if not self.state.original or not self.state.output:
@@ -534,10 +668,10 @@ class Handler(BaseHTTPRequestHandler):
                         "event": "EXPORT_REQUESTED", "at": utc_now(), "revision": 0,
                         "actor": "HUMAN"
                     })
-                    mode = body.get("export_mode", "FINAL")
+                    mode = body.get("export_mode", "DRAFT")
                     export_output = self.state.output
                     export_receipt = self.state.receipt
-                    if mode == "CHECKPOINT" or export_output.exists() or export_receipt.exists():
+                    if mode in {"CHECKPOINT", "DRAFT"} or export_output.exists() or export_receipt.exists():
                         index = 1
                         while True:
                             candidate = self.state.output.with_name(self.state.output.stem + ".{}-{}".format(mode.lower(), index) + self.state.output.suffix)
@@ -553,20 +687,21 @@ class Handler(BaseHTTPRequestHandler):
                         export_output,
                         self.state.glossary,
                         export_receipt,
-                        export_mode=body.get("export_mode", "FINAL"),
+                        export_mode=mode,
                     )
-                    event_name = "EXPORT_COMPLETED" if receipt["status"] == "VERIFIED" else "EXPORT_BLOCKED"
+                    succeeded = receipt["status"] in {"VERIFIED", "DRAFT_EXPORTED"}
+                    event_name = "EXPORT_COMPLETED" if succeeded else "EXPORT_BLOCKED"
                     append_event(self.state.bundle / "events.jsonl", {
                         "event": event_name, "at": utc_now(), "revision": 0,
                         "actor": "SYSTEM", "detail": receipt["status"]
                     })
-                    if receipt["status"] == "VERIFIED":
+                    if succeeded:
                         append_event(self.state.bundle / "events.jsonl", {
                             "event": "ROUND_TRIP_VERIFIED", "at": utc_now(), "revision": 0,
                             "actor": "SYSTEM", "detail": receipt["output"]["sha256"]
                         })
                     response = dict(receipt)
-                    if receipt['status'] == 'VERIFIED':
+                    if succeeded:
                         import base64
                         import io
                         archive = io.BytesIO()
@@ -626,11 +761,18 @@ def main() -> int:
     parser.add_argument("--output", help="Reviewed output path with the original document extension")
     parser.add_argument("--glossary")
     parser.add_argument("--receipt")
+    parser.add_argument("--provider-config", help="Optional OpenAI-compatible API for session chat")
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
 
     bundle = Path(args.bundle).resolve()
     load_bundle(bundle)  # fail before opening a port
+    session_lock = (bundle / ".workbench.lock").open("a+")
+    if fcntl is not None:
+        try:
+            fcntl.flock(session_lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            parser.error("This review session is already open in another DBabel window.")
     token = secrets.token_urlsafe(32)
     state = WorkbenchState(
         bundle,
@@ -640,6 +782,8 @@ def main() -> int:
         Path(args.output) if args.output else None,
         Path(args.glossary) if args.glossary else None,
         Path(args.receipt) if args.receipt else None,
+        OpenAICompatibleProvider(ProviderConfig.from_path(Path(args.provider_config)))
+        if args.provider_config else None,
     )
     if not 0 <= args.port <= 65535:
         parser.error('Port must be between 0 and 65535')
@@ -659,6 +803,9 @@ def main() -> int:
         pass
     finally:
         server.server_close()
+        if fcntl is not None:
+            fcntl.flock(session_lock.fileno(), fcntl.LOCK_UN)
+        session_lock.close()
     return 0
 
 

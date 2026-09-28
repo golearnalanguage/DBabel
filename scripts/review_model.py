@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -65,7 +66,27 @@ def read_json(path: Path) -> Any:
 
 
 def write_json(path: Path, value: Any) -> None:
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    payload = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", newline="\n", dir=path.parent,
+            prefix="." + path.name + ".", suffix=".tmp", delete=False,
+        ) as fh:
+            temporary = Path(fh.name)
+            fh.write(payload)
+            fh.flush()
+            os.fsync(fh.fileno())
+        temporary.replace(path)
+        directory_fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
 
 
 def read_jsonl(path: Path) -> List[Dict[str, Any]]:
@@ -92,6 +113,8 @@ def write_jsonl(path: Path, items: Iterable[Dict[str, Any]]) -> None:
 def append_event(path: Path, event: Dict[str, Any]) -> None:
     with path.open("a", encoding="utf-8", newline="\n") as fh:
         fh.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
 
 
 def load_schema(schema_path: Path) -> Dict[str, Any]:
@@ -368,7 +391,10 @@ def load_bundle(bundle: Path) -> Dict[str, Any]:
     units = read_jsonl(bundle / "units.jsonl")
     issues = read_json(bundle / "issues.json")
     evidence = read_json(bundle / "evidence.json")
-    decisions = read_json(bundle / "decisions.json")
+    try:
+        decisions = read_json(bundle / "decisions.json")
+    except (OSError, json.JSONDecodeError):
+        decisions = read_json(bundle / "decisions.backup.json")
     anchors = read_json(bundle / "anchors.json")
     events = read_jsonl(bundle / "events.jsonl")
     if not isinstance(issues, list) or not isinstance(evidence, list) or not isinstance(decisions, list):
@@ -398,18 +424,9 @@ def load_bundle(bundle: Path) -> Dict[str, Any]:
 
 
 def save_decisions(bundle: Path, decisions: Sequence[Dict[str, Any]]) -> None:
-    target = bundle / "decisions.json"
-    temporary = bundle / ".decisions.json.tmp"
-
-    try:
-        write_json(
-            temporary,
-            list(decisions),
-        )
-        temporary.replace(target)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
+    snapshot = list(decisions)
+    write_json(bundle / "decisions.json", snapshot)
+    write_json(bundle / "decisions.backup.json", snapshot)
 
 
 def progress(bundle_data: Dict[str, Any]) -> Dict[str, int]:
@@ -529,8 +546,8 @@ def evaluate_export_gate(
     original_path: Optional[Path] = None,
     export_mode: str = "FINAL",
 ) -> Dict[str, Any]:
-    if export_mode not in {"FINAL", "CHECKPOINT"}:
-        raise ValueError("export mode must be FINAL or CHECKPOINT")
+    if export_mode not in {"FINAL", "CHECKPOINT", "DRAFT"}:
+        raise ValueError("export mode must be FINAL, CHECKPOINT or DRAFT")
     session = bundle_data["session"]
     units_by_id = bundle_data["units_by_id"]
     decisions_by_id = bundle_data["decisions_by_id"]
@@ -554,6 +571,27 @@ def evaluate_export_gate(
     included = [uid for uid in units_by_id if decisions_by_id[uid]["status"] in COMPLETED_STATUSES]
     included_set = set(included)
     excluded = [uid for uid in units_by_id if uid not in included_set]
+    if export_mode == "DRAFT":
+        for unit_id, unit in units_by_id.items():
+            if str(unit.get("alignment") or "ALIGNED") != "ALIGNED":
+                blockers.append("{} alignment is not ALIGNED".format(unit_id))
+            decision = decisions_by_id[unit_id]
+            if decision["status"] not in COMPLETED_STATUSES and not str(unit.get("suggested_target") or "").strip():
+                blockers.append("{} has no suggested translation for draft export".format(unit_id))
+        decisions_canonical = [decisions_by_id[k] for k in sorted(decisions_by_id)]
+        return {
+            "format_version": "1.0", "session_id": session["session_id"],
+            "status": "BLOCKED" if blockers else "AUTHORIZED",
+            "checked_at": utc_now(), "export_mode": "DRAFT",
+            "review_scope": {"included_unit_ids": list(units_by_id),
+                             "unreviewed_unit_ids": excluded, "complete": not excluded},
+            "source_sha256": session["original"]["sha256"],
+            "decision_digest": sha256_json(decisions_canonical),
+            "blockers": sorted(set(blockers)), "waivers": [],
+            "qa_summary": {"status": "NOT_RUN", "units_checked": 0,
+                           "error_count": 0, "warning_count": 0},
+            "round_trip": {"status": "NOT_RUN", "checks": []},
+        }
     if export_mode == "CHECKPOINT" and not included:
         blockers.append("checkpoint requires at least one human-reviewed unit")
     for unit_id, unit in units_by_id.items():

@@ -105,6 +105,10 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         help="Write local, structured stage and unit progress to this file.",
     )
+    value.add_argument(
+        "--resume-run", type=Path,
+        help="Continue a failed run from its saved batches and artifacts.",
+    )
 
     return value
 
@@ -151,6 +155,7 @@ def main() -> int:
             declared_backends=
                 args.declare_backend,
             on_progress=report_progress,
+            resume_run=args.resume_run,
         )
 
     except (

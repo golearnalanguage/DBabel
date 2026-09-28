@@ -17,11 +17,80 @@ func chooseFile(extensions: [String], directory: Bool = false) -> URL? {
 }
 
 final class DesktopController {
+    struct SavedSession {
+        let bundle: URL
+        let title: String
+        let updated: Date
+    }
+
+    func savedSessions() -> [SavedSession] {
+        let roots = [workspace.appendingPathComponent("runtime"),
+                     workspace.appendingPathComponent("dbabel-sessions")]
+        var found: [SavedSession] = []
+        for root in roots {
+            guard let entries = try? FileManager.default.contentsOfDirectory(
+                at: root, includingPropertiesForKeys: [.contentModificationDateKey],
+                options: [.skipsHiddenFiles]) else { continue }
+            for entry in entries {
+                let bundle = entry.pathExtension == "dbreview"
+                    ? entry : entry.appendingPathComponent("review.dbreview")
+                let session = bundle.appendingPathComponent("session.json")
+                guard let bytes = try? Data(contentsOf: session),
+                      let data = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any] else { continue }
+                let title = data["title"] as? String ?? entry.lastPathComponent
+                let updated = (try? session.resourceValues(forKeys: [.contentModificationDateKey]))?
+                    .contentModificationDate ?? .distantPast
+                found.append(SavedSession(bundle: bundle, title: title, updated: updated))
+            }
+        }
+        return found.sorted { $0.updated > $1.updated }
+    }
+
+    struct ResumableRun {
+        let root: URL
+        let source: URL
+        let sourceLanguage: String
+        let targetLanguage: String
+        let provider: [String: Any]
+    }
+
+    func resumableRuns() -> [ResumableRun] {
+        let directory = workspace.appendingPathComponent("runtime")
+        guard let runs = try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]) else { return [] }
+        var found: [ResumableRun] = []
+        for root in runs.sorted(by: {
+            let left = (try? $0.appendingPathComponent("run.json").resourceValues(
+                forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+            let right = (try? $1.appendingPathComponent("run.json").resourceValues(
+                forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+            return left > right
+        }) where root.lastPathComponent.hasPrefix("RUN_") {
+            let manifest = root.appendingPathComponent("run.json")
+            guard let bytes = try? Data(contentsOf: manifest),
+                  let value = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+                  value["mode"] as? String == "TRANSLATE",
+                  value["status"] as? String == "FAILED",
+                  let source = value["source"] as? [String: Any],
+                  let path = source["path"] as? String,
+                  FileManager.default.fileExists(atPath: path),
+                  let from = value["source_language"] as? String,
+                  let to = value["target_language"] as? String,
+                  let provider = value["provider"] as? [String: Any],
+                  let artifacts = value["artifacts"] as? [String: Any],
+                  artifacts["ingest"] != nil else { continue }
+            found.append(ResumableRun(root: root, source: URL(fileURLWithPath: path),
+                                      sourceLanguage: from, targetLanguage: to, provider: provider))
+        }
+        return found
+    }
     var onStatus: (String) -> Void = { _ in }
     var onBusy: (Bool) -> Void = { _ in }
     var onWorkbench: (URL) -> Void = { _ in }
     var onProgress: ([String: Any]) -> Void = { _ in }
     var onTranslationFailure: (String) -> Void = { _ in }
+    var chatProvider: () -> (config: URL, keyName: String, key: String)? = { nil }
     var workbenchURL: URL? { didSet { if let url = workbenchURL { onWorkbench(url) } } }
     var status = "" { didSet { onStatus(status) } }
     var busy = false { didSet { onBusy(busy) } }
@@ -203,6 +272,30 @@ final class DesktopController {
         }
         busy = true
         status = "Opening review session… / 正在打开审核会话…"
+        let provider = chatProvider
+        var serverStarted = false
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let chat = provider()
+            DispatchQueue.main.async { [weak self] in
+                guard !serverStarted else {
+                    if let chat = chat { try? FileManager.default.removeItem(at: chat.config) }
+                    return
+                }
+                serverStarted = true
+                self?.startReviewServer(bundle, original: original, chat: chat)
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard !serverStarted else { return }
+            serverStarted = true
+            self?.startReviewServer(bundle, original: original, chat: nil)
+        }
+    }
+
+    private func startReviewServer(
+        _ bundle: URL, original: URL?,
+        chat: (config: URL, keyName: String, key: String)?
+    ) {
         do {
             let (output, error) = try logFiles()
             var exportOriginal = original
@@ -219,12 +312,17 @@ final class DesktopController {
                 "-u", repository.appendingPathComponent("scripts/start_review_workbench.py").path,
                 bundle.path, "--port", "0", "--no-browser"
             ]
+            if let chat = chat {
+                arguments += ["--provider-config", chat.config.path]
+            }
             if let original = exportOriginal {
                 let reviewed = bundle.deletingLastPathComponent()
                     .appendingPathComponent("reviewed-" + original.lastPathComponent)
                 arguments += ["--original", original.path, "--output", reviewed.path]
             }
-            let process = try launch(arguments, stdout: output, stderr: error)
+            let chatEnvironment = chat.map { [$0.keyName: $0.key] } ?? [:]
+            let process = try launch(arguments, stdout: output, stderr: error,
+                                     environment: chatEnvironment)
             var attempts = 0
             serverTimer?.invalidate()
             serverTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] timer in
@@ -235,6 +333,7 @@ final class DesktopController {
                 if let line = line,
                    let url = URL(string: String(line.dropFirst(6))) {
                     timer.invalidate()
+                    if let chat = chat { try? FileManager.default.removeItem(at: chat.config) }
                     self.server?.terminate()
                     self.server = process
                     self.workbenchURL = url
@@ -245,6 +344,7 @@ final class DesktopController {
                 }
                 if !process.isRunning || attempts >= 100 {
                     timer.invalidate()
+                    if let chat = chat { try? FileManager.default.removeItem(at: chat.config) }
                     if process.isRunning { process.terminate() }
                     self.busy = false
                     self.status = self.contents(error).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -261,7 +361,7 @@ final class DesktopController {
 
     func translate(source: URL, from: String, to: String, role: String,
                    provider: URL, apiKey: String, proxyURL: String = "",
-                   temporaryProvider: Bool = false) {
+                   temporaryProvider: Bool = false, resumeRun: URL? = nil) {
         guard FileManager.default.fileExists(atPath: source.path),
               FileManager.default.fileExists(atPath: provider.path),
               !from.trimmingCharacters(in: .whitespaces).isEmpty,
@@ -280,7 +380,7 @@ final class DesktopController {
                 .appendingPathComponent("dbabel-progress-\(UUID().uuidString).jsonl")
             FileManager.default.createFile(atPath: progress.path, contents: Data())
             progressLineCount = 0
-            let arguments = [
+            var arguments = [
                 repository.appendingPathComponent("scripts/run_project.py").path,
                 source.path,
                 "--source-language", from,
@@ -290,6 +390,9 @@ final class DesktopController {
                 "--workspace-root", workspace.appendingPathComponent("runtime").path,
                 "--progress-jsonl", progress.path
             ]
+            if let resumeRun = resumeRun {
+                arguments += ["--resume-run", resumeRun.path]
+            }
             var environment: [String: String] = [:]
             if !apiKey.isEmpty,
                let data = try? Data(contentsOf: provider),

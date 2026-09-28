@@ -22,6 +22,7 @@ COMPLETED = {
     "KEEP_CURRENT",
     "USER_EDITED",
     "WAIVED",
+    "DRAFT_SUGGESTION",  # Transient native-copy target; never a human decision.
 }
 
 

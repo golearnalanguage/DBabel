@@ -19,6 +19,7 @@ from providers.base import (
     TextGenerationProvider,
 )
 from runtime.models import GenerationRequest
+from runtime.checkpoint import checkpoint_digest, load_checkpoint, save_checkpoint
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -717,6 +718,8 @@ def adjudicate_semantics(
     document_name: str,
     limits: SemanticLimits = SemanticLimits(),
     on_progress=None,
+    checkpoint_path: Path | None = None,
+    checkpoint_context: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     units = _validate_input(
         post_translation
@@ -736,19 +739,27 @@ def adjudicate_semantics(
         post_translation
     )
 
-    batches = batch_units(
-        units,
-        limits,
-    )
-
-    outcomes: List[
-        Dict[str, Any]
-    ] = []
-
-    receipts = []
-
-    pending = list(batches)
-    completed = 0
+    expected_ids = [unit["id"] for unit in units]
+    digest = checkpoint_digest({
+        "post_translation": post_translation,
+        "source_language": source_language,
+        "target_language": target_language,
+        "document_name": document_name,
+        "limits": vars(limits),
+        "context": checkpoint_context,
+    })
+    outcomes: List[Dict[str, Any]] = []
+    receipts: List[Dict[str, Any]] = []
+    if checkpoint_path is not None:
+        outcomes, receipts = load_checkpoint(
+            checkpoint_path, stage="ADJUDICATION",
+            input_digest=digest, expected_ids=expected_ids,
+        )
+    completed = len(outcomes)
+    if completed and on_progress:
+        on_progress({"stage": "ADJUDICATION", "state": "RESUMED",
+                     "completed_units": completed, "total_units": len(units)})
+    pending = list(batch_units(units[completed:], limits))
     while pending:
         batch = pending.pop(0)
         batch_index = len(receipts) + 1
@@ -827,6 +838,11 @@ def adjudicate_semantics(
                 dict(response.usage),
         })
         completed += len(batch)
+        if checkpoint_path is not None:
+            save_checkpoint(
+                checkpoint_path, stage="ADJUDICATION",
+                input_digest=digest, items=outcomes, receipts=receipts,
+            )
         if on_progress:
             on_progress({
                 "stage": "ADJUDICATION", "state": "BATCH_COMPLETED",
@@ -834,11 +850,6 @@ def adjudicate_semantics(
                 "unit_id": batch[-1]["id"],
                 "location": batch[-1].get("location", ""),
             })
-
-    expected_ids = [
-        unit["id"]
-        for unit in units
-    ]
 
     if [
         item["id"]

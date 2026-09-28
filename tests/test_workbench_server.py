@@ -1,5 +1,6 @@
 import http.client
 import json
+import subprocess
 import sys
 import tempfile
 import threading
@@ -11,6 +12,18 @@ ROOT=Path(__file__).resolve().parents[1];SCRIPTS=ROOT/'scripts'
 if str(SCRIPTS) not in sys.path:sys.path.insert(0,str(SCRIPTS))
 from review_model import default_decision,write_json,write_jsonl
 from start_review_workbench import Handler,WorkbenchState
+from review_chat import load_messages
+
+
+class StandaloneLauncherTests(unittest.TestCase):
+    def test_server_imports_from_another_working_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            process = subprocess.run(
+                [sys.executable, str(SCRIPTS / 'start_review_workbench.py'), '--help'],
+                cwd=directory, capture_output=True, text=True, timeout=15,
+            )
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertIn('--provider-config', process.stdout)
 
 
 def make_fake_repo(root):
@@ -40,12 +53,72 @@ class ServerTests(unittest.TestCase):
 
     def test_api_requires_token(self):
         status,_=self.req('GET','/api/bootstrap');self.assertEqual(status,403)
+    def test_chat_uses_selected_unit_and_survives_reopening(self):
+        class FakeProvider:
+            def generate(self, request):
+                self.request=request
+                return type('Response',(),{'text':'The source and target need a terminology check.'})()
+        provider=FakeProvider()
+        self.server.state.chat_provider=provider
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        status,result=self.req('POST','/api/chat',{'unit_id':'U1','message':'Why this wording?'},headers)
+        self.assertEqual(status,200)
+        self.assertEqual(result['answer']['role'],'assistant')
+        self.assertIn('"source": "s"',provider.request.user)
+        self.assertEqual(len(load_messages(self.bundle)),2)
+        status,history=self.req('GET','/api/chat',headers=headers)
+        self.assertEqual(status,200)
+        self.assertEqual(history['messages'][1]['content'],result['answer']['content'])
+        self.assertEqual(len(json.loads((self.bundle/'chat.backup.json').read_text())),2)
+        status,_=self.req('POST','/api/chat',{'unit_id':'MISSING','message':'Why?'},headers)
+        self.assertEqual(status,400)
+    def test_chat_accepts_document_attachment_and_keeps_local_copy(self):
+        import base64
+        class FakeProvider:
+            def generate(self, request):
+                self.request=request
+                return type('Response',(),{'text':'The attached guidance says to retain the name.'})()
+        provider=FakeProvider();self.server.state.chat_provider=provider
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        attachment={'name':'guidance.txt','content_base64':base64.b64encode('Keep XFS unchanged.\n'.encode()).decode()}
+        status,result=self.req('POST','/api/chat',{'unit_id':'U1','message':'Apply this guidance?',
+                                                   'attachments':[attachment]},headers)
+        self.assertEqual(status,200)
+        self.assertIn('Keep XFS unchanged.',provider.request.user)
+        saved=result['question']['attachments'][0]
+        self.assertTrue((self.bundle/saved['file']).is_file())
+        self.assertEqual((self.bundle/saved['file']).read_text(),'Keep XFS unchanged.\n')
+    def test_workspace_position_is_saved_for_reopen(self):
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        position={'selected':'U1','page':0,'page_size':50,'view':'Review','scroll_top':183}
+        status,result=self.req('PUT','/api/ui-state',position,headers)
+        self.assertEqual(status,200)
+        self.assertEqual(result['scroll_top'],183)
+        status,reloaded=self.req('GET','/api/ui-state',headers=headers)
+        self.assertEqual(status,200)
+        self.assertEqual(reloaded['selected'],'U1')
+        self.assertEqual(json.loads((self.bundle/'ui_state.backup.json').read_text())['scroll_top'],183)
+        status,_=self.req('PUT','/api/ui-state',{**position,'selected':'MISSING'},headers)
+        self.assertEqual(status,400)
+    def test_one_review_updates_exact_duplicate_but_keeps_both_rows(self):
+        original=json.loads((self.bundle/'units.jsonl').read_text())
+        duplicate={**original,'id':'U2','location':'another location'}
+        write_jsonl(self.bundle/'units.jsonl',[original,duplicate])
+        write_json(self.bundle/'decisions.json',[default_decision('U1'),default_decision('U2')])
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        status,result=self.req('PUT','/api/decisions/U1',{'status':'KEEP_CURRENT'},headers)
+        self.assertEqual(status,200)
+        self.assertEqual(len(result['linked_decisions']),1)
+        status,bootstrap=self.req('GET','/api/bootstrap',headers=headers)
+        self.assertEqual(len(bootstrap['units']),2)
+        self.assertEqual([d['status'] for d in bootstrap['decisions']],['KEEP_CURRENT','KEEP_CURRENT'])
     def test_wrong_origin_rejected(self):
         status,_=self.req('GET','/api/bootstrap',headers={'X-DBabel-Session':self.token,'Origin':'https://evil.example'});self.assertEqual(status,403)
     def test_save_decision_and_gate(self):
         headers={'X-DBabel-Session':self.token,'Origin':self.origin}
         status,body=self.req('PUT','/api/decisions/U1',{'status':'KEEP_CURRENT'},headers);self.assertEqual(status,200);self.assertEqual(body['decision']['status'],'KEEP_CURRENT');self.assertEqual(body['decision']['recheck']['status'],'PASS')
         status,gate=self.req('POST','/api/export-gate',{},headers);self.assertEqual(status,200);self.assertEqual(gate['status'],'AUTHORIZED')
+        self.assertEqual(json.loads((self.bundle/'decisions.backup.json').read_text())[0]['status'],'KEEP_CURRENT')
 
 
     def test_bulk_decisions_fail_atomically_and_preserve_notes(self):

@@ -340,7 +340,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-vis
 .segment-panel{overflow:hidden}.table-toolbar>*{flex-shrink:0}
 .table-toolbar select,.table-toolbar #sortSelect{min-width:0;max-width:100%;flex:0 1 175px}
 .inspector-head{height:auto;min-height:42px;flex-wrap:wrap}.inspector-head>div{flex-shrink:0}
-.brand-lockup img{object-fit:contain;background:#fff;border-radius:8px}
+.brand-lockup img{object-fit:contain;background:transparent;border-radius:0}
 .exchange-panel{position:fixed;inset:6vh max(16px,calc((100vw - 850px)/2));z-index:30;max-height:88vh;overflow:auto;background:var(--surface);border:2px solid var(--line-strong);border-radius:16px;box-shadow:0 16px 100px #0008;padding:24px}
 .exchange-panel h2{margin:0}.exchange-panel p{line-height:1.6}.exchange-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
 .intake-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:20px 0}.intake-grid label{min-width:0;display:grid;gap:8px}.intake-grid input{min-width:0;width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--surface-2)}.alignment-control{display:flex;gap:8px;line-height:1.6}
@@ -350,12 +350,18 @@ button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-vis
 @media(max-width:680px){.intake-grid{grid-template-columns:1fr}.exchange-panel{inset:12px;max-height:calc(100vh - 24px);padding:18px}.status-issues-row{grid-template-columns:1fr}.inspector{padding:18px 16px 26px}.document-bar{display:grid;grid-template-columns:minmax(0,1fr)}.global-search{min-width:0}.reviewer-zone{justify-content:flex-start;gap:14px}.theme-control{margin-left:0}.export-summary{display:flex}.result-export{width:100%}.result-export select{width:auto}.metrics-strip{gap:8px}.main-nav .nav-item{height:auto;min-height:40px;font-size:12px}}
 
 /* The native macOS shell supplies one continuous material behind the page. */
+.chat-panel{display:grid;gap:8px;padding:14px;border-top:1px solid var(--line);background:var(--surface-2)}
+.chat-heading{display:flex;justify-content:space-between;gap:8px}.chat-heading span,.chat-input-label,.chat-actions span{color:var(--muted);font-size:11px}
+.chat-messages{max-height:180px;overflow:auto;display:grid;gap:7px}.chat-message{padding:8px 10px;border-radius:8px;background:var(--surface-3);white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.5}.chat-message.user{background:var(--blue-soft)}.chat-message small{display:block;font-size:10px;color:var(--muted)}
+.chat-shortcuts{display:flex;gap:6px;flex-wrap:wrap}.chat-shortcuts button,.chat-actions button{border:1px solid var(--line-strong);border-radius:7px;background:var(--surface-3);color:var(--text);padding:6px 9px;cursor:pointer}
+.chat-panel textarea{width:100%;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--text);padding:8px 10px;resize:vertical}.chat-actions{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chat-file-label{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-soft);flex-wrap:wrap}.chat-file-label input{max-width:100%;font-size:11px}.chat-file-names{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
 html.desktop-macos{
   --mac-accent:#007aff;--bg:transparent;--surface:rgba(255,255,255,.12);
   --surface-2:rgba(255,255,255,.28);--surface-3:rgba(255,255,255,.36);
   --surface-4:rgba(255,255,255,.46);--text:#1d1d1f;
-  --text-soft:#46464a;--muted:#606066;--line:rgba(40,40,45,.14);
-  --line-strong:rgba(40,40,45,.22);
+  --text-soft:#46464a;--muted:#606066;--line:rgba(40,40,45,.08);
+  --line-strong:rgba(40,40,45,.16);
   --blue:var(--mac-accent);--blue-strong:var(--mac-accent);
   --blue-soft:color-mix(in srgb,var(--mac-accent) 13%,transparent);
   --purple:#7053a6;--purple-soft:#f0eafa;--green:#167e5d;--green-soft:#e4f4ed;
@@ -366,8 +372,8 @@ html.desktop-macos[data-theme="dark"]{
   --bg:transparent;--surface:rgba(20,20,22,.12);
   --surface-2:rgba(22,22,24,.24);--surface-3:rgba(35,35,38,.36);
   --surface-4:rgba(50,50,53,.46);--text:#f5f5f7;
-  --text-soft:#d0d0d4;--muted:#b3b3ba;--line:rgba(255,255,255,.13);
-  --line-strong:rgba(255,255,255,.21);
+  --text-soft:#d0d0d4;--muted:#b3b3ba;--line:rgba(255,255,255,.08);
+  --line-strong:rgba(255,255,255,.16);
   --blue-soft:color-mix(in srgb,var(--mac-accent) 19%,transparent);
   --purple:#c6adef;--purple-soft:#352b43;
   --green:#83d9b7;--green-soft:#244238;
@@ -385,6 +391,30 @@ html.desktop-macos .workspace{
 }
 html.desktop-macos .brand-lockup{height:90px;padding:15px 18px;background:transparent}
 html.desktop-macos .theme-control{display:none}
+html.desktop-macos .language-control{display:none}
+html.desktop-macos .inspector{display:flex;flex-direction:column;overflow:hidden;padding:0}
+html.desktop-macos .inspector-content{flex:1 1 auto;min-height:0;overflow:auto;padding:18px 20px 20px}
+html.desktop-macos .inspector-head strong,
+html.desktop-macos .chat-heading strong{font-size:14px;line-height:1.4}
+html.desktop-macos .field-head strong,
+html.desktop-macos .status-issues-row strong{font-size:13px;line-height:1.4}
+html.desktop-macos .chat-panel{
+  flex:0 0 auto;max-height:42%;display:flex;flex-direction:column;gap:8px;
+  padding:13px 18px 16px;background:var(--surface-2);
+  border-top:1px solid var(--line);
+}
+html.desktop-macos .chat-heading{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+html.desktop-macos .chat-heading span,html.desktop-macos .chat-input-label,
+html.desktop-macos .chat-actions span{color:var(--muted);font-size:11px}
+html.desktop-macos .chat-messages{min-height:42px;max-height:150px;overflow:auto;display:grid;gap:7px}
+html.desktop-macos .chat-message{padding:8px 10px;border-radius:9px;background:var(--surface-3);font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+html.desktop-macos .chat-message.user{background:var(--blue-soft)}
+html.desktop-macos .chat-message small{display:block;color:var(--muted);font-size:10px;margin-bottom:3px}
+html.desktop-macos .chat-shortcuts{display:flex;gap:6px;flex-wrap:wrap}
+html.desktop-macos .chat-shortcuts button,html.desktop-macos .chat-actions button{border:1px solid var(--line-strong);border-radius:7px;background:var(--surface-3);color:var(--text);padding:6px 9px;font-size:11px;cursor:pointer}
+html.desktop-macos .chat-panel textarea{min-height:54px;max-height:90px;resize:vertical;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface-3);color:var(--text);padding:8px 10px;font:inherit;font-size:12px;line-height:1.5}
+html.desktop-macos .chat-actions{display:flex;justify-content:space-between;align-items:center;gap:8px}
+html.desktop-macos .chat-actions button{background:var(--blue);color:#fff;border-color:var(--blue);min-width:60px}
 html.desktop-macos .brand-lockup img{max-height:60px;width:100%;object-fit:contain}
 html.desktop-macos .main-nav{padding:12px 8px}
 html.desktop-macos .nav-item{
@@ -435,6 +465,9 @@ html.desktop-macos .exchange-panel{
   html.desktop-macos .app-shell{height:auto;display:block}
   html.desktop-macos .sidebar{border-right:0;border-bottom:1px solid var(--line);margin:0}
   html.desktop-macos .workspace{border:0}
+  html.desktop-macos .inspector{overflow:visible}
+  html.desktop-macos .inspector-content{overflow:visible}
+  html.desktop-macos .chat-panel{max-height:none}
 }
 @media(max-width:680px){
   html.desktop-macos .exchange-panel{

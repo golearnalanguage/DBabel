@@ -112,6 +112,17 @@ class LongDocumentTests(unittest.TestCase):
             # These are explicit simulation decisions, never automatic approval.
             bundle = Path(manifest["artifacts"]["review_bundle"]["path"])
             data = load_bundle(bundle)
+            draft_output = root / "long-sop.draft.xlsx"
+            draft_receipt = export_bundle(bundle, ROOT, source, draft_output,
+                                          export_mode="DRAFT")
+            self.assertEqual(draft_receipt["status"], "DRAFT_EXPORTED",
+                             draft_receipt.get("blockers"))
+            self.assertEqual(len(draft_receipt["review_scope"]["unreviewed_unit_ids"]), 130)
+            with zipfile.ZipFile(draft_output) as archive:
+                sheet = archive.read("xl/worksheets/sheet1.xml").decode("utf-8")
+            self.assertIn("Step 001:", sheet)
+            self.assertIn("Step 130:", sheet)
+            self.assertNotIn("步骤 001", sheet)
             decisions = []
             for review_unit, previous in zip(data["units"], data["decisions"]):
                 if "V$DATABASE" in review_unit["source"]:

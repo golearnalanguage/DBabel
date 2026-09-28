@@ -60,6 +60,13 @@ ready. Native export supports DOCX, TXT, Markdown and XLSX: supply the same
 `--original` when creating the session, then start `scripts/start_review_workbench.py`
 with both `--original` and `--output`.
 Supported single-target upload sessions configure these paths automatically.
+For a review in progress, `DRAFT` exports every aligned approved or suggested
+translation into a new native-format copy and identifies unreviewed units in
+its receipt. `FINAL` still requires human decisions and fresh QA. The desktop
+app saves translation checkpoints after provider batches; resume a failed run
+with the same source, language pair and provider settings instead of repeating
+successful batches. Review decisions, notes, chat history and the active view
+are stored in the local session; do not treat AI chat as a human decision.
 Review-only sessions export status-bearing review results in six formats. Portable
 Review exports decisions for import and is a fallback surface, not the Full Local
 Review Workbench. Never claim capability parity between the two. Native delivery includes a receipt, bilingual

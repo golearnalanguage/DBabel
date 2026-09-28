@@ -194,6 +194,12 @@ class OpenAICompatibleProvider(
             + "/chat/completions"
         )
 
+        user_content = request.user
+        if request.images:
+            user_content = [{"type": "text", "text": request.user}] + [
+                {"type": "image_url", "image_url": {"url": image}}
+                for image in request.images
+            ]
         payload = {
             "model": self._config.model,
             "messages": [
@@ -203,7 +209,7 @@ class OpenAICompatibleProvider(
                 },
                 {
                     "role": "user",
-                    "content": request.user,
+                    "content": user_content,
                 },
             ],
             "stream": False,

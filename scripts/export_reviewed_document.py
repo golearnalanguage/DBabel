@@ -33,6 +33,7 @@ from xlsx_review_adapter import (
 )
 from review_model import (
     evaluate_export_gate,
+    final_target_for,
     fresh_recheck_all,
     load_bundle,
     save_decisions,
@@ -64,12 +65,15 @@ def export_bundle(
         if path.resolve() == original.resolve() or path.exists():
             raise ValueError('Export destination already exists or is the original: ' + str(path))
     data = load_bundle(bundle)
-    updated_decisions, qa_by_unit = fresh_recheck_all(
-        data, repo_root, glossary_path=glossary, qa_runner=qa_runner
-    )
-    save_decisions(data["bundle"], updated_decisions)
-    data = load_bundle(bundle)
-    gate = evaluate_export_gate(data, fresh_qa_by_unit=qa_by_unit, original_path=original, export_mode=export_mode)
+    qa_by_unit = None
+    if export_mode != "DRAFT":
+        updated_decisions, qa_by_unit = fresh_recheck_all(
+            data, repo_root, glossary_path=glossary, qa_runner=qa_runner
+        )
+        save_decisions(data["bundle"], updated_decisions)
+        data = load_bundle(bundle)
+    gate = evaluate_export_gate(data, fresh_qa_by_unit=qa_by_unit,
+                                original_path=original, export_mode=export_mode)
 
     if gate["status"] != "AUTHORIZED":
         if receipt_path:
@@ -103,6 +107,21 @@ def export_bundle(
     created = []
     try:
         decisions_by_id = data["decisions_by_id"]
+        exported_targets = None
+        if export_mode == "DRAFT":
+            exported_targets = {}
+            for unit in data["units"]:
+                decision = decisions_by_id[unit["id"]]
+                if decision["status"] in {"ACCEPT_SUGGESTION", "KEEP_CURRENT", "USER_EDITED", "WAIVED"}:
+                    target = final_target_for(unit, decision)
+                else:
+                    target = str(unit.get("suggested_target") or "")
+                exported_targets[unit["id"]] = target
+            # Adapter-only values. They are never written to the review session.
+            decisions_by_id = {
+                uid: {"status": "DRAFT_SUGGESTION", "approved_target": target}
+                for uid, target in exported_targets.items()
+            }
         export_units = data["units"]
         if export_mode == "CHECKPOINT":
             included = set(gate["review_scope"]["included_unit_ids"])
@@ -161,13 +180,13 @@ def export_bundle(
                 checks = [
                     'UTF-8 BOM, original line endings, blank lines '
                     'and all unmodified lines preserved',
-                    'Approved text changes round-trip verified; '
+                    'Target text changes round-trip verified; '
                     'Markdown markup in edited lines needs review'
                 ]
             with output.open('xb') as stream:
                 created.append(output)
                 stream.write(staged.read_bytes())
-        gate["status"] = "VERIFIED"
+        gate["status"] = "DRAFT_EXPORTED" if export_mode == "DRAFT" else "VERIFIED"
         gate["checked_at"] = utc_now()
         gate["output"] = {
             "path": str(output),
@@ -178,7 +197,7 @@ def export_bundle(
             "status": "PASS",
             "checks": checks + ["{} reviewed unit(s) changed".format(len(changed))],
         }
-        handoff = build_report(data, gate)
+        handoff = build_report(data, gate, exported_targets=exported_targets)
         contents = {
             'handoff_json': json.dumps(handoff, ensure_ascii=False, indent=2)+'\n',
             'handoff_markdown': render_markdown(handoff),
@@ -213,7 +232,7 @@ def main() -> int:
     parser.add_argument("--output", required=True, help="New document path with the same extension; original is never overwritten")
     parser.add_argument("--glossary")
     parser.add_argument("--receipt")
-    parser.add_argument("--export-mode", choices=["FINAL", "CHECKPOINT"], default="FINAL")
+    parser.add_argument("--export-mode", choices=["FINAL", "CHECKPOINT", "DRAFT"], default="FINAL")
     args = parser.parse_args()
 
     receipt = export_bundle(

@@ -75,6 +75,126 @@ class RuntimeOrchestrator:
             )
         ).resolve()
 
+    def _resume_run(
+        self, *, resume_run: Path, source: Path,
+        source_language: str, target_language: str,
+        provider_config_path: Path,
+    ) -> tuple[ProjectRun, dict]:
+        root = Path(resume_run).expanduser().resolve()
+        if root.name == "run.json":
+            root = root.parent
+        if root.parent != self.workspace_root or not root.name.startswith("RUN_"):
+            raise OrchestrationError("resume run is outside the selected workspace")
+        run = ProjectRun(root.name, root, root / "run.json",
+                         root / "audit.jsonl", root / "runtime-plan.json")
+        manifest = run.load_manifest()
+        if manifest.get("status") != "FAILED" or manifest.get("mode") != "TRANSLATE":
+            raise OrchestrationError("only a failed translation run can be resumed")
+        if (manifest.get("source", {}).get("path") != str(Path(source).resolve())
+                or manifest.get("source_language") != source_language
+                or manifest.get("target_language") != target_language):
+            raise OrchestrationError("resume source or languages differ from the saved run")
+        config = ProviderConfig.from_path(Path(provider_config_path))
+        if manifest.get("provider") != config.redacted():
+            raise OrchestrationError("resume API service differs from the saved run")
+        run.assert_source_unchanged()
+        return run, manifest
+
+    @staticmethod
+    def _saved_artifact(run: ProjectRun, manifest: dict, name: str) -> Optional[Path]:
+        record = (manifest.get("artifacts") or {}).get(name)
+        if not record:
+            return None
+        path = Path(record["path"]).resolve()
+        if path.parent != run.root or not path.is_file() or sha256_file(path) != record.get("sha256"):
+            raise OrchestrationError("saved {} artifact changed or disappeared".format(name))
+        return path
+
+    def _resume_translation_to_qa(
+        self, *, resume_run: Path, source: Path, source_language: str,
+        target_language: str, provider_config_path: Path,
+        default_text_role: str, provider: Optional[TextGenerationProvider],
+        limits: TranslationLimits, on_progress: Optional[Callable[[dict], None]],
+    ) -> dict:
+        run, manifest = self._resume_run(
+            resume_run=resume_run, source=source,
+            source_language=source_language, target_language=target_language,
+            provider_config_path=provider_config_path,
+        )
+        ingest_path = self._saved_artifact(run, manifest, "ingest")
+        if ingest_path is None:
+            raise OrchestrationError("this run stopped before extraction; start a new run")
+        ingest = json.loads(ingest_path.read_text(encoding="utf-8"))
+        translation_path = self._saved_artifact(run, manifest, "translation_proposals")
+        post_path = self._saved_artifact(run, manifest, "post_translation")
+        audit = AuditTrail(run.audit_path, run.run_id)
+        stage = "TRANSLATION"
+        try:
+            if translation_path is None:
+                if on_progress:
+                    on_progress({"stage": stage, "state": "STARTED",
+                                 "total_units": len(ingest["units"])})
+                config = ProviderConfig.from_path(Path(provider_config_path))
+                effective_provider = provider or OpenAICompatibleProvider(config)
+                translation = translate_units(
+                    provider=effective_provider, units=ingest["units"],
+                    source_language=source_language, target_language=target_language,
+                    limits=limits, on_progress=on_progress,
+                    checkpoint_path=run.root / "translation-checkpoint.json",
+                    checkpoint_context=config.redacted(),
+                )
+                translation_path = run.root / "translation-proposals.json"
+                atomic_write_json(translation_path, translation)
+                run.assert_source_unchanged()
+                manifest = run.update(
+                    status="TRANSLATION_PROPOSED", current_stage=stage,
+                    artifacts={"translation_proposals": {
+                        "path": str(translation_path), "sha256": sha256_file(translation_path),
+                    }}, failure=None,
+                )
+                audit.append(stage=stage, status="PASS",
+                             details={"unit_count": translation["unit_count"], "resumed": True})
+            else:
+                translation = json.loads(translation_path.read_text(encoding="utf-8"))
+                if on_progress:
+                    on_progress({"stage": stage, "state": "COMPLETED",
+                                 "completed_units": len(ingest["units"]),
+                                 "total_units": len(ingest["units"])})
+            stage = "POST_TRANSLATION_QA"
+            if post_path is None:
+                if on_progress:
+                    on_progress({"stage": stage, "state": "STARTED"})
+                post = prepare_post_translation(
+                    translation, source_language=source_language,
+                    target_language=target_language, default_text_role=default_text_role,
+                )
+                post_path = run.root / "post-translation.json"
+                atomic_write_json(post_path, post)
+                run.assert_source_unchanged()
+                manifest = run.update(
+                    status="READY_FOR_SEMANTIC_ADJUDICATION", current_stage=stage,
+                    artifacts={"post_translation": {
+                        "path": str(post_path), "sha256": sha256_file(post_path),
+                    }}, failure=None,
+                )
+                audit.append(stage=stage, status="PASS", details={"resumed": True})
+            else:
+                manifest = run.update(
+                    status="READY_FOR_SEMANTIC_ADJUDICATION",
+                    current_stage=stage, failure=None,
+                )
+            if on_progress:
+                on_progress({"stage": stage, "state": "COMPLETED"})
+            return manifest
+        except Exception as exc:
+            failure = {"stage": stage, "type": type(exc).__name__, "reason": str(exc)}
+            try:
+                run.update(status="FAILED", current_stage=stage, failure=failure)
+                audit.append(stage=stage, status="FAILED", details=failure)
+            except Exception:
+                pass
+            raise OrchestrationError("{} failed: {}".format(stage, exc)) from exc
+
     def prepare_translation(
         self,
         *,
@@ -355,12 +475,22 @@ class RuntimeOrchestrator:
         ] = None,
         limits: TranslationLimits = TranslationLimits(),
         on_progress: Optional[Callable[[dict], None]] = None,
+        resume_run: Optional[Path] = None,
     ) -> dict:
         """Run TRANSLATE through deterministic post-translation QA.
 
         This method deliberately stops before semantic adjudication,
         review-session creation, human approval, or export.
         """
+
+        if resume_run is not None:
+            return self._resume_translation_to_qa(
+                resume_run=resume_run, source=source,
+                source_language=source_language, target_language=target_language,
+                provider_config_path=provider_config_path,
+                default_text_role=default_text_role, provider=provider,
+                limits=limits, on_progress=on_progress,
+            )
 
         if on_progress:
             on_progress({"stage": "FORMAT_PROBE", "state": "STARTED"})
@@ -554,6 +684,8 @@ class RuntimeOrchestrator:
                     target_language,
                 limits=limits,
                 on_progress=on_progress,
+                checkpoint_path=run.root / "translation-checkpoint.json",
+                checkpoint_context=config.redacted(),
             )
             if on_progress:
                 on_progress({"stage": stage, "state": "COMPLETED",
@@ -756,6 +888,7 @@ class RuntimeOrchestrator:
         semantic_limits:
             SemanticLimits = SemanticLimits(),
         on_progress: Optional[Callable[[dict], None]] = None,
+        resume_run: Optional[Path] = None,
     ) -> dict:
         """Run TRANSLATE through the Full Local Workbench delivery gate.
 
@@ -784,6 +917,7 @@ class RuntimeOrchestrator:
                 limits=
                     translation_limits,
                 on_progress=on_progress,
+                resume_run=resume_run,
             )
         )
 
@@ -857,25 +991,10 @@ class RuntimeOrchestrator:
                 run.load_manifest()
             )
 
-            ingest_path = Path(
-                current[
-                    "artifacts"
-                ][
-                    "ingest"
-                ][
-                    "path"
-                ]
-            )
-
-            post_path = Path(
-                current[
-                    "artifacts"
-                ][
-                    "post_translation"
-                ][
-                    "path"
-                ]
-            )
+            ingest_path = self._saved_artifact(run, current, "ingest")
+            post_path = self._saved_artifact(run, current, "post_translation")
+            if ingest_path is None or post_path is None:
+                raise OrchestrationError("required saved intake artifacts are missing")
 
             ingest = json.loads(
                 ingest_path.read_text(
@@ -926,8 +1045,10 @@ class RuntimeOrchestrator:
                 )
             )
 
+            saved_semantic = self._saved_artifact(run, current, "semantic_adjudication")
             semantic = (
-                adjudicate_semantics(
+                json.loads(saved_semantic.read_text(encoding="utf-8"))
+                if saved_semantic is not None else adjudicate_semantics(
                     provider=
                         effective_provider,
                     post_translation=
@@ -941,6 +1062,8 @@ class RuntimeOrchestrator:
                     limits=
                         semantic_limits,
                     on_progress=on_progress,
+                    checkpoint_path=run.root / "semantic-checkpoint.json",
+                    checkpoint_context=config.redacted(),
                 )
             )
 

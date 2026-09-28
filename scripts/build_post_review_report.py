@@ -10,12 +10,13 @@ from pathlib import Path
 from review_model import load_bundle, final_target_for, sha256_json, utc_now
 
 
-def build_report(data, receipt=None):
+def build_report(data, receipt=None, exported_targets=None):
     decisions = data['decisions_by_id']
     units = []
     for unit in data['units']:
         decision = decisions[unit['id']]
-        target = final_target_for(unit, decision)
+        target = (exported_targets[unit['id']] if exported_targets is not None
+                  else final_target_for(unit, decision))
         included = receipt is None or unit['id'] in receipt.get('review_scope', {}).get('included_unit_ids', [])
         action = ('CHANGED' if target != unit['current_target'] else 'UNCHANGED') if included else 'NOT_EXPORTED'
         units.append({
@@ -35,7 +36,8 @@ def build_report(data, receipt=None):
             'exported_target': target if included else unit['current_target'],
         })
     return {
-        'format_version': '1.0', 'report_type': 'POST_HUMAN_REVIEW_HANDOFF',
+        'format_version': '1.0', 'report_type': ('DRAFT_TRANSLATION_HANDOFF'
+            if receipt and receipt.get('export_mode') == 'DRAFT' else 'POST_HUMAN_REVIEW_HANDOFF'),
         'session_id': data['session']['session_id'], 'created_at': utc_now(),
         'source_sha256': data['session']['original']['sha256'],
         'decision_digest': sha256_json([decisions[k] for k in sorted(decisions)]),

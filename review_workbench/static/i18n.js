@@ -17,7 +17,8 @@
     'Download decisions before switching language; browser storage is unavailable.':'浏览器存储不可用，请先下载决策文件再切换语言。','Language':'语言','Interface language':'界面语言','Review':'审核','Terminology':'术语','Evidence':'证据','Quality Check':'质量检查','Reports':'报告','Project Settings':'项目设置','Upload documents':'上传文档',
     'Filters':'筛选','Clear all':'清除筛选','Review Status':'审核状态','To Review':'待审核','Reviewed':'已审核','With Issues':'有问题','Issue Type':'问题类型','Location':'位置','Tag':'标签','All locations':'所有位置','All tags':'所有标签',
     'Theme':'主题','System':'跟随系统','Light':'浅色','Dark':'深色','Appearance':'外观','Appearance theme':'外观主题','Review activity':'审核记录','Notifications':'审核通知','Technical Documentation':'技术文档',
-    'Total Segments':'单元总数','All Segments':'所有单元','Final · all reviewed':'最终版 · 全部已审核','Checkpoint · reviewed changes':'阶段版 · 已审核修改','Export mode':'导出模式','Export Translation...':'导出译文…','Export Translation':'导出译文','Export Checkpoint':'导出阶段版','Export review snapshot':'导出审核快照',
+    'Total Segments':'单元总数','All Segments':'所有单元','Draft · all translations':'译文草稿 · 全部替换','Final · all reviewed':'最终版 · 全部已审核','Checkpoint · reviewed changes':'阶段版 · 已审核修改','Export mode':'导出模式','Export Translation...':'导出译文…','Export Translation':'导出译文','Export Draft':'导出译文草稿','Export Checkpoint':'导出阶段版','Export review snapshot':'导出审核快照',
+    'Draft export uses suggestions for pending units and preserves the original document format.':'草稿导出对待审核单元使用建议译文，并保留原文档格式。','Draft export includes unconfirmed suggestions. Review before using it as a final document.':'草稿包含未经确认的建议译文；作为最终文档使用前请审核。','Draft downloaded: original-format translation, bilingual view, Agent handoff and receipt.':'已下载草稿交付包：原格式译文、双语对照、Agent 交接记录和回执。',
     'Complete all required reviews to enable export.':'完成必要审核后可导出最终版。','Includes pending rows and decision status. Native DOCX, TXT, MD or XLSX export requires an original and output path.':'包含待审核单元和决策状态。DOCX、TXT、MD 或 XLSX 原格式导出需配置原件与输出路径。',
     'Select all matches':'选择全部匹配项','Keep Current':'保留当前译文','Defer':'暂缓','Clear':'清除','Sort: Document Order':'排序：文档顺序','Sort: Review Status':'排序：审核状态','Sort: Issues':'排序：问题','Previous page':'上一页','Next page':'下一页','Comfortable rows':'宽松行距','Compact rows':'紧凑行距','Select page':'选择本页',
     'Source':'原文','Target':'译文','Status':'状态','Issues':'问题','Edit':'编辑','Editing':'编辑中','Use Edit':'保存修改','Copy source':'复制原文','Close inspector':'关闭详情','Suggested Translation':'建议译文','DBabel Suggestion':'DBabel 建议','Human confirmation required':'请人工确认','Accepted by reviewer':'审校人员已接受建议','Current text kept by reviewer':'审校人员已保留当前译文','Edited by reviewer':'审校人员已修改译文','Waived by reviewer':'审校人员已豁免','Technique reasoning':'翻译方法说明','Diagnostic · human decision unchanged':'分析依据 · 保留人工决策',
@@ -37,6 +38,26 @@
     'Upload project glossary':'上传项目术语表','Project glossary':'项目术语表','Project glossary file':'项目术语表文件','Choose the DBabel project glossary CSV or JSON. Approved entries apply only within their language and product scope.':'选择符合 DBabel 模板的 CSV 或 JSON 术语表。已批准条目仅在对应语言和产品范围内生效。','Validate and use glossary':'验证并使用术语表','No applicable approved terms; score unavailable.':'尚无适用的已批准术语，暂无评分。','Terminology compliance':'术语符合率','Score = passed applicable term/unit checks ÷ all applicable checks. This measures glossary compliance.':'评分 = 通过的适用术语与单元检查数 ÷ 全部适用检查数。该指标衡量术语表符合程度。','Check required':'需要检查','Session saved at: ':'会话保存位置：',
     'Agent review handoff downloaded. Semantic review has not run.':'已下载 Agent 复核包，请交给 Agent 执行语义复核。','Export reviewed changes only? Unreviewed content stays unchanged. This is not a fully reviewed release.':'导出阶段版？将仅应用已审核修改，未审核内容保留原样。',
     'system':'跟随系统','dark':'深色','light':'浅色'
+    ,'Ask AI about this translation':'与 AI 讨论译文'
+    ,'Current segment':'当前单元'
+    ,'Question or follow-up':'提问或继续讨论'
+    ,'Ask why this translation was proposed, or continue the session conversation.':'询问这句为何这样翻译，或继续本会话中的讨论。'
+    ,'Quote source + target':'引用当前原文与译文'
+    ,'Why this translation?':'为何这样翻译？'
+    ,'Why was this translation proposed? Explain the key choices and any uncertain numbers or terms.':'为什么建议这样翻译？请说明关键措辞选择，并指出有疑问的数字或术语。'
+    ,'Send':'发送','You':'你','AI':'AI'
+    ,'Configure an API service to enable chat.':'请先在 App 中配置 API 服务以启用聊天。'
+    ,'Message exceeds 4000 characters.':'消息不能超过 4000 字符。'
+    ,'Asking AI…':'正在询问 AI…'
+    ,'Saved in this review session.':'已保存到当前审核会话。'
+    ,'Search in browser':'在浏览器搜索'
+    ,'Add documents or images':'添加文档或图片'
+    ,'Choose up to three files, each no larger than 16 MiB.':'最多选择三个文件，每个不超过 16 MiB。'
+    ,'Could not read attachment.':'无法读取附件。'
+    ,'NUMBER':'数字','REVIEW':'待核对','CLI_OPTION':'命令参数','ENV_VAR':'环境变量'
+    ,'PROTECTED':'受保护文本','PREFERRED_TERM':'首选术语','EVIDENCE_CONFLICT':'证据冲突'
+    ,'TECH_CLAIM':'技术主张'
+    ,'Applied to identical units':'已同步审核相同单元'
   };
   let language='en';try{language=localStorage.getItem('dbabel-language')||'en';}catch(_){}
   if(language!=='zh-CN')language='en';

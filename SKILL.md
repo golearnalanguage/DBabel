@@ -142,7 +142,9 @@ When preserving layout, use a single target language per native document. Source
 Use this delivery constraint in the task prompt when requested:
 
 ```text
-Replace only approved text in a new copy of the original file. Preserve paragraph,
+For FINAL, replace only approved text in a new copy of the original file. For DRAFT,
+replace each aligned unit with its approved text or pending suggested translation;
+mark pending decisions in the receipt and handoff, never as approved. Preserve paragraph,
 table, cell and formatting structure; do not insert lists or new paragraph breaks.
 For specifications, preserve object, quantity, unit, comparator, modal force and
 scope, using concise attribute/value wording inside existing structures.
@@ -155,6 +157,8 @@ pixel-identical pagination from text or XML checks alone.
 
 The reviewer checks proposals, edits text, records decisions and reruns QA. Preserve existing decisions and notes during further Agent work. Import Portable Review decisions into the matching session and run fresh local QA.
 
+The macOS Workbench keeps a session-scoped chat beside the selected unit. The reviewer may quote source and target, ask for the translation rationale, add a document or image, and continue the same conversation. Keep the selected unit ID and source/target context in each answer; distinguish a rule or located reference from an inference. A model's chat answer is not a human decision, cited authority, or QA result. Retain chat history with the session and return to the actual review decision controls for acceptance or editing. The browser-search shortcut opens the system default browser; inspect original sources before citing them as evidence.
+
 ### 6. Deliver results and verify native copies
 
 All local sessions, including review-only and trial sessions, can export a review snapshot:
@@ -165,7 +169,7 @@ python scripts/export_review_results.py manual.en.dbreview --format json --outpu
 
 JSON retains decisions, revisions, issues and evidence. CSV/TSV/Markdown/HTML/TXT provide bilingual or multilingual review documents with explicit statuses. Pending targets remain unchanged; unaccepted proposals stay proposals.
 
-Native DOCX/TXT/MD/XLSX export uses exact anchors, the original hash, fresh QA and output verification. XLSX write-back patches only approved anchored worksheet cell elements and verifies that untouched OOXML part payloads remain byte-identical; formula cells are not rewritten. DOCX additionally compares non-text XML and untouched package parts. `CHECKPOINT` applies completed decisions and records pending IDs; `FINAL` requires all necessary reviews. Deliver the receipt, bilingual HTML and Markdown/JSON handoffs generated beside the native copy. Explain what changed, what remained and what was excluded. Write to a new file, then inspect layout when publication fidelity matters. For a repair finding, require a located `REPLACE`, HIGH confidence, adequate current evidence or an explicit scoped project rule, and resolved conflicts before applying the authorized change.
+Native DOCX/TXT/MD/XLSX export uses exact anchors, the original hash and output verification. XLSX write-back patches only anchored worksheet cell elements and verifies that untouched OOXML part payloads remain byte-identical; formula cells are not rewritten. DOCX additionally compares non-text XML and untouched package parts. `DRAFT` writes approved text or pending suggestions into every aligned unit, including unreviewed units; the resulting document has no review annotations. Its `DRAFT_EXPORTED` receipt lists pending decisions and records that fresh QA was not run for that export. `CHECKPOINT` applies completed decisions and leaves pending text unchanged; `FINAL` requires all necessary reviews and fresh QA. Deliver the receipt, bilingual HTML and Markdown/JSON handoffs beside the native copy. Explain what changed, what remained and what was excluded. Write to a new file, then inspect layout when publication fidelity matters. For a repair finding, require a located `REPLACE`, HIGH confidence, adequate current evidence or an explicit scoped project rule, and resolved conflicts before applying the authorized change.
 
 ### 7. Recheck human edits with an Agent
 

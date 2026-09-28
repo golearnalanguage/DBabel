@@ -42,6 +42,7 @@
         "AUTHORIZED",
         "EXPORTED",
         "VERIFIED",
+        "DRAFT_EXPORTED",
         "FAILED"
       ]
     },
@@ -98,6 +99,9 @@
         "warning_count"
       ],
       "properties": {
+        "status": {
+          "enum": ["NOT_RUN"]
+        },
         "units_checked": {
           "type": "integer",
           "minimum": 0
@@ -164,7 +168,8 @@
     "export_mode": {
       "enum": [
         "FINAL",
-        "CHECKPOINT"
+        "CHECKPOINT",
+        "DRAFT"
       ]
     },
     "review_scope": {

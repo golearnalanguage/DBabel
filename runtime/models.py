@@ -156,6 +156,7 @@ class GenerationRequest:
     system: str
     user: str
     temperature: float = 0.1
+    images: tuple[str, ...] = ()
 
     def validate(self) -> None:
         if (
@@ -178,6 +179,13 @@ class GenerationRequest:
             raise ValueError(
                 "temperature must be between 0 and 2"
             )
+        if len(self.images) > 3 or any(
+            not isinstance(image, str)
+            or not image.startswith(("data:image/png;base64,", "data:image/jpeg;base64,", "data:image/webp;base64,"))
+            or len(image) > 12_000_000
+            for image in self.images
+        ):
+            raise ValueError("up to three PNG, JPEG or WebP images are supported")
 
 
 @dataclass(frozen=True)

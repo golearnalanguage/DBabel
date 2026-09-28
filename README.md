@@ -32,7 +32,7 @@ Read the source and target side by side, inspect the supporting evidence, then *
 - **Choose the interface language:** switch between English and Simplified Chinese; source text and reviewer notes stay verbatim.
 - **Understand each suggestion:** inspect a proposed translation with its reason, or a concrete revision checklist when no replacement is supplied.
 - **Focus the review:** filter by status, issue type, location or tag. Select a page or all matching segments for an explicit bulk Keep Current / Defer decision.
-- **Deliver in stages:** Checkpoint export applies reviewed changes and keeps pending content unchanged. Its receipt lists the unreviewed scope. Final export requires the full review gate.
+- **Export the translated layout:** Draft replaces every anchored text unit with an approved edit or pending suggestion in a new file of the original format; its receipt marks pending review. Checkpoint applies only reviewed changes, while Final requires the full review gate.
 - **Check human edits:** download an Agent handoff from Reports to check typos, mistaken wording and omissions. Suggestions return to human review; downloading the report does not run an LLM.
 - **Review offline:** a self-contained Portable Review file exports decisions for import into the matching local session and fresh QA.
 

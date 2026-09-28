@@ -370,7 +370,7 @@ def apply_reviewed_docx(
     changed_units: List[str] = []
     for unit_id, unit in units_by_id.items():
         decision = decisions_by_id[unit_id]
-        if decision.get("status") not in {"ACCEPT_SUGGESTION", "KEEP_CURRENT", "USER_EDITED", "WAIVED"}:
+        if decision.get("status") not in {"ACCEPT_SUGGESTION", "KEEP_CURRENT", "USER_EDITED", "WAIVED", "DRAFT_SUGGESTION"}:
             raise DocxExportError("unit {} is not export-approved".format(unit_id))
         final = str(decision.get("approved_target", ""))
         current = str(unit.get("current_target") or "")
