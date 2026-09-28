@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import WebKit
 import UniformTypeIdentifiers
+import Darwin
 
 func chooseFile(extensions: [String], directory: Bool = false) -> URL? {
     let panel = NSOpenPanel()
@@ -23,27 +24,47 @@ final class DesktopController {
         let updated: Date
     }
 
+    private var previousWorkspaces: [URL] {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory,
+                                                in: .userDomainMask)[0]
+            .appendingPathComponent("DBabel")
+        let legacy = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("DBabel/output")
+        var seen = Set<String>()
+        return [workspace, support, legacy].filter {
+            seen.insert($0.standardizedFileURL.path).inserted
+        }
+    }
+
     func savedSessions() -> [SavedSession] {
-        let roots = [workspace.appendingPathComponent("runtime"),
-                     workspace.appendingPathComponent("dbabel-sessions")]
-        var found: [SavedSession] = []
+        let roots = previousWorkspaces.flatMap { base in
+            [base.appendingPathComponent("runtime"),
+             base.appendingPathComponent("dbabel-sessions"),
+             base]
+        }
+        var found: [String: SavedSession] = [:]
         for root in roots {
             guard let entries = try? FileManager.default.contentsOfDirectory(
                 at: root, includingPropertiesForKeys: [.contentModificationDateKey],
                 options: [.skipsHiddenFiles]) else { continue }
-            for entry in entries {
+            for entry in entries where entry.pathExtension == "dbreview" ||
+                root.lastPathComponent != "DBabel" && root.lastPathComponent != "output" {
                 let bundle = entry.pathExtension == "dbreview"
                     ? entry : entry.appendingPathComponent("review.dbreview")
                 let session = bundle.appendingPathComponent("session.json")
                 guard let bytes = try? Data(contentsOf: session),
                       let data = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any] else { continue }
+                let key = data["session_id"] as? String ?? bundle.standardizedFileURL.path
                 let title = data["title"] as? String ?? entry.lastPathComponent
-                let updated = (try? session.resourceValues(forKeys: [.contentModificationDateKey]))?
-                    .contentModificationDate ?? .distantPast
-                found.append(SavedSession(bundle: bundle, title: title, updated: updated))
+                let updated = ["session.json", "decisions.json", "ui_state.json"].compactMap {
+                    (try? bundle.appendingPathComponent($0).resourceValues(
+                        forKeys: [.contentModificationDateKey]))?.contentModificationDate
+                }.max() ?? .distantPast
+                if let existing = found[key], existing.updated >= updated { continue }
+                found[key] = SavedSession(bundle: bundle, title: title, updated: updated)
             }
         }
-        return found.sorted { $0.updated > $1.updated }
+        return found.values.sorted { $0.updated > $1.updated }
     }
 
     private func rejectionMemorySnapshot() throws -> URL? {
@@ -76,11 +97,12 @@ final class DesktopController {
     }
 
     func resumableRuns() -> [ResumableRun] {
-        let directory = workspace.appendingPathComponent("runtime")
+        var found: [ResumableRun] = []
+        var seen = Set<String>()
+        for directory in previousWorkspaces.map({ $0.appendingPathComponent("runtime") }) {
         guard let runs = try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: [.contentModificationDateKey],
-            options: [.skipsHiddenFiles]) else { return [] }
-        var found: [ResumableRun] = []
+            options: [.skipsHiddenFiles]) else { continue }
         for root in runs.sorted(by: {
             let left = (try? $0.appendingPathComponent("run.json").resourceValues(
                 forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
@@ -101,8 +123,10 @@ final class DesktopController {
                   let provider = value["provider"] as? [String: Any],
                   let artifacts = value["artifacts"] as? [String: Any],
                   artifacts["ingest"] != nil else { continue }
+            guard seen.insert(root.lastPathComponent).inserted else { continue }
             found.append(ResumableRun(root: root, source: URL(fileURLWithPath: path),
                                       sourceLanguage: from, targetLanguage: to, provider: provider))
+        }
         }
         return found
     }
@@ -111,7 +135,6 @@ final class DesktopController {
     var onWorkbench: (URL) -> Void = { _ in }
     var onProgress: ([String: Any]) -> Void = { _ in }
     var onTranslationFailure: (String) -> Void = { _ in }
-    var chatProvider: () -> (config: URL, keyName: String, key: String)? = { nil }
     var workbenchURL: URL? { didSet { if let url = workbenchURL { onWorkbench(url) } } }
     var status = "" { didSet { onStatus(status) } }
     var busy = false { didSet { onBusy(busy) } }
@@ -220,7 +243,15 @@ final class DesktopController {
     }
 
     func openDemo() {
-        let bundle = workspace.appendingPathComponent("local-demo.dbreview")
+        var bundle = workspace.appendingPathComponent("local-demo.dbreview")
+        if bundle == lastBundle, server?.isRunning == true, let url = workbenchURL {
+            onWorkbench(url)
+            return
+        }
+        if FileManager.default.fileExists(atPath: bundle.path), sessionIsLocked(bundle) {
+            bundle = workspace.appendingPathComponent("dbabel-sessions")
+                .appendingPathComponent("demo-\(UUID().uuidString).dbreview")
+        }
         if !FileManager.default.fileExists(atPath: bundle.path) {
             do {
                 try FileManager.default.createDirectory(
@@ -231,12 +262,32 @@ final class DesktopController {
                     at: repository.appendingPathComponent("examples/review_workbench_demo.dbreview"),
                     to: bundle
                 )
+                if bundle.lastPathComponent != "local-demo.dbreview" {
+                    let manifest = bundle.appendingPathComponent("session.json")
+                    if let bytes = try? Data(contentsOf: manifest),
+                       var data = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any] {
+                        data["session_id"] = "RS_" + UUID().uuidString.lowercased()
+                            .replacingOccurrences(of: "-", with: "")
+                        try JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted, .sortedKeys])
+                            .write(to: manifest, options: [.atomic])
+                    }
+                }
             } catch {
                 status = error.localizedDescription
                 return
             }
         }
         openSession(bundle)
+    }
+
+    private func sessionIsLocked(_ bundle: URL) -> Bool {
+        let descriptor = Darwin.open(bundle.appendingPathComponent(".workbench.lock").path,
+                                     O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard descriptor >= 0 else { return true }
+        defer { Darwin.close(descriptor) }
+        guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else { return true }
+        flock(descriptor, LOCK_UN)
+        return false
     }
 
     func createReviewSession(source: URL, target: URL?, from: String, to: String,
@@ -293,18 +344,11 @@ final class DesktopController {
         }
         busy = true
         status = "Opening review session… / 正在打开审核会话…"
-        let provider = chatProvider
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let chat = provider()
-            DispatchQueue.main.async { [weak self] in
-                self?.startReviewServer(bundle, original: original, chat: chat)
-            }
-        }
+        startReviewServer(bundle, original: original)
     }
 
     private func startReviewServer(
-        _ bundle: URL, original: URL?,
-        chat: (config: URL, keyName: String, key: String)?
+        _ bundle: URL, original: URL?
     ) {
         do {
             let (output, error) = try logFiles()
@@ -322,17 +366,12 @@ final class DesktopController {
                 "-u", repository.appendingPathComponent("scripts/start_review_workbench.py").path,
                 bundle.path, "--port", "0", "--no-browser"
             ]
-            if let chat = chat {
-                arguments += ["--provider-config", chat.config.path]
-            }
             if let original = exportOriginal {
                 let reviewed = bundle.deletingLastPathComponent()
                     .appendingPathComponent("reviewed-" + original.lastPathComponent)
                 arguments += ["--original", original.path, "--output", reviewed.path]
             }
-            let chatEnvironment = chat.map { [$0.keyName: $0.key] } ?? [:]
-            let process = try launch(arguments, stdout: output, stderr: error,
-                                     environment: chatEnvironment)
+            let process = try launch(arguments, stdout: output, stderr: error)
             var attempts = 0
             serverTimer?.invalidate()
             serverTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] timer in
@@ -343,18 +382,16 @@ final class DesktopController {
                 if let line = line,
                    let url = URL(string: String(line.dropFirst(6))) {
                     timer.invalidate()
-                    if let chat = chat { try? FileManager.default.removeItem(at: chat.config) }
                     self.server?.terminate()
                     self.server = process
-                    self.workbenchURL = url
                     self.lastBundle = bundle
+                    self.workbenchURL = url
                     self.busy = false
                     self.status = ""
                     return
                 }
                 if !process.isRunning || attempts >= 100 {
                     timer.invalidate()
-                    if let chat = chat { try? FileManager.default.removeItem(at: chat.config) }
                     if process.isRunning { process.terminate() }
                     self.busy = false
                     self.status = self.contents(error).trimmingCharacters(in: .whitespacesAndNewlines)

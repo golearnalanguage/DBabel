@@ -428,8 +428,12 @@ class Handler(BaseHTTPRequestHandler):
             config_data = body.get("config")
             key = body.get("key")
             allowed = {"provider", "base_url", "api_key_env", "model",
-                       "timeout_seconds", "max_response_bytes"}
-            if (not isinstance(config_data, dict) or set(config_data) != allowed
+                       "timeout_seconds", "max_response_bytes",
+                       "allow_insecure_http", "proxy_mode"}
+            required = {"provider", "base_url", "api_key_env", "model"}
+            if (not isinstance(config_data, dict)
+                    or not required <= set(config_data)
+                    or not set(config_data) <= allowed
                     or not isinstance(key, str) or not 1 <= len(key) <= 4096):
                 raise ValueError("invalid chat provider configuration")
             config = ProviderConfig(**config_data)

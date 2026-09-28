@@ -5,7 +5,8 @@ if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_PORTABLE)throw Error('
 async function run(url,portable){await page.goto(url);await page.waitForSelector('#segmentRows tr');
 for(const t of ['dark','light','system']){await page.selectOption('#themeSelect',t);if(await page.locator('html').getAttribute('data-theme-pref')!==t)throw Error('theme mismatch');}checked.push('themes');
 await page.locator('#segmentRows tr').first().click();for(const t of ['evidence','terminology','suggestion']){await page.locator(`[data-tab="${t}"]`).click();}checked.push('inspector tabs');
-await page.click('#acceptButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='ACCEPT_SUGGESTION');
+await page.click(portable?'#acceptButton':'#acceptSuggestionButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='ACCEPT_SUGGESTION');
+if(!portable){await page.click('#acceptButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='KEEP_CURRENT');}
 await page.click('#keepButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='KEEP_CURRENT');
 await page.click('#editAction');await page.fill('#targetText','The primary database sends archived logs to the standby database.');await page.click('#editAction');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='USER_EDITED');checked.push('accept/keep/edit');
 await page.locator('.review-note-details summary').click();await page.fill('#reviewerNote','Language review follow-up.');await page.click('#saveNote');await page.waitForTimeout(100);await page.click('#unitNext');await page.click('#unitPrev');if(await page.inputValue('#reviewerNote')!=='Language review follow-up.')throw Error('note lost');checked.push('save note/navigation');

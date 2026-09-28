@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.request import ProxyHandler
 
-from providers.base import ProviderError
+from providers.base import ProviderError, ProviderResponseInterrupted
 from providers import openai_compatible
 from providers.openai_compatible import (
     OpenAICompatibleProvider,
@@ -40,6 +40,19 @@ class ProviderConfigTests(unittest.TestCase):
         )
 
         config.validate()
+
+    def test_trusted_remote_http_requires_explicit_opt_in(self):
+        config = ProviderConfig(
+            "openai-compatible", "http://internal.example/v1", "KEY", "model-a",
+            allow_insecure_http=True, proxy_mode="none",
+        )
+        config.validate()
+        self.assertTrue(config.redacted()["allow_insecure_http"])
+
+    def test_invalid_proxy_mode_is_rejected(self):
+        with self.assertRaises(ValueError):
+            ProviderConfig("openai-compatible", "https://example.com/v1",
+                           "KEY", "model-a", proxy_mode="bogus").validate()
 
     def test_unknown_config_keys_fail_closed(
         self,
@@ -79,6 +92,14 @@ class ProviderConfigTests(unittest.TestCase):
 
 
 class TransportPolicyTests(unittest.TestCase):
+    def test_direct_remote_transport_disables_proxy(self):
+        with patch.object(openai_compatible, "build_opener") as builder:
+            openai_compatible._build_transport_opener(
+                "https://internal.example/v1/chat/completions", "none"
+            )
+        self.assertTrue(any(isinstance(handler, ProxyHandler)
+                            and handler.proxies == {}
+                            for handler in builder.call_args.args))
     def test_localhost_transport_disables_proxy(
         self,
     ):
@@ -286,6 +307,30 @@ class ProviderTests(unittest.TestCase):
         )
         self.assertNotIn("temperature", observed)
         self.assertEqual(observed["messages"][0]["role"], "system")
+
+    def test_structured_text_parts_are_assembled(self):
+        provider = OpenAICompatibleProvider(
+            self.config(), {"DBABEL_TEST_KEY": "test-key"},
+            lambda *args: (200, b'{"choices":[{"message":{"content":['
+                           b'{"type":"text","text":"Hello "},'
+                           b'{"type":"text","text":"world"}]}}]}'),
+        )
+        self.assertEqual(provider.generate(GenerationRequest("S", "U")).text,
+                         "Hello world")
+
+    def test_reasoning_only_completion_retries_then_splits(self):
+        attempts = []
+        def transport(*args):
+            attempts.append(1)
+            return 200, (b'{"choices":[{"finish_reason":"length",'
+                         b'"message":{"content":"","reasoning_content":"thinking"}}]}')
+        provider = OpenAICompatibleProvider(
+            self.config(), {"DBABEL_TEST_KEY": "test-key"}, transport,
+        )
+        with patch.object(openai_compatible.time, "sleep"):
+            with self.assertRaises(ProviderResponseInterrupted):
+                provider.generate(GenerationRequest("S", "U"))
+        self.assertEqual(len(attempts), 3)
 
     def test_deepseek_official_base_url_uses_chat_route(self):
         observed = {}

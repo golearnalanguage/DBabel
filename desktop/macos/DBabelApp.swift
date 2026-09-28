@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Security
+import UniformTypeIdentifiers
 import WebKit
 
 private final class FlippedView: NSView {
@@ -30,6 +31,10 @@ private struct ProviderSettings: Codable {
     let proxyURL: String
     let timeoutSeconds: Int
     let maxResponseBytes: Int
+    let allowInsecureHTTP: Bool?
+    let proxyMode: String?
+
+    var effectiveProxyMode: String { proxyMode ?? (proxyURL.isEmpty ? "system" : "custom") }
 
     var isLocal: Bool {
         guard let host = URLComponents(string: baseURL)?.host?.lowercased() else { return false }
@@ -44,8 +49,8 @@ private struct ProviderSettings: Codable {
               url.query == nil, url.fragment == nil else {
             return "Enter a complete http(s) API base URL without a key or query string. / 请填写完整的 http(s) 服务地址，不要把密钥放入地址。"
         }
-        if scheme == "http" && !isLocal {
-            return "Remote API services require HTTPS. / 远程 API 服务需要 HTTPS。"
+        if scheme == "http" && !isLocal && allowInsecureHTTP != true {
+            return "Enable trusted HTTP for this internal API service. / 如为可信的内部服务，请明确启用 HTTP 连接。"
         }
         if url.path.hasSuffix("/chat/completions") {
             return "Enter the API base URL without /chat/completions. / 请填写服务的基础地址，不要包含 /chat/completions。"
@@ -59,7 +64,10 @@ private struct ProviderSettings: Codable {
         if !(1...600).contains(timeoutSeconds) || !(1_024...20_000_000).contains(maxResponseBytes) {
             return "The imported timeout or response limit is out of range. / 导入配置中的超时或响应大小超出允许范围。"
         }
-        if !proxyURL.isEmpty {
+        if !["system", "none", "custom"].contains(effectiveProxyMode) {
+            return "Choose a valid network route. / 请选择有效的网络连接方式。"
+        }
+        if effectiveProxyMode == "custom" {
             guard let proxy = URLComponents(string: proxyURL),
                   let proxyScheme = proxy.scheme?.lowercased(),
                   ["http", "https"].contains(proxyScheme),
@@ -80,7 +88,9 @@ private struct ProviderSettings: Codable {
             "model": model,
             "api_key_env": apiKeyEnv,
             "timeout_seconds": timeoutSeconds,
-            "max_response_bytes": maxResponseBytes
+            "max_response_bytes": maxResponseBytes,
+            "allow_insecure_http": allowInsecureHTTP == true,
+            "proxy_mode": effectiveProxyMode
         ], options: [.prettyPrinted, .sortedKeys])
         try data.write(to: path, options: [.atomic])
         return path
@@ -170,7 +180,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
     private var homeFieldConstraintsSet = false
     private var providerFieldConstraintsSet = false
     private var providerSheet: NSPanel?
-    private enum LandingPage { case welcome, translate, localReview, progress, workbench }
+    private enum LandingPage { case welcome, translate, localReview, history, progress, workbench }
     private var landingPage: LandingPage = .welcome
     private var recentAPIKey: String?
     private var recentAPIKeyBaseURL: String?
@@ -196,6 +206,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
     private let apiProviderPreset = NSPopUpButton()
     private let apiModelPreset = NSPopUpButton()
     private let apiProxy = NSTextField(string: "")
+    private let apiProxyMode = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let apiTrustedHTTP = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let apiStatus = NSTextField(labelWithString: "")
     private let from = NSPopUpButton(frame: .zero, pullsDown: false)
     private let to = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -256,7 +268,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             run.provider["model"] as? String == settings.model &&
             run.provider["api_key_env"] as? String == settings.apiKeyEnv &&
             run.provider["timeout_seconds"] as? Int == settings.timeoutSeconds &&
-            run.provider["max_response_bytes"] as? Int == settings.maxResponseBytes
+            run.provider["max_response_bytes"] as? Int == settings.maxResponseBytes &&
+            (run.provider["allow_insecure_http"] as? Bool ?? false) == (settings.allowInsecureHTTP == true) &&
+            (run.provider["proxy_mode"] as? String ?? "system") == settings.effectiveProxyMode
         }
     }
 
@@ -271,6 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         window.backgroundColor = .clear
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
         window.toolbarStyle = .unified
         window.delegate = self
         let toolbar = NSToolbar(identifier: "DBabelToolbar")
@@ -297,15 +312,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         desktop.onBusy = { [weak self] busy in
             self?.controls.forEach { $0.isEnabled = !busy }
         }
-        desktop.onWorkbench = { [weak self] url in self?.showWorkbench(url) }
-        desktop.chatProvider = { [weak self] in
-            guard let self = self, let settings = self.providerSettings else { return nil }
-            let key = (self.recentAPIKeyBaseURL == settings.baseURL ? self.recentAPIKey : nil)
-                ?? ProviderCredentialStore.key(for: settings.baseURL)
-                ?? ProcessInfo.processInfo.environment[settings.apiKeyEnv]
-                ?? (settings.isLocal ? "local" : "")
-            guard !key.isEmpty, let config = try? settings.temporaryFile() else { return nil }
-            return (config: config, keyName: settings.apiKeyEnv, key: key)
+        desktop.onWorkbench = { [weak self] url in
+            guard let self else { return }
+            self.showWorkbench(url)
+            if let settings = self.providerSettings { self.updateCurrentWorkbenchChat(settings) }
         }
         desktop.onProgress = { [weak self] event in self?.updateProgress(event) }
         desktop.onTranslationFailure = { [weak self] message in self?.showProgressFailure(message) }
@@ -337,9 +347,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
     }
 
     func windowDidEnterFullScreen(_ notification: Notification) {
-        windowMaterial.material = .windowBackground
-        windowMaterial.blendingMode = .withinWindow
-        window.backgroundColor = .windowBackgroundColor
+        windowMaterial.material = .underWindowBackground
+        windowMaterial.blendingMode = .behindWindow
+        window.backgroundColor = .clear
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
@@ -399,12 +409,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         let menu = NSMenu()
         let app = NSMenuItem()
         let appMenu = NSMenu(title: "DBabel")
+        appMenu.addItem(withTitle: local("关于 DBabel", "About DBabel"),
+                            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(.separator())
         appMenu.addItem(withTitle: local("退出 DBabel", "Quit DBabel"),
                             action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         app.submenu = appMenu
         menu.addItem(app)
         let file = NSMenuItem()
         let fileMenu = NSMenu(title: local("文件", "File"))
+        let sourceOption = NSMenuItem(title: local("打开原文…", "Open source…"),
+                                      action: #selector(openSourceMenuAction), keyEquivalent: "o")
+        sourceOption.target = self
+        fileMenu.addItem(sourceOption)
+        let sessionOption = NSMenuItem(title: local("打开审核会话…", "Open review session…"),
+                                       action: #selector(sessionAction), keyEquivalent: "")
+        sessionOption.target = self
+        fileMenu.addItem(sessionOption)
+        let historyOption = NSMenuItem(title: local("之前的工作", "Previous work"),
+                                       action: #selector(historyPageAction), keyEquivalent: "")
+        historyOption.target = self
+        fileMenu.addItem(historyOption)
+        fileMenu.addItem(.separator())
         let browserOption = NSMenuItem(title: local("在浏览器中打开", "Open in Browser"),
                                        action: #selector(browserAction), keyEquivalent: "b")
         browserOption.target = self
@@ -431,7 +457,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         }
         edit.submenu = editMenu
         menu.addItem(edit)
+        let api = NSMenuItem()
+        let apiMenu = NSMenu(title: "API")
+        let configureAPI = NSMenuItem(title: local("配置 API 服务…", "Configure API service…"),
+                                      action: #selector(providerAction), keyEquivalent: ",")
+        configureAPI.target = self
+        apiMenu.addItem(configureAPI)
+        api.submenu = apiMenu
+        menu.addItem(api)
+        let view = NSMenuItem()
+        let viewMenu = NSMenu(title: local("视图", "View"))
+        for (title, action) in [
+            (local("切换浅色／深色", "Toggle light / dark"), #selector(appearanceToggleAction)),
+            (local("跟随系统外观", "Use system appearance"), #selector(appearanceSystemAction)),
+            (local("切换中文／英文", "Toggle Chinese / English"), #selector(languageAction))
+        ] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            viewMenu.addItem(item)
+        }
+        view.submenu = viewMenu
+        menu.addItem(view)
+        let windowMenuItem = NSMenuItem()
+        let windowMenu = NSMenu(title: local("窗口", "Window"))
+        let newWindow = NSMenuItem(title: local("新建并行任务窗口", "New task window"),
+                                   action: #selector(newTaskWindowAction), keyEquivalent: "n")
+        newWindow.target = self
+        windowMenu.addItem(newWindow)
+        let minimize = NSMenuItem(title: local("最小化", "Minimize"),
+                                  action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        minimize.target = window
+        windowMenu.addItem(minimize)
+        let zoom = NSMenuItem(title: local("缩放窗口", "Zoom"),
+                              action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        zoom.target = window
+        windowMenu.addItem(zoom)
+        windowMenuItem.submenu = windowMenu
+        menu.addItem(windowMenuItem)
+        NSApp.windowsMenu = windowMenu
+        let help = NSMenuItem()
+        let helpMenu = NSMenu(title: local("帮助", "Help"))
+        let guide = NSMenuItem(title: local("打开使用指南", "Open user guide"),
+                               action: #selector(openGuideAction), keyEquivalent: "?")
+        guide.target = self
+        helpMenu.addItem(guide)
+        help.submenu = helpMenu
+        menu.addItem(help)
+        NSApp.helpMenu = helpMenu
         NSApp.mainMenu = menu
+    }
+
+    @objc private func openSourceMenuAction() {
+        if landingPage != .translate { showHome() }
+        sourceAction()
+    }
+
+    @objc private func openGuideAction() {
+        let name = chinese ? "DESKTOP_APP.zh-CN.md" : "DESKTOP_APP.md"
+        NSWorkspace.shared.open(desktop.repository.appendingPathComponent("docs").appendingPathComponent(name))
     }
 
     private func button(_ title: String, _ selector: Selector) -> NSButton {
@@ -481,12 +564,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         let dark = (try? Data(contentsOf: assets.appendingPathComponent("dbabel-logo-dark.svg")))?.base64EncodedString() ?? ""
         let html = """
         <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>html,body{margin:0;background:transparent;height:100%;overflow:hidden}
-        .logo{width:100%;height:100%;background:center/contain no-repeat url('data:image/svg+xml;base64,\(light)');
-          animation:write 6.2s cubic-bezier(.32,0,.18,1) infinite}
-        @media(prefers-color-scheme:dark){.logo{background-image:url('data:image/svg+xml;base64,\(dark)')}}
-        @keyframes write{0%,8%{clip-path:inset(0 100% 0 0)}60%,99.9%{clip-path:inset(0 0 0 0)}100%{clip-path:inset(0 100% 0 0)}}
-        @media(prefers-reduced-motion:reduce){.logo{animation:none}}</style></head><body><div class="logo"></div></body></html>
+        <style>
+        html,body{margin:0;background:transparent;height:100%;overflow:hidden}
+        svg{display:block;width:100%;height:100%}
+        .ink{fill:none;stroke:#12315e;stroke-width:4.3;stroke-linecap:round;
+          stroke-linejoin:round;stroke-dasharray:100;stroke-dashoffset:100}
+        .written{transform-origin:center;animation:dissolve 5.6s ease-in-out infinite}
+        .d1{animation:d1 5.6s cubic-bezier(.38,.02,.24,1) infinite}
+        .d2{animation:d2 5.6s cubic-bezier(.38,.02,.24,1) infinite}
+        .b1{animation:b1 5.6s cubic-bezier(.38,.02,.24,1) infinite}
+        .b2{animation:b2 5.6s cubic-bezier(.38,.02,.24,1) infinite}
+        .b3{animation:b3 5.6s cubic-bezier(.38,.02,.24,1) infinite}
+        .a{animation:a 5.6s cubic-bezier(.38,.02,.24,1) infinite}
+        .lowerb{animation:lowerb 5.6s cubic-bezier(.38,.02,.24,1) infinite}
+        .e{animation:e 5.6s cubic-bezier(.38,.02,.24,1) infinite}
+        .l{animation:l 5.6s cubic-bezier(.38,.02,.24,1) infinite}
+        @keyframes d1{0%,2%{opacity:0;stroke-dashoffset:100}2.1%{opacity:1;stroke-dashoffset:100}12%,100%{opacity:1;stroke-dashoffset:0}}
+        @keyframes d2{0%,11%{opacity:0;stroke-dashoffset:100}11.1%{opacity:1;stroke-dashoffset:100}18%,100%{opacity:1;stroke-dashoffset:0}}
+        @keyframes b1{0%,17%{opacity:0;stroke-dashoffset:100}17.1%{opacity:1;stroke-dashoffset:100}22%,100%{opacity:1;stroke-dashoffset:0}}
+        @keyframes b2{0%,21%{opacity:0;stroke-dashoffset:100}21.1%{opacity:1;stroke-dashoffset:100}27%,100%{opacity:1;stroke-dashoffset:0}}
+        @keyframes b3{0%,26%{opacity:0;stroke-dashoffset:100}26.1%{opacity:1;stroke-dashoffset:100}34%,100%{opacity:1;stroke-dashoffset:0}}
+        @keyframes a{0%,33%{opacity:0;stroke-dashoffset:100}33.1%{opacity:1;stroke-dashoffset:100}45%,100%{opacity:1;stroke-dashoffset:0}}
+        @keyframes lowerb{0%,44%{opacity:0;stroke-dashoffset:100}44.1%{opacity:1;stroke-dashoffset:100}59%,100%{opacity:1;stroke-dashoffset:0}}
+        @keyframes e{0%,58%{opacity:0;stroke-dashoffset:100}58.1%{opacity:1;stroke-dashoffset:100}68%,100%{opacity:1;stroke-dashoffset:0}}
+        @keyframes l{0%,67%{opacity:0;stroke-dashoffset:100}67.1%{opacity:1;stroke-dashoffset:100}78%,100%{opacity:1;stroke-dashoffset:0}}
+        @keyframes dissolve{0%,87%{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}
+          99%,100%{opacity:0;filter:blur(7px);transform:translateY(-3px) scale(1.02)}}
+        .static-logo{display:none}
+        @media(prefers-color-scheme:dark){.ink{stroke:#f4f4fa}}
+        @media(prefers-reduced-motion:reduce){.written{display:none}.static-logo.light{display:block}}
+        @media(prefers-reduced-motion:reduce) and (prefers-color-scheme:dark){
+          .static-logo.light{display:none}.static-logo.dark{display:block}}
+        </style></head><body>
+        <svg viewBox="0 0 236 91" aria-label="DBabel">
+          <g class="written">
+            <path class="ink d1" pathLength="100" d="M4 36 C17 24 30 19 44 22 C57 24 63 32 59 43 C54 58 31 75 6 86"/>
+            <path class="ink d2" pathLength="100" d="M28 20 C23 43 14 67 10 85"/>
+            <path class="ink b1" pathLength="100" d="M71 23 C66 39 63 60 59 75"/>
+            <path class="ink b2" pathLength="100" d="M73 48 C79 34 90 20 98 19 C109 27 91 43 74 49"/>
+            <path class="ink b3" pathLength="100" d="M74 49 C89 45 99 47 99 56 C95 68 72 79 53 82"/>
+            <path class="ink a" pathLength="100" d="M124 45 C114 42 104 50 102 62 C103 70 114 61 122 48 C116 58 119 67 127 65"/>
+            <path class="ink lowerb" pathLength="100" d="M156 13 C148 31 138 55 136 67 C147 64 160 51 156 43 C151 37 139 50 135 65"/>
+            <path class="ink e" pathLength="100" d="M164 59 C176 61 189 49 180 44 C172 40 163 51 164 61 C165 70 178 64 190 55"/>
+            <path class="ink l" pathLength="100" d="M215 13 C205 25 197 45 193 59 C188 77 208 63 231 45"/>
+          </g>
+          <image class="static-logo light" width="236" height="91" href="data:image/svg+xml;base64,\(light)"/>
+          <image class="static-logo dark" width="236" height="91" href="data:image/svg+xml;base64,\(dark)"/>
+        </svg></body></html>
         """
         logo.loadHTMLString(html, baseURL: nil)
         let heading = label(local("欢迎使用 DBabel", "Welcome to DBabel"), size: 16)
@@ -502,7 +626,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         review.font = .systemFont(ofSize: 16, weight: .medium)
         let options = row(translate, review)
         options.spacing = 20
-        let stack = NSStackView(views: [logo, heading, options])
+        let history = button(local("继续之前的工作", "Continue previous work"),
+                             #selector(historyPageAction))
+        history.controlSize = .large
+        let stack = NSStackView(views: [logo, heading, options, history])
         stack.orientation = .vertical
         stack.alignment = .centerX
         stack.spacing = 20
@@ -512,8 +639,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             stack.centerXAnchor.constraint(equalTo: body.centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: body.centerYAnchor, constant: -36),
             stack.widthAnchor.constraint(lessThanOrEqualTo: body.widthAnchor, multiplier: 0.8),
-            logo.widthAnchor.constraint(equalToConstant: 470),
-            logo.heightAnchor.constraint(equalToConstant: 182),
+            logo.widthAnchor.constraint(equalToConstant: 505),
+            logo.heightAnchor.constraint(equalToConstant: 195),
             translate.widthAnchor.constraint(greaterThanOrEqualToConstant: 226),
             review.widthAnchor.constraint(greaterThanOrEqualToConstant: 226),
             translate.heightAnchor.constraint(equalToConstant: 52),
@@ -523,6 +650,122 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
 
     @objc private func translatePageAction() { showHome() }
     @objc private func localReviewPageAction() { showLocalReview() }
+    @objc private func welcomeAction() { showWelcome() }
+    @objc private func historyPageAction() { showHistory() }
+
+    private func showHistory() {
+        landingPage = .history
+        progressPageActive = false
+        body.subviews.forEach { $0.removeFromSuperview() }
+        browser = nil
+        controls.removeAll()
+
+        let sidebar = NSView()
+        sidebar.translatesAutoresizingMaskIntoConstraints = false
+        body.addSubview(sidebar)
+        let navigation = NSStackView(views: [
+            label("DBabel", size: 25),
+            button(local("最近任务", "Recent work"), #selector(historyPageAction)),
+            button(local("AI 翻译", "AI translation"), #selector(translatePageAction)),
+            button(local("本地双语审核", "Local review"), #selector(localReviewPageAction)),
+            button(local("返回欢迎页", "Welcome"), #selector(welcomeAction))
+        ])
+        navigation.orientation = .vertical
+        navigation.alignment = .leading
+        navigation.spacing = 18
+        navigation.translatesAutoresizingMaskIntoConstraints = false
+        sidebar.addSubview(navigation)
+        NSLayoutConstraint.activate([
+            sidebar.topAnchor.constraint(equalTo: body.topAnchor),
+            sidebar.bottomAnchor.constraint(equalTo: body.bottomAnchor),
+            sidebar.leadingAnchor.constraint(equalTo: body.leadingAnchor),
+            sidebar.widthAnchor.constraint(equalToConstant: 222),
+            navigation.topAnchor.constraint(equalTo: sidebar.topAnchor, constant: 42),
+            navigation.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 22)
+        ])
+
+        let sessions = desktop.savedSessions()
+        let heading = label(local("之前的工作", "Previous work"), size: 31)
+        let subheading = label(local("选择一个任务，继续上次的审核和 AI 对话。",
+                                     "Open a saved task to continue its review and AI conversation."))
+        subheading.textColor = .secondaryLabelColor
+        let rows = NSStackView()
+        rows.orientation = .vertical
+        rows.alignment = .leading
+        rows.spacing = 16
+        if sessions.isEmpty {
+            rows.addArrangedSubview(label(local("这里还没有保存的审核任务。", "No saved review tasks yet.")))
+        }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        for offset in stride(from: 0, to: min(sessions.count, 20), by: 2) {
+            let pair = row()
+            pair.spacing = 16
+            for saved in sessions[offset..<min(offset + 2, sessions.count)] {
+                let card = NSBox()
+                card.boxType = .custom
+                card.cornerRadius = 18
+                card.borderWidth = 1
+                card.borderColor = NSColor.separatorColor.withAlphaComponent(0.28)
+                card.fillColor = .clear
+                let icon = NSImageView(image: NSWorkspace.shared.icon(for: .folder))
+                icon.imageScaling = .scaleProportionallyUpOrDown
+                let title = label(saved.title, size: 16)
+                title.lineBreakMode = .byTruncatingMiddle
+                title.maximumNumberOfLines = 2
+                let date = label(formatter.string(from: saved.updated), size: 12)
+                date.textColor = .secondaryLabelColor
+                let open = button(local("继续审核", "Continue review"), #selector(openSavedSessionAction(_:)))
+                open.identifier = NSUserInterfaceItemIdentifier(saved.bundle.path)
+                let content = NSStackView(views: [icon, title, date, open])
+                content.orientation = .vertical
+                content.alignment = .leading
+                content.spacing = 13
+                content.translatesAutoresizingMaskIntoConstraints = false
+                card.contentView?.addSubview(content)
+                NSLayoutConstraint.activate([
+                    card.widthAnchor.constraint(equalToConstant: 300),
+                    card.heightAnchor.constraint(equalToConstant: 250),
+                    icon.widthAnchor.constraint(equalToConstant: 142),
+                    icon.heightAnchor.constraint(equalToConstant: 112),
+                    content.topAnchor.constraint(equalTo: card.contentView!.topAnchor, constant: 18),
+                    content.leadingAnchor.constraint(equalTo: card.contentView!.leadingAnchor, constant: 17),
+                    content.trailingAnchor.constraint(lessThanOrEqualTo: card.contentView!.trailingAnchor, constant: -17),
+                    title.widthAnchor.constraint(lessThanOrEqualToConstant: 265)
+                ])
+                pair.addArrangedSubview(card)
+            }
+            rows.addArrangedSubview(pair)
+        }
+        let openOther = button(local("打开其他 .dbreview 会话…", "Open another .dbreview session…"),
+                               #selector(sessionAction))
+        let content = NSStackView(views: [heading, subheading, rows, openOther])
+        content.orientation = .vertical
+        content.alignment = .leading
+        content.spacing = 22
+        content.translatesAutoresizingMaskIntoConstraints = false
+        let scroll = NSScrollView()
+        scroll.drawsBackground = false
+        scroll.contentView.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        let document = FlippedView()
+        document.translatesAutoresizingMaskIntoConstraints = false
+        document.addSubview(content)
+        scroll.documentView = document
+        body.addSubview(scroll)
+        NSLayoutConstraint.activate([
+            scroll.topAnchor.constraint(equalTo: body.topAnchor),
+            scroll.bottomAnchor.constraint(equalTo: body.bottomAnchor),
+            scroll.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: body.trailingAnchor),
+            document.widthAnchor.constraint(greaterThanOrEqualTo: scroll.contentView.widthAnchor),
+            content.topAnchor.constraint(equalTo: document.topAnchor, constant: 44),
+            content.leadingAnchor.constraint(equalTo: document.leadingAnchor, constant: 38),
+            content.bottomAnchor.constraint(equalTo: document.bottomAnchor, constant: -38)
+        ])
+    }
 
     private func showLocalReview() {
         landingPage = .localReview
@@ -549,7 +792,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             alignmentConfirmed,
             button(local("打开审核工作台", "Open review Workbench"), #selector(uploadAction)),
             row(button(local("查看演示", "View demo"), #selector(demoAction)),
-                button(local("继续上次工作", "Resume previous work"), #selector(resumeLatestSessionAction))),
+                button(local("之前的工作", "Previous work"), #selector(historyPageAction))),
             status
         ])
         stack.orientation = .vertical
@@ -648,17 +891,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 12
-        stack.addArrangedSubview(label(local("最近任务", "Recent tasks"), size: 22))
+        stack.addArrangedSubview(button(local("查看之前的工作", "Browse previous work"),
+                                        #selector(historyPageAction)))
         stack.addArrangedSubview(button(local("新建并行任务窗口", "New parallel task window"),
                                        #selector(newTaskWindowAction)))
-        for saved in desktop.savedSessions().prefix(12) {
-            let open = button(local("恢复工作台", "Reopen Workbench"),
-                              #selector(openSavedSessionAction(_:)))
-            open.identifier = NSUserInterfaceItemIdentifier(saved.bundle.path)
-            let title = label(saved.title)
-            title.lineBreakMode = .byTruncatingMiddle
-            stack.addArrangedSubview(row(open, title))
-        }
         stack.translatesAutoresizingMaskIntoConstraints = false
         let scroll = NSScrollView()
         scroll.drawsBackground = false
@@ -948,6 +1184,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
                 switch landingPage {
                 case .welcome: showWelcome()
                 case .localReview: showLocalReview()
+                case .history: showHistory()
                 default: showHome()
                 }
             }
@@ -1027,6 +1264,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         apiBaseURL.stringValue = providerSettings?.baseURL ?? ""
         apiModel.stringValue = providerSettings?.model ?? ""
         apiProxy.stringValue = providerSettings?.proxyURL ?? ""
+        apiProxyMode.removeAllItems()
+        apiProxyMode.addItems(withTitles: [local("跟随系统", "Use system"),
+                                          local("不使用代理", "No proxy"),
+                                          local("自定义代理", "Custom proxy")])
+        let savedProxyMode = providerSettings?.effectiveProxyMode ?? "system"
+        apiProxyMode.selectItem(at: ["system", "none", "custom"].firstIndex(of: savedProxyMode) ?? 0)
+        apiProxyMode.target = self
+        apiProxyMode.action = #selector(proxyModeAction)
+        apiProxy.isEnabled = apiProxyMode.indexOfSelectedItem == 2
+        apiTrustedHTTP.title = local("允许连接可信内部 HTTP 服务", "Allow trusted internal HTTP service")
+        apiTrustedHTTP.state = providerSettings?.allowInsecureHTTP == true ? .on : .off
         apiKey.stringValue = ""
         apiKey.placeholderString = providerSettings.flatMap {
             ProviderCredentialStore.key(for: $0.baseURL)
@@ -1055,7 +1303,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             }
             providerFieldConstraintsSet = true
         }
-        let sheet = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 610, height: 690),
+        let sheet = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 610, height: 800),
                             styleMask: [.titled], backing: .buffered, defer: false)
         sheet.title = local("API 服务设置", "API service settings")
         sheet.appearance = window.appearance
@@ -1067,7 +1315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             "请使用服务文档给出的基础地址；本机服务可填 http://127.0.0.1:8000/v1。应用会追加 /chat/completions。",
             "Use the base URL from your service's documentation; a local service might use http://127.0.0.1:8000/v1. The app appends /chat/completions."))
         examples.textColor = .secondaryLabelColor
-        apiProxy.placeholderString = "http://127.0.0.1:1082"
+        apiProxy.placeholderString = local("仅在选用自定义代理时填写地址", "Enter URL only for a custom proxy")
         let jsonHelp = NSTextField(wrappingLabelWithString: local(
             "已有 Provider JSON 可导入；首次使用无需准备 JSON 文件。",
             "Import an existing Provider JSON if you have one. No JSON file is needed for first-time setup."))
@@ -1090,11 +1338,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             label(local("服务商预设（也可自填）", "Service preset (optional)")), apiProviderPreset,
             label(local("服务地址（Base URL）", "API base URL")), apiBaseURL,
             examples,
+            apiTrustedHTTP,
             label(local("常见模型（也可自填）", "Suggested models (optional)")), apiModelPreset,
             label(local("模型 ID（支持 Chat Completions）", "Model ID (Chat Completions)")), apiModel,
             label(local("API 密钥／网关令牌（保存在 macOS 钥匙串）",
                         "API key / gateway token (saved in macOS Keychain)")), apiKey,
-            label(local("网络代理（可选；留空跟随系统）", "Network proxy (optional; blank uses system)")), apiProxy,
+            label(local("网络连接", "Network route")), apiProxyMode, apiProxy,
             jsonHelp,
             label(local("测试会发送一条简短请求，可能产生少量 API 用量。",
                         "Testing sends one short request and may incur a small amount of API usage.")),
@@ -1125,6 +1374,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         if apiModelPreset.indexOfSelectedItem < 0 { apiModelPreset.selectItem(at: 0) }
         apiModelPreset.target = self
         apiModelPreset.action = #selector(modelPresetAction)
+    }
+
+    @objc private func proxyModeAction() {
+        apiProxy.isEnabled = apiProxyMode.indexOfSelectedItem == 2
     }
 
     @objc private func providerPresetAction() {
@@ -1161,6 +1414,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         pendingApiKeyEnv = environment
         pendingTimeout = object["timeout_seconds"] as? Int ?? 120
         pendingMaxBytes = object["max_response_bytes"] as? Int ?? 2_000_000
+        apiTrustedHTTP.state = (object["allow_insecure_http"] as? Bool ?? false) ? .on : .off
+        let importedProxyMode = object["proxy_mode"] as? String ?? "system"
+        apiProxyMode.selectItem(at: ["system", "none", "custom"].firstIndex(of: importedProxyMode) ?? 0)
+        proxyModeAction()
         apiStatus.textColor = .secondaryLabelColor
         apiStatus.stringValue = local("已导入 \(path.lastPathComponent)；请核对地址、模型和密钥后保存。",
                                       "Imported \(path.lastPathComponent). Check the URL, model and key, then save.")
@@ -1180,7 +1437,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             apiKeyEnv: pendingApiKeyEnv,
             proxyURL: apiProxy.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
             timeoutSeconds: pendingTimeout,
-            maxResponseBytes: pendingMaxBytes)
+            maxResponseBytes: pendingMaxBytes,
+            allowInsecureHTTP: apiTrustedHTTP.state == .on,
+            proxyMode: ["system", "none", "custom"][max(0, min(2, apiProxyMode.indexOfSelectedItem))])
     }
 
     @objc private func saveProviderAction() {
@@ -1224,40 +1483,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
               !token.isEmpty,
               let host = workbenchURL.host,
               host == "127.0.0.1" || host == "localhost" else { return }
-        let key = (recentAPIKeyBaseURL == settings.baseURL ? recentAPIKey : nil)
-            ?? ProviderCredentialStore.key(for: settings.baseURL)
-            ?? ProcessInfo.processInfo.environment[settings.apiKeyEnv]
-            ?? (settings.isLocal ? "local" : "")
-        guard !key.isEmpty,
-              let configURL = try? settings.temporaryFile(),
-              let configData = try? Data(contentsOf: configURL),
-              let config = try? JSONSerialization.jsonObject(with: configData) as? [String: Any] else {
-            status.stringValue = local("聊天 API 配置未能载入。", "Could not load the chat API configuration.")
-            return
-        }
-        try? FileManager.default.removeItem(at: configURL)
-        guard let body = try? JSONSerialization.data(withJSONObject: ["config": config, "key": key]) else { return }
         var endpoint = URLComponents(url: workbenchURL, resolvingAgainstBaseURL: false)!
         endpoint.path = "/api/chat/provider"
         endpoint.fragment = nil
         guard let url = endpoint.url else { return }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(token, forHTTPHeaderField: "X-DBabel-Session")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = body
-        URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if error == nil, (response as? HTTPURLResponse)?.statusCode == 200 {
-                    self.browser?.evaluateJavaScript("window.dbabelRefreshChat?.()", completionHandler: nil)
-                    self.status.stringValue = self.local("API 已连接到当前工作台聊天。", "API connected to this Workbench chat.")
-                } else {
-                    self.status.stringValue = self.local("当前工作台聊天连接失败；请重新打开会话。",
-                                                         "Chat connection failed; reopen the session.")
+        let recentKey = recentAPIKeyBaseURL == settings.baseURL ? recentAPIKey : nil
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let key = recentKey
+                ?? ProviderCredentialStore.key(for: settings.baseURL)
+                ?? ProcessInfo.processInfo.environment[settings.apiKeyEnv]
+                ?? (settings.isLocal ? "local" : "")
+            guard !key.isEmpty,
+                  let configURL = try? settings.temporaryFile(),
+                  let configData = try? Data(contentsOf: configURL),
+                  let config = try? JSONSerialization.jsonObject(with: configData) as? [String: Any] else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.status.stringValue = self?.local("聊天 API 配置未能载入。", "Could not load the chat API configuration.") ?? ""
                 }
+                return
             }
-        }.resume()
+            try? FileManager.default.removeItem(at: configURL)
+            guard let body = try? JSONSerialization.data(withJSONObject: ["config": config, "key": key]) else { return }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue(token, forHTTPHeaderField: "X-DBabel-Session")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+            URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
+                DispatchQueue.main.async {
+                    guard let self, self.desktop.workbenchURL == workbenchURL else { return }
+                    if error == nil, (response as? HTTPURLResponse)?.statusCode == 200 {
+                        self.browser?.evaluateJavaScript("window.dbabelRefreshChat?.()", completionHandler: nil)
+                        self.status.stringValue = self.local("API 已连接到当前工作台聊天。", "API connected to this Workbench chat.")
+                    } else {
+                        self.status.stringValue = self.local("当前工作台聊天连接失败；请重新打开会话。",
+                                                             "Chat connection failed; reopen the session.")
+                    }
+                }
+            }.resume()
+        }
     }
 
     @objc private func testProviderAction() {

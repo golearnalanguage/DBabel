@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from http.client import IncompleteRead, RemoteDisconnected
 from typing import Callable, Mapping, Optional, Tuple
@@ -30,6 +31,20 @@ Transport = Callable[
     Tuple[int, bytes],
 ]
 
+
+def _completion_text(content):
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(
+            part.get("text", "")
+            for part in content
+            if isinstance(part, dict)
+            and part.get("type") in {"text", "output_text"}
+            and isinstance(part.get("text"), str)
+        )
+    return None
+
 _LOCAL_HOSTS = {
     "localhost",
     "127.0.0.1",
@@ -52,6 +67,7 @@ class _NoRedirect(HTTPRedirectHandler):
 
 def _build_transport_opener(
     url: str,
+    proxy_mode: str = "system",
 ):
     hostname = (
         urlparse(url).hostname
@@ -62,7 +78,7 @@ def _build_transport_opener(
     # through an ambient HTTP(S) proxy. This matters
     # for localhost OpenAI-compatible servers, Ollama,
     # and packaged desktop integrations.
-    if hostname in _LOCAL_HOSTS:
+    if hostname in _LOCAL_HOSTS or proxy_mode == "none":
         return build_opener(
             ProxyHandler({}),
             _NoRedirect,
@@ -81,6 +97,7 @@ def _default_transport(
     body: bytes,
     timeout: int,
     max_response_bytes: int,
+    proxy_mode: str = "system",
 ) -> Tuple[int, bytes]:
     request = Request(
         url,
@@ -90,7 +107,7 @@ def _default_transport(
     )
 
     opener = _build_transport_opener(
-        url
+        url, proxy_mode
     )
 
     try:
@@ -129,6 +146,18 @@ def _default_transport(
             404: "API route or model was not found",
             429: "quota or rate limit was reached",
         }.get(exc.code, "service returned an error")
+        detail = ""
+        try:
+            payload = json.loads(exc.read(4096).decode("utf-8"))
+            issue = payload.get("error", payload) if isinstance(payload, dict) else {}
+            if isinstance(issue, dict):
+                detail = str(issue.get("message") or issue.get("code") or "")[:350]
+        except (ValueError, UnicodeDecodeError, OSError):
+            pass
+        if detail:
+            detail = detail.replace(headers.get("Authorization", ""), "[redacted]")
+            detail = re.sub(r"(?i)(bearer\s+|sk-)[A-Za-z0-9_-]{12,}", "[redacted]", detail)
+            guidance += "; " + detail
         error_type = ProviderTransientError if exc.code in {408, 425, 429} or 500 <= exc.code <= 599 else ProviderError
         raise error_type(
             "provider HTTP error: {} ({})".format(exc.code, guidance)
@@ -176,7 +205,9 @@ class OpenAICompatibleProvider(
             environ
         )
         self._transport = (
-            transport or _default_transport
+            transport or (lambda url, headers, body, timeout, max_bytes:
+                _default_transport(url, headers, body, timeout, max_bytes,
+                                   config.proxy_mode))
         )
 
     @property
@@ -250,6 +281,20 @@ class OpenAICompatibleProvider(
                     self._config.timeout_seconds,
                     self._config.max_response_bytes,
                 )
+                if 200 <= int(status) < 300:
+                    try:
+                        preview = json.loads(raw.decode("utf-8"))
+                        choice = preview["choices"][0]
+                        message = choice["message"]
+                        content = _completion_text(message.get("content"))
+                        if choice.get("finish_reason") == "length" or (
+                            not content and message.get("reasoning_content")
+                        ):
+                            raise ProviderResponseInterrupted(
+                                "provider ended before producing a complete answer"
+                            )
+                    except (UnicodeDecodeError, ValueError, KeyError, IndexError, TypeError):
+                        pass
                 break
             except (IncompleteRead, RemoteDisconnected) as exc:
                 transient = ProviderResponseInterrupted(
@@ -293,10 +338,7 @@ class OpenAICompatibleProvider(
             ) from exc
 
         try:
-            text = (
-                data["choices"][0]
-                ["message"]["content"]
-            )
+            text = _completion_text(data["choices"][0]["message"]["content"])
         except (
             KeyError,
             IndexError,

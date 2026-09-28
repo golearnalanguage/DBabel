@@ -5,6 +5,10 @@ window.installExchange = function({api,state,el,node,refreshGate}) {
   window.exportReviewResults=async()=>{try{download(await api('/api/results',{method:'POST',body:JSON.stringify({format:el('resultFormat').value})}));}catch(e){window.workbenchNotice(e.message);}};
   async function filePayload(input){const f=input.files[0];if(!f)throw Error(t('Select a file first.'));if(f.size>16*1024*1024)throw Error(t('Maximum file size: 16 MiB.'));const bytes=new Uint8Array(await f.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));return {name:f.name,content_base64:btoa(binary)};}
   const panel=el('exchangePanel');
+  const selectedTargets=new Set();
+  const chips=el('intakeSelectedTargets');
+  function renderTargets(){chips.replaceChildren();for(const language of selectedTargets){const chip=document.createElement('button');chip.type='button';chip.className='intake-target-chip';chip.textContent=language+' ×';chip.setAttribute('aria-label',t('Remove target language')+' '+language);chip.addEventListener('click',()=>{selectedTargets.delete(language);renderTargets();});chips.append(chip);}}
+  el('addIntakeTarget').addEventListener('click',()=>{selectedTargets.add(el('intakeTargetLanguages').value);renderTargets();});
   el('openIntake').addEventListener('click',()=>{panel.hidden=!panel.hidden;if(!panel.hidden)panel.scrollIntoView({block:'start'});});
   el('closeIntake').addEventListener('click',()=>panel.hidden=true);
   const status=el('intakeStatus');
@@ -12,7 +16,7 @@ window.installExchange = function({api,state,el,node,refreshGate}) {
     const buttons=[el('inspectDocument'),el('createIntake')];buttons.forEach(b=>b.disabled=true);
     try{
       const source=await filePayload(el('sourceUpload'));
-      const body={source,source_language:el('intakeSourceLanguage').value.trim(),target_languages:el('intakeTargetLanguages').value.split(',').map(x=>x.trim()),alignment_confirmed:el('confirmAlignment').checked};
+      const body={source,source_language:el('intakeSourceLanguage').value,target_languages:selectedTargets.size?[...selectedTargets]:[el('intakeTargetLanguages').value],alignment_confirmed:el('confirmAlignment').checked};
       if(create&&el('targetUpload').files.length)body.target=await filePayload(el('targetUpload'));
       if(create&&!confirm(t('Open a new session? Save current edits first. The current session stays on disk.')))return;
       const result=await api(create?'/api/intake/create':'/api/intake/inspect',{method:'POST',body:JSON.stringify(body)});

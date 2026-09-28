@@ -358,7 +358,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-vis
 .chat-panel textarea{width:100%;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--text);padding:8px 10px;resize:vertical}.chat-actions{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .chat-file-label{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-soft);flex-wrap:wrap}.chat-file-label input{max-width:100%;font-size:11px}.chat-file-names{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
 html.desktop-macos{
-  --mac-accent:#007aff;--bg:transparent;--surface:rgba(255,255,255,.12);
+  --mac-accent:#007aff;--bg:transparent;--surface:transparent;
   --surface-2:rgba(255,255,255,.28);--surface-3:rgba(255,255,255,.36);
   --surface-4:rgba(255,255,255,.46);--text:#1d1d1f;
   --text-soft:#46464a;--muted:#606066;--line:rgba(40,40,45,.08);
@@ -370,7 +370,7 @@ html.desktop-macos{
   --modal-surface:rgba(229,230,234,.97);--modal-dim:rgba(20,20,24,.28);
 }
 html.desktop-macos[data-theme="dark"]{
-  --bg:transparent;--surface:rgba(20,20,22,.12);
+  --bg:transparent;--surface:transparent;
   --surface-2:rgba(22,22,24,.24);--surface-3:rgba(35,35,38,.36);
   --surface-4:rgba(50,50,53,.46);--text:#f5f5f7;
   --text-soft:#d0d0d4;--muted:#b3b3ba;--line:rgba(255,255,255,.08);
@@ -574,7 +574,7 @@ html.desktop-macos .advanced-decisions{margin-top:5px}
 html.desktop-macos .advanced-decisions summary{cursor:pointer;font-size:11px;color:var(--muted)}
 html.desktop-macos .advanced-decisions .secondary-actions{grid-template-columns:repeat(3,1fr)}
 html.desktop-macos .chat-panel{
-  height:var(--chat-panel-height,228px);min-height:44px;max-height:min(50%,480px);
+  height:var(--chat-panel-height,228px);min-height:44px;max-height:min(44%,320px);
   flex:0 0 auto;gap:4px;padding:0 14px 7px;overflow:hidden;
   background:transparent;
 }
@@ -604,6 +604,126 @@ html.desktop-macos .chat-panel.collapsed>*:not(.chat-heading):not(.chat-resize-h
 html.desktop-macos .chat-panel.collapsed .chat-resize-handle{display:none}
 html.desktop-macos .chat-panel.collapsed .chat-heading{height:42px}
 html.desktop-macos .chat-panel.collapsed #chatCollapse{transform:rotate(180deg)}
+/* The segment text scrolls independently; review controls and chat remain in view. */
+html.desktop-macos{
+  --surface:rgba(255,255,255,.14);
+  --surface-2:rgba(255,255,255,.16);
+  --line:rgba(40,40,45,.055);
+}
+html.desktop-macos[data-theme="dark"]{
+  --surface:rgba(25,25,27,.16);
+  --surface-2:rgba(25,25,27,.18);
+  --line:rgba(255,255,255,.055);
+}
+html.desktop-macos .sidebar,
+html.desktop-macos .document-bar,
+html.desktop-macos .metrics-strip,
+html.desktop-macos .segment-panel,
+html.desktop-macos .inspector,
+html.desktop-macos .chat-panel{
+  background:var(--surface);
+}
+html.desktop-macos .metric-card{
+  background:transparent;
+  border-color:var(--line);
+}
+html.desktop-macos .inspector-content{overscroll-behavior:contain}
+html.desktop-macos .status-issues-row{margin-bottom:5px}
+html.desktop-macos .decision-actions{margin-top:5px}
+html.desktop-macos .decision-actions button{font-size:12px;min-height:38px;padding:5px 6px}
+html.desktop-macos .chat-panel{border-top-color:var(--line)}
+html.desktop-macos .table-toolbar{background:transparent}
+html.desktop-macos .table-toolbar select,
+html.desktop-macos .table-toolbar .pager-buttons button,
+html.desktop-macos .table-toolbar .view-button{background:transparent}
+html.desktop-macos .segment-table thead{background:transparent;box-shadow:none}
+html.desktop-macos .segment-table th,
+html.desktop-macos .segment-table thead .comment-col{
+  background:color-mix(in srgb,var(--surface) 10%,transparent);
+  backdrop-filter:blur(40px) saturate(1);
+  -webkit-backdrop-filter:blur(40px) saturate(1);
+}
+html.desktop-macos .segment-table tbody .comment-col{background:transparent}
+html.desktop-macos .segment-table tbody tr.active .comment-col{background:var(--blue-soft)}
+html.desktop-macos .inspector-top{
+  flex:0 0 auto;padding:10px 14px 7px;background:var(--surface);
+  border-bottom:1px solid var(--line);
+}
+html.desktop-macos .inspector-top .inspector-head{margin:0 0 7px}
+html.desktop-macos .inspector-top .decision-actions{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0;
+}
+html.desktop-macos .inspector-top .decision-actions button{
+  box-sizing:border-box;width:100%;min-width:0;min-height:40px;
+  padding:5px 4px;font-size:12px;font-weight:650;line-height:1.15;
+  text-align:center;white-space:normal;
+}
+html.desktop-macos .inspector-top .decision-actions #acceptButton{
+  border-color:color-mix(in srgb,var(--green) 25%,var(--line));
+  background:var(--green-soft);color:var(--green);
+}
+html.desktop-macos .inspector-top .decision-actions #editAction{
+  border-color:color-mix(in srgb,var(--blue) 25%,var(--line));
+}
+html.desktop-macos .inspector-top .decision-actions #blockButton{
+  border-color:color-mix(in srgb,var(--red) 25%,var(--line));
+}
+html.desktop-macos .inspector-top .decision-actions button.selected{
+  box-shadow:inset 0 0 0 1px currentColor;
+}
+html.desktop-macos .inspector-top .decision-feedback:empty{min-height:0;margin:0}
+html.desktop-macos .inspector-content{padding-top:10px}
+html.desktop-macos .chat-heading #chatContext,
+html.desktop-macos .chat-shortcuts{display:none}
+html.desktop-macos .chat-composer{
+  display:flex;align-items:flex-end;gap:6px;min-height:60px;
+  border:1px solid var(--line-strong);border-radius:12px;
+  background:var(--surface-2);padding:7px;
+}
+html.desktop-macos .chat-composer:focus-within{border-color:var(--blue)}
+html.desktop-macos .chat-panel:has(.chat-messages:empty){
+  height:145px;max-height:none;
+}
+html.desktop-macos .chat-composer textarea{
+  flex:1 1 auto;width:auto;min-width:0;height:48px;min-height:48px;
+  border:0;box-shadow:none;background:transparent;padding:5px 4px;
+}
+html.desktop-macos .chat-composer .chat-file-label{
+  flex:0 0 32px;align-self:flex-end;display:grid;place-items:center;
+  width:32px;height:34px;font-size:22px;line-height:1;
+  color:var(--blue);cursor:pointer;
+}
+html.desktop-macos .chat-composer .chat-file-label input{display:none}
+html.desktop-macos .chat-composer #chatSend{
+  flex:0 0 auto;align-self:flex-end;min-height:34px;padding:0 12px;
+  border:0;border-radius:8px;background:var(--blue-soft);color:var(--blue);
+  font-size:12px;font-weight:650;
+}
+html.desktop-macos .chat-file-names:empty,
+html.desktop-macos .chat-status:empty{display:none}
+html.desktop-macos .exchange-panel .intake-grid input[type="file"],
+html.desktop-macos .exchange-panel .intake-grid select,
+html.desktop-macos .exchange-panel .view-action,
+html.desktop-macos .exchange-panel #addIntakeTarget{
+  min-height:39px;border:1px solid var(--line-strong);border-radius:9px;
+  background:var(--surface-3);color:var(--text);padding:7px 10px;
+  backdrop-filter:blur(20px);
+}
+html.desktop-macos .exchange-panel .intake-grid input[type="file"]::file-selector-button{
+  border:1px solid var(--line-strong);border-radius:7px;
+  background:var(--surface-4);color:var(--text);padding:5px 10px;margin-right:9px;
+}
+html.desktop-macos .exchange-panel .intake-target-picker{display:flex;gap:7px}
+html.desktop-macos .exchange-panel .intake-target-picker select{flex:1 1 auto;min-width:0}
+html.desktop-macos .exchange-panel .intake-target-chips{display:flex;gap:6px;flex-wrap:wrap}
+html.desktop-macos .exchange-panel .intake-target-chip{
+  border:1px solid var(--line);border-radius:8px;background:var(--surface-3);
+  padding:5px 8px;color:var(--text-soft);font-size:12px;
+}
+html.desktop-macos .export-summary button,
+html.desktop-macos #exportButton.authorized{
+  background:var(--blue-soft);border-color:transparent;color:var(--blue);
+}
 @media(max-width:980px){
   html.desktop-macos .chat-panel{height:228px;max-height:none}
   html.desktop-macos .approve-all{order:4}
@@ -612,3 +732,50 @@ html.desktop-macos .chat-panel.collapsed #chatCollapse{transform:rotate(180deg)}
   html.desktop-macos .metrics-strip .export-summary{grid-column:1/-1;border-left:0;padding:8px}
   html.desktop-macos .inspector-resize-handle{display:none}
 }
+
+/* Keep review controls legible and let the native window material show through. */
+html.desktop-macos,
+html.desktop-macos[data-theme="dark"]{--surface:transparent}
+html.desktop-macos .sidebar,
+html.desktop-macos .workspace,
+html.desktop-macos .segment-panel,
+html.desktop-macos .inspector,
+html.desktop-macos .inspector-top{background:transparent}
+html.desktop-macos .brand-lockup{height:68px;padding:2px 9px}
+html.desktop-macos .brand-lockup img{max-height:64px}
+html.desktop-macos .doc-icon-native{width:42px;height:42px;flex-basis:42px}
+html.desktop-macos .document-identity{gap:16px}
+html.desktop-macos .nav-item{font-size:14px}
+html.desktop-macos .filters-panel,
+html.desktop-macos .filter-heading,
+html.desktop-macos .filter-row{font-size:13px}
+html.desktop-macos .filter-row b{font-size:12px}
+html.desktop-macos .table-toolbar{gap:8px 9px}
+html.desktop-macos .table-toolbar select,
+html.desktop-macos .table-toolbar button,
+html.desktop-macos .page-info{font-size:13px}
+html.desktop-macos .table-toolbar #sortSelect{margin-left:auto}
+html.desktop-macos .table-toolbar .bulk-actions{order:10;flex-basis:100%;padding-top:2px}
+html.desktop-macos .table-toolbar .bulk-actions strong,
+html.desktop-macos .table-toolbar .bulk-actions button{font-size:12px}
+html.desktop-macos .segment-table{font-size:13.5px}
+html.desktop-macos .segment-table th{font-size:12.5px}
+html.desktop-macos .status-pill{font-size:11px}
+html.desktop-macos .issue-chip{font-size:10.5px}
+html.desktop-macos .inspector-top .decision-actions button{font-size:12.5px}
+html.desktop-macos .tabs button{font-size:12px}
+html.desktop-macos .suggestion-head,
+html.desktop-macos .evidence-heading,
+html.desktop-macos .reason-box{font-size:12.5px}
+html.desktop-macos .accept-suggestion{
+  display:block;width:100%;margin-top:9px;min-height:36px;
+  border:1px solid color-mix(in srgb,var(--green) 30%,var(--line));
+  border-radius:8px;background:var(--green-soft);color:var(--green);
+  font-size:12.5px;font-weight:650;
+}
+html.desktop-macos .accept-suggestion[hidden]{display:none}
+html.desktop-macos .accept-suggestion.selected{box-shadow:inset 0 0 0 1px currentColor}
+html.desktop-macos .chat-panel{
+  display:flex;flex-direction:column;margin-top:auto;min-height:0;
+}
+html.desktop-macos .chat-panel:has(.chat-messages:empty){height:auto;max-height:none}

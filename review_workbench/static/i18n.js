@@ -33,12 +33,13 @@
     'Deterministic checks protect technical content. Spelling and word choice still need semantic review.':'QA 检查技术标记、数值和项目术语。拼写、用词及句意由 Agent 或人工复核。','Run fresh QA':'重新运行 QA','Offline review':'离线审核','Import decisions into the matching local session to run fresh QA.':'将决策导入对应的本地会话后，重新运行 QA。','Review coverage':'审核进度','Download Agent review handoff':'下载 Agent 复核包',
     'Export a review snapshot at any stage. Agent suggestions return to human review before they become edits.':'可随时导出审核快照。Agent 返回的修改建议经人工确认后写入译文。','Post-human language review':'人工修改后的语言复核','Includes source, original target, reviewed text, notes, issues and evidence. Prioritize human edits for typos and mistaken terminology. Agent review: not run.':'包含原文、初始译文、审核后文本、备注、问题和证据。请让 Agent 优先检查人工修改中的拼写、术语误用和遗漏。Agent 复核尚未运行。','Native export gate':'原格式导出检查','Next step':'下一步','Give the downloaded JSON and docs/POST_REVIEW_QA.md to your Agent. Review its located suggestions, apply accepted edits, then recheck and export.':'将下载的 JSON 和 docs/POST_REVIEW_QA.md 交给 Agent。审核其定位明确的建议，接受修改后重新检查并导出。',
     'Session scope and local display preferences.':'查看会话范围并设置本地显示偏好。','Session':'会话','Original document':'原始文档','Choose the theme for this browser.':'设置当前浏览器的显示主题。','Segments per page':'每页单元数','Smaller pages keep large reviews easier to navigate.':'大文档可减少每页数量，方便定位与审核。','Export capability':'导出能力','Native DOCX export configured.':'已配置 DOCX 原格式导出。','Review snapshots are available in JSON, CSV, TSV, Markdown, HTML and TXT. Configure --original and --output for native DOCX export.':'可导出 JSON、CSV、TSV、Markdown、HTML 和 TXT 审核快照。配置 --original 与 --output 后可导出 DOCX 原格式副本。','Offline decisions only. Import and recheck in a local session before native export.':'可导出离线决策；原格式导出前，请导入本地会话并重新检查。','Current decisions and reviewer notes.':'查看当前决策和审核备注。','No decisions yet':'尚未记录决策','Select a segment in Review to start.':'在审核页选择一个单元开始。',
-    'Upload a source document, inspect the extraction, then create a new review session.':'上传原文，检查提取结果，然后建立新审核会话。','Source document':'原文文档','Target document (optional)':'译文文档（可选）','Source language':'原文语言','Target languages':'目标语言','I checked that source and target segments correspond in order.':'我已核对原文与译文单元按顺序一一对应。','For multiple target languages, upload only the source. An Agent supplies translations for each language.':'生成多语言会话时仅上传原文，由 Agent 为各语言补充译文。','Inspect document':'预检文档','Create session':'建立会话','Close upload panel':'关闭上传面板',
+    'Upload a source document, inspect the extraction, then create a new review session.':'上传原文，检查提取结果，然后建立新审核会话。','Source document':'原文文档','Target document (optional)':'译文文档（可选）','Source language':'原文语言','Target languages':'目标语言','Add language':'添加语言','Remove target language':'移除目标语言','I checked that source and target segments correspond in order.':'我已核对原文与译文单元按顺序一一对应。','For multiple target languages, upload only the source. An Agent supplies translations for each language.':'生成多语言会话时仅上传原文，由 Agent 为各语言补充译文。','Inspect document':'预检文档','Create session':'建立会话','Close upload panel':'关闭上传面板',
     'Result format':'结果格式','Download review results':'下载审核结果','Select a file first.':'请先选择文件。','Maximum file size: 16 MiB.':'单个文件最大为 16 MiB。','Open a new session? Save current edits first. The current session stays on disk.':'打开新会话？请先保存当前修改。当前会话会保留在磁盘中。',
     'Upload project glossary':'上传项目术语表','Project glossary':'项目术语表','Project glossary file':'项目术语表文件','Choose the DBabel project glossary CSV or JSON. Approved entries apply only within their language and product scope.':'选择符合 DBabel 模板的 CSV 或 JSON 术语表。已批准条目仅在对应语言和产品范围内生效。','Validate and use glossary':'验证并使用术语表','No applicable approved terms; score unavailable.':'尚无适用的已批准术语，暂无评分。','Terminology compliance':'术语符合率','Score = passed applicable term/unit checks ÷ all applicable checks. This measures glossary compliance.':'评分 = 通过的适用术语与单元检查数 ÷ 全部适用检查数。该指标衡量术语表符合程度。','Check required':'需要检查','Session saved at: ':'会话保存位置：',
     'Agent review handoff downloaded. Semantic review has not run.':'已下载 Agent 复核包，请交给 Agent 执行语义复核。','Export reviewed changes only? Unreviewed content stays unchanged. This is not a fully reviewed release.':'导出阶段版？将仅应用已审核修改，未审核内容保留原样。',
     'system':'跟随系统','dark':'深色','light':'浅色'
     ,'Ask AI about this translation':'与 AI 讨论译文'
+    ,'Ask AI about this':'询问 AI'
     ,'Current segment':'当前单元'
     ,'Question or follow-up':'提问或继续讨论'
     ,'Ask why this translation was proposed, or continue the session conversation.':'询问这句为何这样翻译，或继续本会话中的讨论。'
@@ -64,6 +65,10 @@
     ,'Resize AI chat':'调整 AI 聊天区域高度'
     ,'Collapse AI chat':'收起 AI 聊天'
     ,'Accept Translation':'接受译文'
+    ,'Accept Current':'接受现有译文'
+    ,'Accept Suggested Translation':'接受建议译文'
+    ,'Accept the current translation':'确认现有译文'
+    ,'Enter a translation before accepting':'尚无现有译文，请先填写译文并保存修改。'
     ,'Edit Translation':'修改译文'
     ,'Reject Translation':'拒绝译文'
     ,'More review actions':'更多审核操作'

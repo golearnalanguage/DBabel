@@ -20,6 +20,8 @@ class ProviderConfig:
     model: str
     timeout_seconds: int = 120
     max_response_bytes: int = 2_000_000
+    allow_insecure_http: bool = False
+    proxy_mode: str = "system"
 
     @classmethod
     def from_path(cls, path: Path) -> "ProviderConfig":
@@ -35,6 +37,8 @@ class ProviderConfig:
             "model",
             "timeout_seconds",
             "max_response_bytes",
+            "allow_insecure_http",
+            "proxy_mode",
         }
 
         unknown = sorted(set(data) - allowed)
@@ -90,10 +94,17 @@ class ProviderConfig:
         if (
             parsed.scheme == "http"
             and parsed.hostname not in _LOCAL_HOSTS
+            and not self.allow_insecure_http
         ):
             raise ValueError(
-                "plain HTTP is allowed only for localhost providers"
+                "remote plain HTTP requires allow_insecure_http=true"
             )
+
+        if type(self.allow_insecure_http) is not bool:
+            raise ValueError("allow_insecure_http must be a boolean")
+
+        if self.proxy_mode not in {"system", "none", "custom"}:
+            raise ValueError("proxy_mode must be system, none, or custom")
 
         if not _ENV_RE.fullmatch(self.api_key_env or ""):
             raise ValueError(
@@ -148,6 +159,8 @@ class ProviderConfig:
             "model": self.model,
             "timeout_seconds": self.timeout_seconds,
             "max_response_bytes": self.max_response_bytes,
+            "allow_insecure_http": self.allow_insecure_http,
+            "proxy_mode": self.proxy_mode,
         }
 
 
