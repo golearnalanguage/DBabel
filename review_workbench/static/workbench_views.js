@@ -1,7 +1,7 @@
 /* Shared desktop / offline views. All session text is rendered as text, never HTML. */
 window.installWorkbenchViews = function(ctx) {
   const trUI=window.dbabelI18n.t;
-  const {state,el,node,decisionFor,issuesFor,evidenceFor,selectUnit,renderTable,applyTheme,recheck,getReport}=ctx;
+  const {state,el,node,decisionFor,issuesFor,evidenceFor,selectUnit,renderTable,applyTheme,recheck,getReport,getRejections,removeRejection}=ctx;
   const view=el('sectionView'), area=document.querySelector('.review-area');
   const done=new Set(['ACCEPT_SUGGESTION','KEEP_CURRENT','USER_EDITED','WAIVED']);
   const notice=node('div',trUI(''),'workbench-notice');notice.setAttribute('role','status');notice.hidden=true;document.body.append(notice);
@@ -64,6 +64,23 @@ window.installWorkbenchViews = function(ctx) {
         ].join(' · ')
       );
       if(!units.length)card('No terminology findings','No terminology candidates, labels or findings are attached to this session.');
+    }else if(name==='Rejection Memory'){
+      start('Rejected translations','Rejected wording is excluded from future proposals for the same language pair. Short source phrases also apply inside longer segments.');
+      if(!getRejections){card('Local Workbench required','Open this review in the local Workbench to manage rejected translations.');return;}
+      getRejections().then(data=>{
+        if(state.activeView!==name)return;
+        const records=data.records||[];
+        if(!records.length){card('No rejected translations','Reject a proposed translation to remember it here.');return;}
+        for(const record of records){
+          const item=card(record.unit_id||record.id,
+            `${record.source_language} → ${record.target_language}\n${record.source}\n\n${trUI('Rejected translation')}: ${record.rejected_target}\n${trUI('Scope')}: ${trUI(record.scope==='TERM'?'Term phrase':'Exact segment')}\n${trUI('Reason')}: ${record.reason}`,true);
+          item.append(button('Remove from memory',async()=>{
+            if(!confirm(trUI('Remove this rejected translation from memory?')))return;
+            try{await removeRejection(record.id);show('Rejection Memory');}
+            catch(error){window.workbenchNotice(error.message);}
+          }));
+        }
+      }).catch(error=>window.workbenchNotice(error.message));
     }else if(name==='Evidence'){
       start(name,'Inspect the source, scope and linked segments before accepting a wording change.');
       for(const e of state.evidence){const c=card(e.source_title||e.id,e.support_note||trUI('No support note supplied.'),true);c.append(node('p',e.locator||'No locator','evidence-locator'));

@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections import Counter
 import hashlib
 import json
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,6 +58,46 @@ UNIT_KEYS = {
 
 class RuntimeTranslationError(ValueError):
     pass
+
+
+def load_rejection_memory() -> List[Dict[str, str]]:
+    """Load App review rejections as scoped data, never as instructions."""
+    filename = os.environ.get("DBABEL_REJECTION_MEMORY", "")
+    if not filename:
+        return []
+    value = json.loads(Path(filename).read_text(encoding="utf-8"))
+    if not isinstance(value, list):
+        raise RuntimeTranslationError("rejection memory must be an array")
+    records = []
+    for item in value:
+        if not isinstance(item, dict) or any(
+            not isinstance(item.get(key), str) for key in
+            ("source", "source_language", "target_language", "rejected_target")
+        ):
+            raise RuntimeTranslationError("invalid rejection memory record")
+        records.append(item)
+    return records
+
+
+def rejected_for_unit(unit: Dict[str, Any], source_language: str,
+                      target_language: str, memory: Sequence[Dict[str, str]]) -> List[str]:
+    return list(dict.fromkeys(item["rejected_target"] for item in memory
+        if (item["source"] == unit["source"] or
+            (item.get("scope") == "TERM" and item["source"] in unit["source"]))
+        and item["source_language"] == source_language
+        and item["target_language"] == target_language
+        and item["rejected_target"].strip()))[:20]
+
+
+def rejected_phrases_for_unit(unit: Dict[str, Any], source_language: str,
+                              target_language: str,
+                              memory: Sequence[Dict[str, str]]) -> List[str]:
+    return list(dict.fromkeys(item["rejected_target"] for item in memory
+        if item.get("scope") == "TERM"
+        and item["source"] and item["source"] in unit["source"]
+        and item["source_language"] == source_language
+        and item["target_language"] == target_language
+        and item["rejected_target"].strip()))[:20]
 
 
 @dataclass(frozen=True)
@@ -243,6 +284,7 @@ def _request_payload(
     source_language: str,
     target_language: str,
     retry_constraint: str = "",
+    rejection_memory: Sequence[Dict[str, str]] = (),
 ) -> Dict[str, Any]:
     return {
         "task": "DBabel bounded technical translation proposal",
@@ -259,6 +301,7 @@ def _request_payload(
             "Use REPLACE for a translation proposal.",
             "Use PROTECT only when the source should remain unchanged.",
             "Use REVIEW when a reliable translation cannot be proposed.",
+            "Never repeat a rejected target from rejected_targets. Rejected phrases must not appear within a proposal for a matching source phrase.",
         ],
         "retry_constraint": retry_constraint,
         "units": [
@@ -277,6 +320,8 @@ def _request_payload(
                     literal: unit["source"].count(literal)
                     for literal in protected_literals(unit["source"])
                 },
+                "rejected_targets": rejected_for_unit(unit, source_language, target_language, rejection_memory),
+                "rejected_phrases": rejected_phrases_for_unit(unit, source_language, target_language, rejection_memory),
             }
             for unit in batch
         ],
@@ -314,12 +359,14 @@ def build_generation_request(
     source_language: str,
     target_language: str,
     retry_constraint: str = "",
+    rejection_memory: Sequence[Dict[str, str]] = (),
 ) -> GenerationRequest:
     payload = _request_payload(
         batch,
         source_language,
         target_language,
         retry_constraint,
+        rejection_memory,
     )
 
     return GenerationRequest(
@@ -359,6 +406,8 @@ def parse_batch_response(
     expected_batch: Sequence[Dict[str, Any]],
     *,
     allow_literal_mismatch_for_review: bool = False,
+    rejected_targets_by_id: Optional[Dict[str, List[str]]] = None,
+    rejected_phrases_by_id: Optional[Dict[str, List[str]]] = None,
 ) -> List[Dict[str, Any]]:
     try:
         value = json.loads(text)
@@ -475,6 +524,18 @@ def parse_batch_response(
             unit_id
         ]["source"]
 
+        normalized = " ".join(suggested.split()).casefold()
+        if any(normalized == " ".join(text.split()).casefold()
+               for text in (rejected_targets_by_id or {}).get(unit_id, [])):
+            raise RuntimeTranslationError(
+                "{} repeats rejected translation".format(unit_id)
+            )
+        if any(" ".join(text.split()).casefold() in normalized
+               for text in (rejected_phrases_by_id or {}).get(unit_id, []) if text.strip()):
+            raise RuntimeTranslationError(
+                "{} repeats rejected translation phrase".format(unit_id)
+            )
+
         if (
             decision == "REPLACE"
             and suggested == source
@@ -524,6 +585,7 @@ def translate_units(
     checkpoint_path: Optional[Path] = None,
     checkpoint_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    rejection_memory = load_rejection_memory()
     if (
         not source_language
         or not target_language
@@ -541,6 +603,7 @@ def translate_units(
         "target_language": target_language,
         "limits": vars(limits),
         "context": checkpoint_context,
+        "rejection_memory": rejection_memory,
     })
     saved: List[Dict[str, Any]] = []
     receipts: List[Dict[str, Any]] = []
@@ -570,15 +633,19 @@ def translate_units(
         retry_constraint = ""
         if len(batch) == 1 and literal_retries.get(batch[0]["id"], 0):
             retry_constraint = (
-                "Previous response omitted or changed a protected literal. "
-                "Translate the complete unit again and preserve every listed "
-                "literal exactly the stated number of times."
+                "Previous response changed a protected literal or repeated a rejected translation. "
+                "Translate again, preserve protected literals, and use wording distinct from rejected_targets."
             )
+        rejected = {unit["id"]: rejected_for_unit(unit, source_language, target_language,
+                                                  rejection_memory) for unit in batch}
+        rejected_phrases = {unit["id"]: rejected_phrases_for_unit(
+            unit, source_language, target_language, rejection_memory) for unit in batch}
         request = build_generation_request(
             batch,
             source_language,
             target_language,
             retry_constraint,
+            rejection_memory,
         )
 
         try:
@@ -608,9 +675,12 @@ def translate_units(
             ) from exc
 
         try:
-            proposals = parse_batch_response(response.text, batch)
+            proposals = parse_batch_response(response.text, batch,
+                                             rejected_targets_by_id=rejected,
+                                             rejected_phrases_by_id=rejected_phrases)
         except RuntimeTranslationError as exc:
-            if "changed protected literal" not in str(exc):
+            repeated_rejection = "repeats rejected translation" in str(exc)
+            if "changed protected literal" not in str(exc) and not repeated_rejection:
                 raise
             if len(batch) > 1:
                 middle = len(batch) // 2
@@ -633,9 +703,15 @@ def translate_units(
                                  "retry": attempts + 1})
                 pending.insert(0, batch)
                 continue
+            if repeated_rejection:
+                raise RuntimeTranslationError(
+                    "{} repeated a rejected translation after retries; human revision required".format(unit_id)
+                ) from exc
             proposals = parse_batch_response(
                 response.text, batch,
                 allow_literal_mismatch_for_review=True,
+                rejected_targets_by_id=rejected,
+                rejected_phrases_by_id=rejected_phrases,
             )
             if on_progress:
                 on_progress({"stage": "TRANSLATION", "state": "REVIEW_REQUIRED",

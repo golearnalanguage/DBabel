@@ -58,6 +58,32 @@
     ,'PROTECTED':'受保护文本','PREFERRED_TERM':'首选术语','EVIDENCE_CONFLICT':'证据冲突'
     ,'TECH_CLAIM':'技术主张'
     ,'Applied to identical units':'已同步审核相同单元'
+    ,'Accept all suggestions':'接受全部建议译文'
+    ,'Accept every available suggestion for {count} pending segments? QA findings will still require review.':'接受 {count} 个待审核单元的全部建议译文？仍需复核 QA 问题。'
+    ,'Accepted {count} suggestions; review remaining QA findings.':'已接受 {count} 个建议译文；请复核剩余 QA 问题。'
+    ,'Resize AI chat':'调整 AI 聊天区域高度'
+    ,'Collapse AI chat':'收起 AI 聊天'
+    ,'Accept Translation':'接受译文'
+    ,'Edit Translation':'修改译文'
+    ,'Reject Translation':'拒绝译文'
+    ,'More review actions':'更多审核操作'
+    ,'Why should this translation never be suggested again?':'为什么以后不应再建议这个译法？'
+    ,'Rejected translations':'被拒绝的译法'
+    ,'Rejected translation':'被拒绝的译文'
+    ,'Rejection Memory':'拒绝记忆'
+    ,'Save progress':'保存进度','Progress saved in this review session.':'进度已保存到当前审核会话。','Save the current edit before saving progress.':'请先保存当前正在编辑的译文或备注。'
+    ,'Saving decision…':'正在保存审核决定…','Decision saved.':'审核决定已保存。','Edit the translation, then select Use Edit.':'修改译文后点击“使用修改”。'
+    ,'Rejected translations':'已拒绝的译法'
+    ,'Rejected wording is excluded from future proposals for the same language pair. Short source phrases also apply inside longer segments.':'后续同一语种方向的建议不得重复已拒绝译法；短原文短语也会匹配较长单元。'
+    ,'Scope':'范围','Term phrase':'术语短语','Exact segment':'完整单元'
+    ,'Rejected wording for the exact source text and language pair is excluded from future App translation proposals.':'对相同原文和语言组合，被拒绝的译法不会再出现在 App 的后续翻译建议中。'
+    ,'Local Workbench required':'需要本地工作台'
+    ,'Open this review in the local Workbench to manage rejected translations.':'请在本地工作台打开审核会话以管理拒绝记忆。'
+    ,'No rejected translations':'暂无被拒绝的译法'
+    ,'Reject a proposed translation to remember it here.':'拒绝建议译文后会在这里记录。'
+    ,'Reason':'原因'
+    ,'Remove from memory':'从记忆中移除'
+    ,'Remove this rejected translation from memory?':'要从记忆中移除这条被拒绝的译法吗？'
   };
   let language='en';try{language=localStorage.getItem('dbabel-language')||'en';}catch(_){}
   if(language!=='zh-CN')language='en';
@@ -79,5 +105,5 @@
   while((n=walker.nextNode())){if(n.parentElement.closest('script,style'))continue;const raw=n.textContent,trimmed=raw.trim();if(dictionary[trimmed])n.textContent=raw.replace(trimmed,t(trimmed));}
   for(const e of document.querySelectorAll('[title],[placeholder],[aria-label]'))for(const a of ['title','placeholder','aria-label'])if(e.hasAttribute(a))e.setAttribute(a,t(e.getAttribute(a)));
   document.documentElement.lang=language;
-  const control=document.getElementById('languageSelect');if(control){control.value=language;control.addEventListener('change',()=>{if(window.hasUnsavedWorkbenchChanges?.()&&!confirm(t('Discard unsaved target or note changes?'))){control.value=language;return;}if(window.prepareLanguageReload&&window.prepareLanguageReload()===false){control.value=language;return;}try{localStorage.setItem('dbabel-language',control.value);}catch(_){}location.reload();});}
+  const control=document.getElementById('languageSelect');if(control){control.value=language;control.addEventListener('change',async()=>{try{if(window.flushWorkbenchUiState)await window.flushWorkbenchUiState();if(window.prepareLanguageReload&&window.prepareLanguageReload()===false){control.value=language;return;}localStorage.setItem('dbabel-language',control.value);location.reload();}catch(error){control.value=language;window.workbenchNotice?.(error.message||String(error));}});}
 })();

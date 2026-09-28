@@ -1,20 +1,62 @@
 (() => {
   'use strict';
   const trUI=window.dbabelI18n.t;
-  const state={token:'',session:null,units:[],issues:[],evidence:[],decisions:new Map(),selected:null,gate:null,exportAvailable:false,outputName:null,page:0,pageSize:50,reviewFilters:new Set(),issueFilters:new Set(),activeTab:'suggestion',activeView:'Review',restoringUi:false,editing:false,theme:'system',selectedUnits:new Set(),chat:[],chatAvailable:false};
+  const state={token:'',session:null,units:[],issues:[],evidence:[],decisions:new Map(),selected:null,gate:null,exportAvailable:false,outputName:null,page:0,pageSize:50,reviewFilters:new Set(),issueFilters:new Set(),activeTab:'suggestion',activeView:'Review',restoringUi:false,editing:false,drafts:{},checkpointDrafts:{},manualSavePending:false,theme:'system',selectedUnits:new Set(),chat:[],chatAvailable:false};
   const el=id=>document.getElementById(id);
   let uiSaveTimer;
+  let uiSaveChain=Promise.resolve();
+  function captureDraft(){
+    if(!state.selected)return;
+    const unit=state.units.find(x=>x.id===state.selected);
+    if(!unit)return;
+    const decision=decisionFor(state.selected);
+    const target=el('targetText').value,note=el('reviewerNote').value;
+    if(target!==reviewTarget(unit)||note!==(decision.reviewer_note||'')){
+      state.drafts[state.selected]={target,note,editing:state.editing};
+    }else delete state.drafts[state.selected];
+  }
+  function uiPayload(){
+    captureDraft();
+    return {selected:state.selected,page:state.page,page_size:state.pageSize,
+      view:state.activeView,scroll_top:el('segmentRows').closest('.table-wrap').scrollTop,
+      drafts:state.drafts};
+  }
+  function persistUiState(){
+    const payload=JSON.stringify(uiPayload());
+    const next=uiSaveChain.catch(()=>{}).then(()=>api('/api/ui-state',{
+      method:'PUT',body:payload
+    }));
+    uiSaveChain=next;
+    return next;
+  }
   function scheduleUiSave(){
     if(state.restoringUi||!state.session)return;
     clearTimeout(uiSaveTimer);
-    uiSaveTimer=setTimeout(()=>{
-      api('/api/ui-state',{method:'PUT',body:JSON.stringify({
-        selected:state.selected,page:state.page,page_size:state.pageSize,
-        view:state.activeView,scroll_top:el('segmentRows').closest('.table-wrap').scrollTop
-      })}).catch(()=>{});
-    },250);
+    uiSaveTimer=setTimeout(()=>{persistUiState().catch(()=>{});},250);
   }
   window.saveWorkbenchUiState=scheduleUiSave;
+  window.flushWorkbenchUiState=async()=>{
+    clearTimeout(uiSaveTimer);
+    if(!state.session)return true;
+    await persistUiState();
+    state.checkpointDrafts=structuredClone(state.drafts);
+    state.manualSavePending=false;
+    return true;
+  };
+  window.workbenchNeedsSave=()=>state.manualSavePending;
+  window.discardWorkbenchCurrentDraft=async()=>{
+    clearTimeout(uiSaveTimer);
+    state.drafts=structuredClone(state.checkpointDrafts);
+    if(state.selected){
+      const unit=state.units.find(x=>x.id===state.selected);
+      const draft=state.drafts[state.selected];
+      el('targetText').value=draft?.target??reviewTarget(unit);
+      el('reviewerNote').value=draft?.note??(decisionFor(state.selected).reviewer_note||'');
+    }
+    await persistUiState();
+    state.manualSavePending=false;
+    return true;
+  };
   const THEME_KEY='dbabel-review-theme';
   const desktopMac=document.documentElement.classList.contains('desktop-macos');
   const systemTheme=()=>window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
@@ -29,7 +71,7 @@
   function svgUse(id){const s=document.createElementNS('http://www.w3.org/2000/svg','svg');const u=document.createElementNS('http://www.w3.org/2000/svg','use');u.setAttribute('href','#'+id);s.append(u);return s;}
   function tokenFromHash(){const m=location.hash.match(/(?:^|[&#])token=([^&]+)/);return m?decodeURIComponent(m[1]):'';}
   async function api(path,options={}){options.headers=Object.assign({'X-DBabel-Session':state.token},options.headers||{});if(options.body&&!options.headers['Content-Type'])options.headers['Content-Type']='application/json';const r=await fetch(path,options);let body=null;try{body=await r.json();}catch(_){body={error:await r.text()};}if(!r.ok)throw new Error(body.error||`HTTP ${r.status}`);return body;}
-  window.hasUnsavedWorkbenchChanges=()=>{if(!state.selected)return false;const u=state.units.find(x=>x.id===state.selected),d=decisionFor(state.selected);return (state.editing&&el('targetText').value!==reviewTarget(u))||el('reviewerNote').value!==(d.reviewer_note||'');};
+  window.hasUnsavedWorkbenchChanges=()=>state.manualSavePending;
   function decisionFor(id){return state.decisions.get(id)||{status:'UNREVIEWED',revision:0,reviewer_note:'',waived_issue_fingerprints:[],recheck:{status:'NOT_RUN',error_count:0,warning_count:0,issue_fingerprints:[]}};}
   function proposalReviewMode(){return ['TRANSLATE','BILINGUAL_REVIEW','REPAIR'].includes(String(state.session?.mode||''));}
   function unapprovedProposal(u){const d=decisionFor(u.id);return proposalReviewMode()&&!completedStatuses.has(d.status)&&Boolean(u.suggested_target?.trim());}
@@ -302,11 +344,13 @@
 
     syncSelectionUi(pageUnits);
     renderMetrics();
+    el('approveAll').disabled=!state.units.some(u=>
+      decisionFor(u.id).status==='UNREVIEWED'&&Boolean(u.suggested_target?.trim()));
     if(scrollArea)scrollArea.scrollTop=previousScrollTop;
     scheduleUiSave();
   }
 
-  function selectUnit(id){if(state.selected&&state.selected!==id){const old=state.units.find(u=>u.id===state.selected),d=decisionFor(state.selected);if((state.editing&&el('targetText').value!==reviewTarget(old)||el('reviewerNote').value!==(d.reviewer_note||''))&&!confirm('Discard unsaved target or note changes?'))return;}document.querySelector(".review-area").classList.remove("inspector-closed");state.selected=id;state.editing=false;const u=state.units.find(x=>x.id===id);if(!u)return;const d=decisionFor(id),idx=unitIndex(id);el('editAction').textContent=trUI('Edit');el('unitPrev').disabled=idx===0;el('unitNext').disabled=idx===state.units.length-1;el('targetText').lang=u.target_language||'';el('sourceLabel').textContent=trUI('Source')+' · '+(u.source_language||'');el('targetLabel').textContent=reviewTargetLabel(u)+' · '+(u.target_language||'');el('acceptButton').disabled=!u.suggested_target?.trim();el('segmentCounter').textContent=trUI(`Segment ${idx+1} of ${state.units.length.toLocaleString()}`);el('sourceText').textContent=u.source;el('targetText').value=reviewTarget(u);el('targetText').readOnly=true;el('targetText').classList.remove('editing');el('editToggle').replaceChildren();el('editToggle').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));el('reviewerNote').value=d.reviewer_note||'';el('waiverReason').value=d.waiver_reason||'';el('waiverField').classList.add('hidden');el('decisionSelect').value=d.status;const iss=issuesFor(id);const chips=el('issueChips');chips.replaceChildren();for(const i of iss.slice(0,5)){const raw=i.label||i.check_id||i.severity,txt=issueDisplay(raw);const chip=node('span',trUI(txt),'issue-chip '+issueClass(i));chip.title=raw;chips.append(chip);}if(evidenceFor(u).length&&!iss.some(i=>(i.label||i.check_id||'').includes('EVIDENCE'))){const ev=node('span',trUI('EVIDENCE'),'issue-chip evidence');ev.title='Linked evidence';chips.append(ev);}if(!iss.length&&!evidenceFor(u).length)chips.append(node('span',trUI('CLEAN'),'issue-chip default'));el('evidenceTabCount').textContent=`(${evidenceFor(u).length})`;const terms=[...(u.labels||[]),...iss.map(i=>i.label||i.check_id||'')].filter(Boolean);el('termTabCount').textContent=`(${new Set(terms).size})`;el('chatContext').textContent=trUI('Current segment')+' · '+u.id;renderSuggestion(u);renderEvidence(u);renderTerminology(u);setTab('suggestion');renderTable();scheduleUiSave();}
+  function selectUnit(id){if(state.selected&&state.selected!==id)captureDraft();document.querySelector(".review-area").classList.remove("inspector-closed");state.selected=id;state.editing=false;const u=state.units.find(x=>x.id===id);if(!u)return;const d=decisionFor(id),idx=unitIndex(id);el('editAction').textContent=trUI('Edit Translation');el('unitPrev').disabled=idx===0;el('unitNext').disabled=idx===state.units.length-1;el('targetText').lang=u.target_language||'';el('sourceLabel').textContent=trUI('Source')+' · '+(u.source_language||'');el('targetLabel').textContent=reviewTargetLabel(u)+' · '+(u.target_language||'');el('acceptButton').disabled=!u.suggested_target?.trim();el('segmentCounter').textContent=trUI(`Segment ${idx+1} of ${state.units.length.toLocaleString()}`);el('sourceText').textContent=u.source;el('targetText').value=reviewTarget(u);el('targetText').readOnly=true;el('targetText').classList.remove('editing');el('editToggle').replaceChildren();el('editToggle').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));el('reviewerNote').value=d.reviewer_note||'';const draft=state.drafts[id];if(draft){el('targetText').value=draft.target;el('reviewerNote').value=draft.note;if(draft.editing||draft.target!==reviewTarget(u)){state.editing=true;el('targetText').readOnly=false;el('targetText').classList.add('editing');el('editToggle').textContent=trUI('Editing');el('editAction').textContent=trUI('Use Edit');}}el('waiverReason').value=d.waiver_reason||'';el('waiverField').classList.add('hidden');el('decisionSelect').value=d.status;el('decisionStatus').textContent=trUI(statusLabel[d.status]||d.status);const iss=issuesFor(id);const chips=el('issueChips');chips.replaceChildren();for(const i of iss.slice(0,5)){const raw=i.label||i.check_id||i.severity,txt=issueDisplay(raw);const chip=node('span',trUI(txt),'issue-chip '+issueClass(i));chip.title=raw;chips.append(chip);}if(evidenceFor(u).length&&!iss.some(i=>(i.label||i.check_id||'').includes('EVIDENCE'))){const ev=node('span',trUI('EVIDENCE'),'issue-chip evidence');ev.title='Linked evidence';chips.append(ev);}if(!iss.length&&!evidenceFor(u).length)chips.append(node('span',trUI('CLEAN'),'issue-chip default'));el('evidenceTabCount').textContent=`(${evidenceFor(u).length})`;const terms=[...(u.labels||[]),...iss.map(i=>i.label||i.check_id||'')].filter(Boolean);el('termTabCount').textContent=`(${new Set(terms).size})`;el('chatContext').textContent=trUI('Current segment')+' · '+u.id;renderSuggestion(u);renderEvidence(u);renderTerminology(u);setTab('suggestion');renderTable();scheduleUiSave();}
   function renderSuggestion(u){
     const iss=issuesFor(u.id);
     const advice=window.dbabelI18n.suggestion(u,iss);
@@ -447,10 +491,10 @@
   function renderEvidence(u){const evs=evidenceFor(u),root=el('evidenceList');root.replaceChildren();el('evidenceCountText').textContent=evs.length?trUI(`View all (${evs.length})`):trUI('No linked evidence');for(const e of evs){const c=node('div',undefined,'evidence-card');c.append(node('div',e.source_title||e.id,'evidence-title'));c.append(node('div',e.support_note||'','evidence-note'));c.append(node('div',e.locator||'','evidence-locator'));root.append(c);}if(!evs.length)root.append(node('div',trUI('No evidence record is linked to this unit.'),'evidence-card'));}
   function renderTerminology(u){const root=el('terminologyList');root.replaceChildren();const labels=new Set([...(u.labels||[]),...issuesFor(u.id).map(i=>i.label||i.check_id||i.classification).filter(Boolean)]);for(const t of labels){const c=node('div',undefined,'term-card');const tc=node('span',trUI(issueDisplay(t)),'issue-chip term');tc.title=t;c.append(tc);c.append(node('span',trUI('DBabel review label')));root.append(c);}if(!labels.size)root.append(node('div',trUI('No terminology labels for this unit.'),'evidence-card'));}
   function setTab(name){state.activeTab=name;for(const b of document.querySelectorAll('.tabs button'))b.classList.toggle('active',b.dataset.tab===name);for(const p of document.querySelectorAll('.tab-panel'))p.classList.remove('active');const map={suggestion:'tabSuggestion',evidence:'tabEvidence',terminology:'tabTerminology'};el(map[name]).classList.add('active');}
-  function editTarget(){if(!state.selected)return;state.editing=!state.editing;el('targetText').readOnly=!state.editing;el('targetText').classList.toggle('editing',state.editing);if(state.editing){el('targetText').focus();el('editToggle').textContent=trUI('Editing');el('editAction').textContent=trUI('Use Edit');}else{el('editToggle').replaceChildren();el('editToggle').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));el('editAction').replaceChildren();el('editAction').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));}}
-  async function setDecision(status){
+  function editTarget(){if(!state.selected)return;state.editing=!state.editing;el('targetText').readOnly=!state.editing;el('targetText').classList.toggle('editing',state.editing);if(state.editing){el('targetText').focus();el('editToggle').textContent=trUI('Editing');el('editAction').textContent=trUI('Use Edit');el('decisionFeedback').textContent=trUI('Edit the translation, then select Use Edit.');}else{el('editToggle').replaceChildren();el('editToggle').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));el('editAction').replaceChildren();el('editAction').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));}}
+  async function setDecision(status,rejectionReason=""){
     const u=state.units.find(x=>x.id===state.selected);if(!u)return;
-    const body={status,reviewer_note:el('reviewerNote').value};
+    const body={status,reviewer_note:el('reviewerNote').value};if(status==='BLOCKED')body.rejection_reason=rejectionReason;
     if(status==='USER_EDITED'||status==='WAIVED')body.approved_target=el('targetText').value;
     if(status==='KEEP_CURRENT')body.approved_target=u.current_target;
     if(status==='ACCEPT_SUGGESTION')body.approved_target=u.suggested_target||el('targetText').value;
@@ -459,18 +503,23 @@
       if(!body.waiver_reason){el('waiverField').classList.remove('hidden');el('waiverReason').focus();return;}
       body.waived_issue_fingerprints=issuesFor(u.id).filter(x=>x.severity==='ERROR').map(x=>x.fingerprint);
     }
+    const feedback=el('decisionFeedback');feedback.textContent=trUI('Saving decision…');feedback.classList.remove('error');
     try{
       const saved=await api(`/api/decisions/${encodeURIComponent(u.id)}`,{method:'PUT',body:JSON.stringify(body)});
       for(const result of [saved,...(saved.linked_decisions||[])]){
         state.decisions.set(result.decision.unit_id,result.decision);
+        delete state.drafts[result.decision.unit_id];
+        delete state.checkpointDrafts[result.decision.unit_id];
         if(result.recheck_issues){
           state.issues=state.issues.filter(x=>!(x.unit_id===result.decision.unit_id&&x.kind==='DETERMINISTIC'));
           state.issues.push(...result.recheck_issues);
         }
       }
+      if(!Object.keys(state.drafts).length)state.manualSavePending=false;
       renderIssueFilters();selectUnit(u.id);await refreshGate();
+      feedback.textContent=trUI('Decision saved.');
       if(saved.linked_decisions?.length)window.workbenchNotice(trUI('Applied to identical units')+' · '+saved.linked_decisions.length);
-    }catch(err){alert(err.message);}
+    }catch(err){feedback.textContent=err.message;feedback.classList.add('error');window.workbenchNotice(err.message);}
   }
   async function bulkDecision(status){
     const ids=[...state.selectedUnits];
@@ -544,6 +593,33 @@
     }catch(err){
       alert(err.message);
     }
+  }
+
+  async function approveAllSuggestions(){
+    const ids=state.units.filter(u=>
+      decisionFor(u.id).status==='UNREVIEWED'&&Boolean(u.suggested_target?.trim())
+    ).map(u=>u.id);
+    if(!ids.length)return;
+    const warning=trUI('Accept every available suggestion for {count} pending segments? QA findings will still require review.')
+      .replace('{count}',ids.length.toLocaleString());
+    if(!window.confirm(warning))return;
+    const button=el('approveAll');button.disabled=true;
+    try{
+      const response=await api('/api/decisions/bulk',{method:'POST',body:JSON.stringify({
+        status:'ACCEPT_SUGGESTION',unit_ids:ids
+      })});
+      for(const result of response.results||[]){
+        state.decisions.set(result.decision.unit_id,result.decision);
+        if(result.recheck_issues){
+          state.issues=state.issues.filter(x=>!(x.unit_id===result.decision.unit_id&&x.kind==='DETERMINISTIC'));
+          state.issues.push(...result.recheck_issues);
+        }
+      }
+      renderIssueFilters();
+      if(state.selected)selectUnit(state.selected);else renderTable();
+      await refreshGate();
+      window.workbenchNotice(trUI('Accepted {count} suggestions; review remaining QA findings.').replace('{count}',ids.length.toLocaleString()));
+    }catch(err){window.workbenchNotice(err.message);renderTable();}
   }
 
   async function refreshGate(){try{state.gate=await api('/api/export-gate',{method:'POST',body:JSON.stringify({export_mode:el('exportMode').value})});const fresh=state.gate.qa_issues||[];if(state.gate.review_decisions){for(const d of state.gate.review_decisions)state.decisions.set(d.unit_id,d);state.issues=state.issues.filter(i=>i.kind!=='DETERMINISTIC'||!completedStatuses.has(decisionFor(i.unit_id).status)).concat(fresh);delete state.gate.review_decisions;delete state.gate.qa_issues;renderIssueFilters();renderTable();}const blockers=state.gate.blockers||[];el('gateStatus').textContent=state.gate.status+(blockers.length?'\n'+blockers.slice(0,5).join('\n'):'');if(!state.exportAvailable){
@@ -625,17 +701,17 @@
       root.append(card);
     }
     root.scrollTop=root.scrollHeight;
-    const available=state.chatAvailable;
-    for(const id of ['chatInput','chatSend','chatAttach','chatWhy','chatFiles'])el(id).disabled=!available;
-    if(!available)el('chatStatus').textContent=trUI('Configure an API service to enable chat.');
+    if(!state.chatAvailable)el('chatStatus').textContent=trUI('Configure an API service to enable chat.');
   }
   async function refreshChat(){
     try{const data=await api('/api/chat');state.chat=data.messages||[];state.chatAvailable=Boolean(data.available);renderChat();}
     catch(err){el('chatStatus').textContent=err.message;}
   }
+  window.dbabelRefreshChat=refreshChat;
   async function sendChat(quickMessage){
     const message=(quickMessage||el('chatInput').value).trim();
-    if(!message||!state.chatAvailable)return;
+    if(!message)return;
+    if(!state.chatAvailable){el('chatStatus').textContent=trUI('Configure an API service to enable chat.');return;}
     if(message.length>4000){el('chatStatus').textContent=trUI('Message exceeds 4000 characters.');return;}
     el('chatSend').disabled=true;el('chatWhy').disabled=true;
     el('chatStatus').textContent=trUI('Asking AI…');
@@ -653,7 +729,43 @@
       if(!quickMessage){el('chatInput').value='';try{localStorage.removeItem('dbabel-chat-draft-'+state.session.session_id);}catch(_){}}
       el('chatStatus').textContent=trUI('Saved in this review session.');
     }catch(err){await refreshChat();el('chatStatus').textContent=err.message;}
-    finally{el('chatSend').disabled=!state.chatAvailable;el('chatWhy').disabled=!state.chatAvailable;}
+    finally{el('chatSend').disabled=false;el('chatWhy').disabled=false;}
+  }
+  function setupChatLayout(){
+    const panel=el('chatPanel'),handle=el('chatResizeHandle'),toggle=el('chatCollapse');
+    const key='dbabel-chat-layout-v2-'+state.session.session_id;
+    let expandedHeight=228;
+    try{
+      const saved=JSON.parse(localStorage.getItem(key)||'{}');
+      if(Number.isFinite(saved.height))expandedHeight=Math.max(190,Math.min(480,saved.height));
+      panel.style.setProperty('--chat-panel-height',expandedHeight+'px');
+      if(saved.collapsed)panel.classList.add('collapsed');
+    }catch(_){}
+    const save=()=>{try{localStorage.setItem(key,JSON.stringify({
+      height:expandedHeight,collapsed:panel.classList.contains('collapsed')
+    }));}catch(_){}};
+    const sync=()=>toggle.setAttribute('aria-expanded',String(!panel.classList.contains('collapsed')));
+    sync();
+    toggle.addEventListener('click',()=>{panel.classList.toggle('collapsed');sync();save();});
+    let startY=0,startHeight=0;
+    handle.addEventListener('pointerdown',event=>{
+      if(panel.classList.contains('collapsed'))return;
+      startY=event.clientY;startHeight=panel.getBoundingClientRect().height;
+      handle.setPointerCapture(event.pointerId);
+    });
+    handle.addEventListener('pointermove',event=>{
+      if(!handle.hasPointerCapture(event.pointerId))return;
+      panel.style.setProperty('--chat-panel-height',Math.max(190,Math.min(480,startHeight+startY-event.clientY))+'px');
+    });
+    handle.addEventListener('pointerup',event=>{if(handle.hasPointerCapture(event.pointerId))handle.releasePointerCapture(event.pointerId);expandedHeight=panel.getBoundingClientRect().height;save();});
+    handle.addEventListener('keydown',event=>{
+      if(!['ArrowUp','ArrowDown'].includes(event.key))return;
+      event.preventDefault();
+      const current=panel.getBoundingClientRect().height;
+      panel.style.setProperty('--chat-panel-height',Math.max(190,Math.min(480,current+(event.key==='ArrowUp'?20:-20)))+'px');
+      expandedHeight=panel.getBoundingClientRect().height;
+      save();
+    });
   }
   function setupChatControls(){
     const draftKey='dbabel-chat-draft-'+state.session.session_id;
@@ -678,24 +790,66 @@
   }
   function moveUnit(delta){if(!state.units.length)return;const idx=unitIndex(state.selected);const next=Math.max(0,Math.min(state.units.length-1,idx+delta));selectUnit(state.units[next].id);}
   async function copyText(id){try{await navigator.clipboard.writeText(el(id).textContent||'');window.workbenchNotice('Copied to clipboard.');}catch(_){window.workbenchNotice('Clipboard unavailable. Select the text and copy it manually.');}}
+  function setupSaveProgress(){
+    el('saveProgress').addEventListener('click',async()=>{
+      const button=el('saveProgress');button.disabled=true;
+      try{
+        await window.flushWorkbenchUiState();
+        window.workbenchNotice(trUI('Progress saved in this review session.'));
+      }catch(error){window.workbenchNotice(error.message);}
+      finally{button.disabled=false;}
+    });
+  }
+  function setupInspectorResize(){
+    const handle=el('inspectorResizeHandle');
+    const workspace=document.querySelector('.workspace');
+    const key='dbabel-inspector-width-'+state.session.session_id;
+    const clamp=width=>Math.max(320,Math.min(680,workspace.clientWidth-420,width));
+    const setWidth=width=>workspace.style.setProperty('--inspector',clamp(width)+'px');
+    try{const saved=Number(localStorage.getItem(key));if(Number.isFinite(saved)&&saved>0)setWidth(saved);}catch(_){}
+    let startX=0,startWidth=0;
+    handle.addEventListener('pointerdown',event=>{
+      if(event.button!==0)return;
+      startX=event.clientX;startWidth=el('inspector').getBoundingClientRect().width;
+      handle.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    handle.addEventListener('pointermove',event=>{
+      if(!handle.hasPointerCapture(event.pointerId))return;
+      setWidth(startWidth+startX-event.clientX);
+    });
+    handle.addEventListener('pointerup',event=>{
+      if(!handle.hasPointerCapture(event.pointerId))return;
+      handle.releasePointerCapture(event.pointerId);
+      try{localStorage.setItem(key,String(Math.round(el('inspector').getBoundingClientRect().width)));}catch(_){}
+    });
+    handle.addEventListener('keydown',event=>{
+      if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
+      setWidth(el('inspector').getBoundingClientRect().width+(event.key==='ArrowLeft'?20:-20));
+      try{localStorage.setItem(key,String(Math.round(el('inspector').getBoundingClientRect().width)));}catch(_){}
+      event.preventDefault();
+    });
+  }
   function setupControls(){el('saveNote').addEventListener('click',async()=>{if(!state.selected)return;try{const d=decisionFor(state.selected),saved=await api('/api/decisions/'+encodeURIComponent(state.selected),{method:'PUT',body:JSON.stringify({...d,reviewer_note:el('reviewerNote').value})});state.decisions.set(state.selected,saved.decision);window.workbenchNotice('Reviewer note saved.');}catch(e){window.workbenchNotice(e.message);}});
         window.installWorkbenchViews({filteredUnits:filterUnits,state,el,node,decisionFor,issuesFor,evidenceFor,selectUnit,renderTable,applyTheme,
       recheck: typeof refreshGate==='function' ? refreshGate : null,
-      getReport: ()=>api('/api/post-review-report') });window.installExchange({api,state,el,node,refreshGate});el('exportMode').addEventListener('change',refreshGate);el('themeSelect').addEventListener('change',()=>applyTheme(el('themeSelect').value));for(const s of statusOrder){const o=new Option(trUI(statusLabel[s]),s);el('decisionSelect').append(o);}el('decisionSelect').addEventListener('change',()=>{const s=el('decisionSelect').value; if(s==='WAIVED'){el('waiverField').classList.remove('hidden');return;}setDecision(s);});el('searchBox').addEventListener('input',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const id of ['quickFilter','sortSelect'])el(id).addEventListener('change',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const cb of document.querySelectorAll('[data-review-filter]'))cb.addEventListener('change',()=>{const k=cb.dataset.reviewFilter;cb.checked?state.reviewFilters.add(k):state.reviewFilters.delete(k);state.selectedUnits.clear();state.page=0;renderTable();});el('clearFilters').addEventListener('click',()=>{state.reviewFilters.clear();state.issueFilters.clear();for(const cb of document.querySelectorAll('.filters-panel input[type=checkbox]'))cb.checked=false;el('quickFilter').value='ALL';el('searchBox').value='';state.page=0;renderIssueFilters();renderTable();});el('pagePrev').addEventListener('click',()=>{if(state.page>0){state.selectedUnits.clear();state.page--;renderTable();}});el('pageNext').addEventListener('click',()=>{state.selectedUnits.clear();state.page++;renderTable();});el('unitPrev').addEventListener('click',()=>moveUnit(-1));el('unitNext').addEventListener('click',()=>moveUnit(1));for(const b of document.querySelectorAll('.tabs button'))b.addEventListener('click',()=>setTab(b.dataset.tab));el('editToggle').addEventListener('click',editTarget);el('editAction').addEventListener('click',()=>{if(!state.editing){editTarget();return;}setDecision('USER_EDITED');});el('acceptButton').addEventListener('click',()=>setDecision('ACCEPT_SUGGESTION'));el('keepButton').addEventListener('click',()=>setDecision('KEEP_CURRENT'));el('deferButton').addEventListener('click',()=>setDecision('DEFERRED'));el('blockButton').addEventListener('click',()=>setDecision('BLOCKED'));el('waiveButton').addEventListener('click',()=>{el('waiverField').classList.remove('hidden');el('waiverReason').focus();});el('confirmWaiver').addEventListener('click',()=>setDecision('WAIVED'));for(const b of document.querySelectorAll('[data-copy]'))b.addEventListener('click',()=>copyText(b.dataset.copy));el('exportButton').addEventListener('click',doExport);el('selectPage').addEventListener('change',()=>{for(const u of currentPageUnits()){if(el('selectPage').checked){state.selectedUnits.add(u.id);}else{state.selectedUnits.delete(u.id);}}renderTable();});el('bulkKeep').addEventListener('click',()=>bulkDecision('KEEP_CURRENT'));el('bulkDefer').addEventListener('click',()=>bulkDecision('DEFERRED'));el('bulkClear').addEventListener('click',()=>{state.selectedUnits.clear();renderTable();});}
-  function initHeader(){const u=state.units[0]||{},s=trUI(languageNames[u.source_language]||u.source_language||'Source'),targetNames=[...new Set(state.units.map(x=>x.target_language).filter(Boolean))].map(x=>trUI(languageNames[x]||x)).join(' / ')||'Target';el('documentTitle').textContent=state.session.title||state.session.original.filename||'DBabel Review';el('documentMeta').textContent=`${trUI('Technical Documentation')}   |   ${s} → ${targetNames}   |   ${state.session.dbabel_version||'v1.5'}`;el('sourceLanguage').textContent=`(${s})`;el('targetLanguage').textContent=`(${targetNames})`;el('sourceLabel').textContent=window.dbabelI18n.t(`Source (${window.dbabelI18n.t(s)})`);el('targetLabel').textContent=window.dbabelI18n.t(`Target (${targetNames})`);}
+      getReport: ()=>api('/api/post-review-report'),getRejections: ()=>api('/api/rejection-memory'),removeRejection: id=>api('/api/rejection-memory/remove',{method:'POST',body:JSON.stringify({id})}) });window.installExchange({api,state,el,node,refreshGate});el('exportMode').addEventListener('change',refreshGate);el('themeSelect').addEventListener('change',()=>applyTheme(el('themeSelect').value));for(const s of statusOrder){const o=new Option(trUI(statusLabel[s]),s);el('decisionSelect').append(o);}el('decisionSelect').addEventListener('change',()=>{const s=el('decisionSelect').value; if(s==='WAIVED'){el('waiverField').classList.remove('hidden');return;}setDecision(s);});el('searchBox').addEventListener('input',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const id of ['quickFilter','sortSelect'])el(id).addEventListener('change',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const cb of document.querySelectorAll('[data-review-filter]'))cb.addEventListener('change',()=>{const k=cb.dataset.reviewFilter;cb.checked?state.reviewFilters.add(k):state.reviewFilters.delete(k);state.selectedUnits.clear();state.page=0;renderTable();});el('clearFilters').addEventListener('click',()=>{state.reviewFilters.clear();state.issueFilters.clear();for(const cb of document.querySelectorAll('.filters-panel input[type=checkbox]'))cb.checked=false;el('quickFilter').value='ALL';el('searchBox').value='';state.page=0;renderIssueFilters();renderTable();});el('pagePrev').addEventListener('click',()=>{if(state.page>0){state.selectedUnits.clear();state.page--;renderTable();}});el('pageNext').addEventListener('click',()=>{state.selectedUnits.clear();state.page++;renderTable();});el('unitPrev').addEventListener('click',()=>moveUnit(-1));el('unitNext').addEventListener('click',()=>moveUnit(1));for(const b of document.querySelectorAll('.tabs button'))b.addEventListener('click',()=>setTab(b.dataset.tab));el('editToggle').addEventListener('click',editTarget);el('editAction').addEventListener('click',()=>{if(!state.editing){editTarget();return;}setDecision('USER_EDITED');});el('acceptButton').addEventListener('click',()=>setDecision('ACCEPT_SUGGESTION'));el('keepButton').addEventListener('click',()=>setDecision('KEEP_CURRENT'));el('deferButton').addEventListener('click',()=>setDecision('DEFERRED'));el('blockButton').addEventListener('click',()=>{const reason=window.prompt(trUI('Why should this translation never be suggested again?'));if(reason?.trim())setDecision('BLOCKED',reason.trim());});el('waiveButton').addEventListener('click',()=>{el('waiverField').classList.remove('hidden');el('waiverReason').focus();});el('confirmWaiver').addEventListener('click',()=>setDecision('WAIVED'));for(const b of document.querySelectorAll('[data-copy]'))b.addEventListener('click',()=>copyText(b.dataset.copy));el('exportButton').addEventListener('click',doExport);el('selectPage').addEventListener('change',()=>{for(const u of currentPageUnits()){if(el('selectPage').checked){state.selectedUnits.add(u.id);}else{state.selectedUnits.delete(u.id);}}renderTable();});el('approveAll').addEventListener('click',approveAllSuggestions);el('bulkKeep').addEventListener('click',()=>bulkDecision('KEEP_CURRENT'));el('bulkDefer').addEventListener('click',()=>bulkDecision('DEFERRED'));el('bulkClear').addEventListener('click',()=>{state.selectedUnits.clear();renderTable();});}
+  function initHeader(){const u=state.units[0]||{},s=trUI(languageNames[u.source_language]||u.source_language||'Source'),targetNames=[...new Set(state.units.map(x=>x.target_language).filter(Boolean))].map(x=>trUI(languageNames[x]||x)).join(' / ')||'Target';el('reviewBreadcrumb').textContent=trUI('Review')+' /';el('documentTitle').textContent=state.session.original.filename||state.session.title||'DBabel Review';el('documentMeta').textContent=`${trUI('Technical Documentation')}   |   ${s} → ${targetNames}   |   ${state.session.dbabel_version||'v1.5'}`;el('sourceLanguage').textContent=`(${s})`;el('targetLanguage').textContent=`(${targetNames})`;el('sourceLabel').textContent=window.dbabelI18n.t(`Source (${window.dbabelI18n.t(s)})`);el('targetLabel').textContent=window.dbabelI18n.t(`Target (${targetNames})`);}
   async function boot(){
     initTheme();state.token=tokenFromHash();
     if(!state.token){document.body.textContent=trUI('Missing DBabel session token.');return;}
     const [data,savedUi]=await Promise.all([api('/api/bootstrap'),api('/api/ui-state').catch(()=>({}))]);
     state.restoringUi=true;state.session=data.session;state.units=data.units;
     state.issues=data.issues;state.evidence=data.evidence;
+    state.drafts=savedUi.drafts&&typeof savedUi.drafts==='object'?savedUi.drafts:{};
+    state.checkpointDrafts=structuredClone(state.drafts);
     for(const d of data.decisions)state.decisions.set(d.unit_id,d);
     state.exportAvailable=Boolean(data.export_available);
     el('downloadResults').hidden=!state.exportAvailable;
     el('exportMode').hidden=!state.exportAvailable;
     if(!state.exportAvailable)el('exportButton').querySelector('use').setAttribute('href','#i-doc');
     state.outputName=data.output_name||null;
-    setupControls();setupChatControls();initHeader();renderIssueFilters();renderMetrics();
+    setupControls();setupSaveProgress();setupChatControls();setupChatLayout();setupInspectorResize();initHeader();renderIssueFilters();renderMetrics();
     if([25,50,100,200].includes(savedUi.page_size))state.pageSize=savedUi.page_size;
     if(Number.isInteger(savedUi.page)&&savedUi.page>=0)state.page=savedUi.page;
     renderTable();
@@ -705,6 +859,11 @@
     if(Number.isFinite(savedUi.scroll_top))el('segmentRows').closest('.table-wrap').scrollTop=savedUi.scroll_top;
     state.restoringUi=false;
     el('segmentRows').closest('.table-wrap').addEventListener('scroll',scheduleUiSave,{passive:true});
+    for(const id of ['targetText','reviewerNote'])el(id).addEventListener('input',()=>{
+      captureDraft();
+      state.manualSavePending=JSON.stringify(state.drafts)!==JSON.stringify(state.checkpointDrafts);
+      scheduleUiSave();
+    });
     await Promise.all([refreshGate(),refreshChat()]);
   }
   boot().catch(err=>{document.body.textContent='DBabel Workbench failed: '+err.message;});

@@ -52,6 +52,7 @@
       <button class="nav-item" id="openIntake"><svg><use href="#i-doc"></use></svg><span>Upload documents</span></button>
       <button class="nav-item active" data-view="Review"><svg><use href="#i-review"></use></svg><span>Review</span></button>
       <button class="nav-item" data-view="Terminology"><svg><use href="#i-book"></use></svg><span>Terminology</span></button>
+      <button class="nav-item" data-view="Rejection Memory"><svg><use href="#i-ban"></use></svg><span>Rejected translations</span></button>
       <button class="nav-item" data-view="Evidence"><svg><use href="#i-db"></use></svg><span>Evidence</span></button>
       <button class="nav-item" data-view="Quality Check"><svg><use href="#i-check"></use></svg><span>Quality Check</span></button>
       <button class="nav-item" data-view="Reports"><svg><use href="#i-chart"></use></svg><span>Reports</span></button>
@@ -77,8 +78,8 @@
   <section class="workspace">
     <header class="document-bar">
       <div class="document-identity">
-        <svg class="doc-icon"><use href="#i-doc"></use></svg>
-        <div><div class="document-title-row"><strong id="documentTitle">DBabel Review</strong><span>⌄</span></div><div id="documentMeta" class="document-meta">Technical Documentation</div></div>
+        <svg class="doc-icon" id="documentIcon"><use href="#i-doc"></use></svg>
+        <div><div class="document-title-row"><span id="reviewBreadcrumb" class="document-breadcrumb">Review /</span><strong id="documentTitle">DBabel Review</strong></div><div id="documentMeta" class="document-meta">Technical Documentation</div></div>
       </div>
       <label class="global-search"><svg><use href="#i-search"></use></svg><input id="searchBox" type="search" placeholder="Search source, target, term, or issue..."></label>
       <div class="reviewer-zone">
@@ -98,9 +99,12 @@
 
     <section id="sectionView" class="section-view" hidden aria-live="polite"></section>
     <div class="review-area">
+      <div id="inspectorResizeHandle" class="inspector-resize-handle" role="separator" aria-label="Resize review inspector" aria-orientation="vertical" tabindex="0"></div>
       <section class="segment-panel">
         <div class="table-toolbar">
           <select id="quickFilter" aria-label="Segment filter"><option value="ALL">All Segments</option><option value="TO_REVIEW">To Review</option><option value="REVIEWED">Reviewed</option><option value="WITH_ISSUES">With Issues</option></select>
+          <button id="approveAll" class="approve-all" type="button">Accept all suggestions</button>
+          <button id="saveProgress" class="save-progress" type="button">Save progress</button>
           <div class="pager-buttons"><button id="pagePrev" title="Previous page"><svg><use href="#i-left"></use></svg></button><button id="pageNext" title="Next page"><svg><use href="#i-right"></use></svg></button></div>
           <span id="pageInfo" class="page-info">0–0 of 0</span>
           <div id="bulkActions" class="bulk-actions" hidden>
@@ -127,19 +131,21 @@
         <div class="inspector-head"><strong id="segmentCounter">Segment 0 of 0</strong><div><button id="unitPrev"><svg><use href="#i-left"></use></svg></button><button id="unitNext"><svg><use href="#i-right"></use></svg></button><button id="closeInspector" class="close-inspector" title="Close inspector" aria-label="Close inspector">×</button></div></div>
         <section class="inspector-block"><div class="field-head"><strong id="sourceLabel">Source</strong><button class="copy-button" data-copy="sourceText" title="Copy source">▣</button></div><div id="sourceText" class="readonly-text"></div></section>
         <section class="inspector-block"><div class="field-head"><strong id="targetLabel">Target</strong><button id="editToggle" class="mini-edit"><svg><use href="#i-edit"></use></svg>Edit</button></div><textarea id="targetText" class="target-editor" spellcheck="true" readonly></textarea></section>
-        <div class="status-issues-row"><label><strong>Status</strong><select id="decisionSelect"></select></label><div><strong>Issues</strong><div id="issueChips" class="issue-chips"></div></div></div>
+        <div class="status-issues-row"><div><strong>Status</strong><span id="decisionStatus" class="decision-status"></span><select id="decisionSelect" class="legacy-status-select" aria-hidden="true" tabindex="-1"></select></div><div><strong>Issues</strong><div id="issueChips" class="issue-chips"></div></div></div>
         <div class="tabs" role="tablist"><button data-tab="suggestion" class="active">Suggested Translation</button><button data-tab="evidence">Evidence <span id="evidenceTabCount"></span></button><button data-tab="terminology">Terminology <span id="termTabCount"></span></button></div>
         <div id="tabSuggestion" class="tab-panel active"><div class="suggestion-head"><strong>DBabel Suggestion</strong><span id="suggestionDecision">Human confirmation required</span></div><div id="suggestionBox" class="suggestion-box"></div><div id="reasonBox" class="reason-box"></div><div class="technique-section"><div class="evidence-heading"><strong>Technique reasoning</strong><span>Diagnostic · human decision unchanged</span></div><div id="techniqueList"></div></div><div class="inline-evidence"><div class="evidence-heading"><strong>Evidence from Reference Documents</strong><span id="suggestionEvidenceCount"></span></div><div id="suggestionEvidenceList"></div></div></div>
         <div id="tabEvidence" class="tab-panel"><div class="evidence-heading"><strong>Evidence from Reference Documents</strong><span id="evidenceCountText"></span></div><div id="evidenceList"></div></div>
         <div id="tabTerminology" class="tab-panel"><div class="evidence-heading"><strong>Terminology & QA labels</strong></div><div id="terminologyList"></div></div>
         <details class="review-note review-note-details"><summary>Reviewer note</summary><textarea id="reviewerNote" placeholder="Optional note"></textarea><button id="saveNote" class="view-action">Save note</button></details>
         <div id="waiverField" class="waiver-panel hidden"><label>Waiver reason<textarea id="waiverReason" placeholder="Required when waiving unresolved ERROR"></textarea></label><button id="confirmWaiver">Confirm waiver</button></div>
-        <div class="primary-actions"><button id="acceptButton" class="accept"><span>✓</span>Accept Suggestion</button><button id="keepButton"><span>⊗</span>Keep Current</button></div>
-        <div class="secondary-actions"><button id="editAction"><svg><use href="#i-edit"></use></svg>Edit</button><button id="deferButton"><svg><use href="#i-clock"></use></svg>Defer</button><button id="blockButton" class="danger"><svg><use href="#i-ban"></use></svg>Block</button><button id="waiveButton"><svg><use href="#i-flag"></use></svg>Waive</button></div>
+        <div class="primary-actions decision-actions"><button id="acceptButton" class="accept"><span>✓</span>Accept Translation</button><button id="editAction"><svg><use href="#i-edit"></use></svg>Edit Translation</button><button id="blockButton" class="danger"><svg><use href="#i-ban"></use></svg>Reject Translation</button></div>
+        <p id="decisionFeedback" class="decision-feedback" role="status" aria-live="polite"></p>
+        <details class="advanced-decisions"><summary>More review actions</summary><div class="secondary-actions"><button id="keepButton"><span>⊗</span>Keep Current</button><button id="deferButton"><svg><use href="#i-clock"></use></svg>Defer</button><button id="waiveButton"><svg><use href="#i-flag"></use></svg>Waive</button></div></details>
         <details class="gate-box"><summary>Export gate</summary><pre id="gateStatus">Checking…</pre></details>
         </div>
-        <section class="chat-panel" aria-label="Review chat">
-          <div class="chat-heading"><strong>Ask AI about this translation</strong><span id="chatContext">Current segment</span></div>
+        <section class="chat-panel" id="chatPanel" aria-label="Review chat">
+          <div id="chatResizeHandle" class="chat-resize-handle" role="separator" aria-orientation="horizontal" aria-label="Resize AI chat" tabindex="0"></div>
+          <div class="chat-heading"><strong>Ask AI about this translation</strong><div><span id="chatContext">Current segment</span><button id="chatCollapse" type="button" aria-expanded="true" aria-label="Collapse AI chat">⌄</button></div></div>
           <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
           <div class="chat-shortcuts"><button id="chatAttach" type="button">Quote source + target</button><button id="chatWhy" type="button">Why this translation?</button><button id="webSearch" type="button">Search in browser</button></div>
           <label class="chat-file-label">Add documents or images<input id="chatFiles" type="file" multiple accept=".docx,.xlsx,.pptx,.pdf,.txt,.md,.csv,.tsv,.json,.jsonl,.html,.png,.jpg,.jpeg,.webp"></label>

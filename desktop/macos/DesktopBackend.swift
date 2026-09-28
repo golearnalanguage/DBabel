@@ -46,6 +46,27 @@ final class DesktopController {
         return found.sorted { $0.updated > $1.updated }
     }
 
+    private func rejectionMemorySnapshot() throws -> URL? {
+        var records: [[String: Any]] = []
+        var seen = Set<String>()
+        for session in savedSessions() {
+            let file = session.bundle.appendingPathComponent("rejected-translations.json")
+            guard let bytes = try? Data(contentsOf: file),
+                  let entries = try? JSONSerialization.jsonObject(with: bytes) as? [[String: Any]] else { continue }
+            for entry in entries {
+                guard let id = entry["id"] as? String, !seen.contains(id) else { continue }
+                seen.insert(id)
+                records.append(entry)
+            }
+        }
+        guard !records.isEmpty else { return nil }
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let destination = workspace.appendingPathComponent("rejected-translations.json")
+        let payload = try JSONSerialization.data(withJSONObject: records, options: [.prettyPrinted, .sortedKeys])
+        try payload.write(to: destination, options: [.atomic])
+        return destination
+    }
+
     struct ResumableRun {
         let root: URL
         let source: URL
@@ -273,22 +294,11 @@ final class DesktopController {
         busy = true
         status = "Opening review session… / 正在打开审核会话…"
         let provider = chatProvider
-        var serverStarted = false
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let chat = provider()
             DispatchQueue.main.async { [weak self] in
-                guard !serverStarted else {
-                    if let chat = chat { try? FileManager.default.removeItem(at: chat.config) }
-                    return
-                }
-                serverStarted = true
                 self?.startReviewServer(bundle, original: original, chat: chat)
             }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-            guard !serverStarted else { return }
-            serverStarted = true
-            self?.startReviewServer(bundle, original: original, chat: nil)
         }
     }
 
@@ -406,6 +416,9 @@ final class DesktopController {
                 environment["HTTPS_PROXY"] = proxyURL
                 environment["http_proxy"] = proxyURL
                 environment["https_proxy"] = proxyURL
+            }
+            if let memory = try rejectionMemorySnapshot() {
+                environment["DBABEL_REJECTION_MEMORY"] = memory.path
             }
             let process = try launch(arguments, stdout: output, stderr: error,
                                      environment: environment)

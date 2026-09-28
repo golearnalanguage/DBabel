@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import mimetypes
 import secrets
@@ -103,6 +104,44 @@ class WorkbenchState:
     def data(self):
         return load_bundle(self.bundle)
 
+    def rejections(self):
+        path = self.bundle / "rejected-translations.json"
+        try:
+            value = read_json(path)
+        except (OSError, json.JSONDecodeError):
+            try:
+                value = read_json(self.bundle / "rejected-translations.backup.json")
+            except (OSError, json.JSONDecodeError):
+                if not path.exists():
+                    return []
+                raise
+        if not isinstance(value, list):
+            raise ValueError("rejected translations file must be an array")
+        return value
+
+    def remember_rejection(self, unit, reason):
+        target = str(unit.get("suggested_target") or "")
+        if not target.strip():
+            return None
+        key = "\0".join((str(unit.get("source_language") or ""),
+                          str(unit.get("target_language") or ""),
+                          str(unit.get("source") or ""), target))
+        record_id = hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
+        record = {"id": record_id, "unit_id": unit["id"],
+                  "source_language": unit.get("source_language", ""),
+                  "target_language": unit.get("target_language", ""),
+                  "source": unit.get("source", ""), "rejected_target": target,
+                  "scope": ("TERM" if len(str(unit.get("source") or "").strip()) <= 32
+                            and len(target.strip()) <= 100
+                            and "\n" not in str(unit.get("source") or "")
+                            and "\n" not in target else "SEGMENT"),
+                  "reason": reason, "recorded_at": utc_now()}
+        records = [item for item in self.rejections() if item.get("id") != record_id]
+        records.append(record)
+        write_json(self.bundle / "rejected-translations.json", records)
+        write_json(self.bundle / "rejected-translations.backup.json", records)
+        return record
+
 
 def session_locked(method):
     """Keep token validation and dispatch on the same session during an intake switch."""
@@ -185,6 +224,13 @@ class Handler(BaseHTTPRequestHandler):
                     "glossary_name": self.state.glossary.name if self.state.glossary else None,
                 })
             return
+        if parsed.path == "/api/rejection-memory":
+            with self.state.lock:
+                try:
+                    self._json(200, {"records": self.state.rejections()})
+                except (ValueError, OSError, json.JSONDecodeError) as exc:
+                    self._error(400, str(exc))
+            return
         if parsed.path == "/api/chat":
             with self.state.lock:
                 self._json(200, {"available": self.state.chat_provider is not None,
@@ -245,17 +291,31 @@ class Handler(BaseHTTPRequestHandler):
                 page_size = incoming.get("page_size", 50)
                 view = incoming.get("view", "Review")
                 scroll_top = incoming.get("scroll_top", 0)
+                drafts = incoming.get("drafts", {})
                 if (selected is not None and not isinstance(selected, str)) or (
                     type(page) is not int or not 0 <= page <= 100000) or (
                     type(page_size) is not int or page_size not in {25, 50, 100, 200}) or (
-                    view not in {"Review", "Terminology", "Evidence", "Quality Check", "Reports", "Project Settings", "Activity"}) or (
+                    view not in {"Review", "Terminology", "Rejection Memory", "Evidence", "Quality Check", "Reports", "Project Settings", "Activity"}) or (
                     type(scroll_top) not in {int, float} or not 0 <= scroll_top <= 10000000):
                     raise ValueError("invalid saved workspace position")
                 with self.state.lock:
-                    if selected is not None and selected not in self.state.data()["units_by_id"]:
+                    units_by_id = self.state.data()["units_by_id"]
+                    if selected is not None and selected not in units_by_id:
                         raise ValueError("selected unit does not belong to this session")
+                    if not isinstance(drafts, dict) or len(drafts) > len(units_by_id):
+                        raise ValueError("invalid saved translation drafts")
+                    for unit_id, draft in drafts.items():
+                        if (unit_id not in units_by_id or not isinstance(draft, dict)
+                                or set(draft) != {"target", "note", "editing"}
+                                or not isinstance(draft["target"], str)
+                                or len(draft["target"]) > 100000
+                                or not isinstance(draft["note"], str)
+                                or len(draft["note"]) > 10000
+                                or type(draft["editing"]) is not bool):
+                            raise ValueError("invalid saved translation draft")
                     value = {"selected": selected, "page": page, "page_size": page_size,
-                             "view": view, "scroll_top": scroll_top, "updated_at": utc_now()}
+                             "view": view, "scroll_top": scroll_top, "drafts": drafts,
+                             "updated_at": utc_now()}
                     write_json(self.state.bundle / "ui_state.json", value)
                     write_json(self.state.bundle / "ui_state.backup.json", value)
                     self._json(200, value)
@@ -276,6 +336,12 @@ class Handler(BaseHTTPRequestHandler):
                     self._error(404, "unit not found")
                     return
                 saved = normalize_decision(unit, incoming, previous)
+                rejection_reason = incoming.get("rejection_reason", "")
+                if not isinstance(rejection_reason, str) or (
+                    rejection_reason and (saved["status"] != "BLOCKED"
+                                          or len(rejection_reason.strip()) > 2000)
+                ):
+                    raise ValueError("invalid rejection reason")
                 recheck_issues = []
                 if saved["status"] in {"ACCEPT_SUGGESTION", "KEEP_CURRENT", "USER_EDITED", "WAIVED"}:
                     saved, recheck_issues = recheck_decision(
@@ -303,6 +369,8 @@ class Handler(BaseHTTPRequestHandler):
                 replacements.update({candidate["id"]: proposed for candidate, _, proposed, _ in linked})
                 decisions = [replacements.get(x["unit_id"], x) for x in data["decisions"]]
                 save_decisions(self.state.bundle, decisions)
+                remembered = (self.state.remember_rejection(unit, rejection_reason.strip())
+                              if saved["status"] == "BLOCKED" and rejection_reason.strip() else None)
                 event = {
                     "event": "DECISION_CHANGED",
                     "unit_id": unit_id,
@@ -337,16 +405,40 @@ class Handler(BaseHTTPRequestHandler):
                     "detail": saved["recheck"]["status"]
                 })
                 self._json(200, {"decision": saved, "recheck_issues": recheck_issues,
+                                 "rejection_memory": remembered,
                                  "linked_decisions": [{"decision": proposed, "recheck_issues": issues}
                                                       for _, _, proposed, issues in linked]})
         except (ValueError, RuntimeError, OSError, json.JSONDecodeError, zipfile.BadZipFile, ET.ParseError, KeyError, IndexError) as exc:
             self._error(400, str(exc))
 
     def do_POST(self) -> None:
+        if urlparse(self.path).path == "/api/chat/provider":
+            self._configure_chat_provider()
+            return
         if urlparse(self.path).path == "/api/chat":
             self._post_chat()
             return
         self._post_locked()
+
+    def _configure_chat_provider(self) -> None:
+        if not self._authorized_api():
+            return
+        try:
+            body = self._body_json()
+            config_data = body.get("config")
+            key = body.get("key")
+            allowed = {"provider", "base_url", "api_key_env", "model",
+                       "timeout_seconds", "max_response_bytes"}
+            if (not isinstance(config_data, dict) or set(config_data) != allowed
+                    or not isinstance(key, str) or not 1 <= len(key) <= 4096):
+                raise ValueError("invalid chat provider configuration")
+            config = ProviderConfig(**config_data)
+            provider = OpenAICompatibleProvider(config, {config.api_key_env: key})
+            with self.state.lock:
+                self.state.chat_provider = provider
+            self._json(200, {"available": True})
+        except (TypeError, ValueError, KeyError, json.JSONDecodeError) as exc:
+            self._error(400, str(exc))
 
     def _post_chat(self) -> None:
         if not self._authorized_api():
@@ -388,6 +480,24 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         try:
             body = self._body_json()
+
+            if parsed.path == "/api/rejection-memory/remove":
+                record_id = body.get("id")
+                if not isinstance(record_id, str) or not record_id:
+                    raise ValueError("rejection record id is required")
+                with self.state.lock:
+                    records = self.state.rejections()
+                    retained = [item for item in records if item.get("id") != record_id]
+                    if len(retained) == len(records):
+                        raise ValueError("rejection record not found")
+                    write_json(self.state.bundle / "rejected-translations.json", retained)
+                    write_json(self.state.bundle / "rejected-translations.backup.json", retained)
+                    append_event(self.state.bundle / "events.jsonl", {
+                        "event": "REJECTION_MEMORY_REMOVED", "at": utc_now(),
+                        "actor": "HUMAN", "detail": record_id,
+                    })
+                    self._json(200, {"records": retained})
+                return
 
             if parsed.path in {"/api/intake/inspect", "/api/intake/create"}:
                 with self.state.lock, tempfile.TemporaryDirectory() as td:
@@ -437,8 +547,14 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/results":
                 with self.state.lock:
                     fmt = body.get("format", "json")
-                    content = render_result(self.state.data(), fmt)
-                    self._json(200, {"filename": "dbabel-review."+fmt, "content": content, "content_type": RESULT_FORMATS[fmt]})
+                    data = self.state.data()
+                    content = render_result(data, fmt)
+                    original = data["session"].get("original", {}).get("filename", "document")
+                    stem = Path(str(original)).stem
+                    safe_stem = "".join(c if c.isalnum() or c in " ._-" else "-" for c in stem)
+                    safe_stem = safe_stem.strip(" .-")[:80] or "document"
+                    self._json(200, {"filename": "Review - " + safe_stem + "." + fmt,
+                                     "content": content, "content_type": RESULT_FORMATS[fmt]})
                 return
 
             if parsed.path == "/api/decisions/bulk":
@@ -447,12 +563,13 @@ class Handler(BaseHTTPRequestHandler):
                 )
 
                 if status not in {
+                    "ACCEPT_SUGGESTION",
                     "KEEP_CURRENT",
                     "DEFERRED",
                 }:
                     raise ValueError(
                         "bulk decisions support "
-                        "KEEP_CURRENT or DEFERRED only"
+                        "ACCEPT_SUGGESTION, KEEP_CURRENT or DEFERRED only"
                     )
 
                 raw_ids = body.get("unit_ids")
@@ -540,7 +657,7 @@ class Handler(BaseHTTPRequestHandler):
 
                         recheck_issues = []
 
-                        if status == "KEEP_CURRENT":
+                        if status in {"ACCEPT_SUGGESTION", "KEEP_CURRENT"}:
                             (
                                 saved,
                                 recheck_issues,
@@ -604,7 +721,7 @@ class Handler(BaseHTTPRequestHandler):
                             },
                         )
 
-                        if status == "KEEP_CURRENT":
+                        if status in {"KEEP_CURRENT", "ACCEPT_SUGGESTION"}:
                             append_event(
                                 self.state.bundle
                                 / "events.jsonl",

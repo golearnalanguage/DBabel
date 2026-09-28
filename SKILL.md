@@ -157,6 +157,14 @@ pixel-identical pagination from text or XML checks alone.
 
 The reviewer checks proposals, edits text, records decisions and reruns QA. Preserve existing decisions and notes during further Agent work. Import Portable Review decisions into the matching session and run fresh local QA.
 
+A human rejection may record the rejected wording and its reason in the session.
+For future proposals in the same language direction, never repeat that wording
+for the same source segment. Short source/target term pairs also apply inside
+longer segments containing the source phrase. This memory prohibits one
+rendering; it does not approve an alternative or create a project glossary
+entry. Keep the record with the session and allow explicit removal. If the
+provider repeats it after bounded retries, route the unit to human revision.
+
 The macOS Workbench keeps a session-scoped chat beside the selected unit. The reviewer may quote source and target, ask for the translation rationale, add a document or image, and continue the same conversation. Keep the selected unit ID and source/target context in each answer; distinguish a rule or located reference from an inference. A model's chat answer is not a human decision, cited authority, or QA result. Retain chat history with the session and return to the actual review decision controls for acceptance or editing. The browser-search shortcut opens the system default browser; inspect original sources before citing them as evidence.
 
 ### 6. Deliver results and verify native copies

@@ -1,5 +1,9 @@
 import json
+import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from providers.base import ProviderResponseInterrupted
 
@@ -83,7 +87,58 @@ class TranslationRuntimeTests(
         self.assertEqual(result["units"][0]["proposal_decision"], "REPLACE")
         self.assertEqual(result["units"][0]["suggested_target"].count("--exec_mode"), 2)
         self.assertIn("protected_literal_counts", provider.requests[0].user)
-        self.assertIn("Previous response omitted", provider.requests[1].user)
+        self.assertIn("Previous response changed", provider.requests[1].user)
+
+    def test_rejected_translation_is_retried_and_cannot_recur(self):
+        with tempfile.TemporaryDirectory() as directory:
+            memory = Path(directory) / "rejected.json"
+            memory.write_text(json.dumps([{
+                "source": "配置主库", "source_language": "zh-CN",
+                "target_language": "en", "rejected_target": "Configure the primary database."
+            }]), encoding="utf-8")
+            def answer(target):
+                return json.dumps({"units": [{"id": "U1", "suggested_target": target,
+                    "proposal_decision": "REPLACE", "reason": "technical wording"}]})
+            provider = FakeProvider([answer("Configure the primary database."),
+                                     answer("Set up the primary database.")])
+            with patch.dict(os.environ, {"DBABEL_REJECTION_MEMORY": str(memory)}):
+                result = translate_units(provider=provider, units=[unit("U1", "配置主库")],
+                                         source_language="zh-CN", target_language="en")
+            self.assertEqual(result["units"][0]["suggested_target"], "Set up the primary database.")
+            self.assertEqual(len(provider.requests), 2)
+            self.assertIn("Configure the primary database.", provider.requests[0].user)
+
+    def test_rejected_translation_fails_closed_after_retries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            memory = Path(directory) / "rejected.json"
+            memory.write_text(json.dumps([{
+                "source": "配置主库", "source_language": "zh-CN",
+                "target_language": "en", "rejected_target": "Configure the primary database."
+            }]), encoding="utf-8")
+            answer = json.dumps({"units": [{"id": "U1", "suggested_target": "Configure the primary database.",
+                "proposal_decision": "REPLACE", "reason": "technical wording"}]})
+            with patch.dict(os.environ, {"DBABEL_REJECTION_MEMORY": str(memory)}):
+                with self.assertRaisesRegex(RuntimeTranslationError, "repeated a rejected translation"):
+                    translate_units(provider=FakeProvider([answer] * 3), units=[unit("U1", "配置主库")],
+                                    source_language="zh-CN", target_language="en")
+
+    def test_rejected_term_is_blocked_inside_later_sentence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            memory = Path(directory) / "rejected.json"
+            memory.write_text(json.dumps([{
+                "source": "主库", "source_language": "zh-CN", "target_language": "en",
+                "rejected_target": "primary database", "scope": "TERM"
+            }]), encoding="utf-8")
+            def answer(target):
+                return json.dumps({"units": [{"id": "U1", "suggested_target": target,
+                    "proposal_decision": "REPLACE", "reason": "technical wording"}]})
+            provider = FakeProvider([answer("Configure the primary database."),
+                                     answer("Configure the primary instance.")])
+            with patch.dict(os.environ, {"DBABEL_REJECTION_MEMORY": str(memory)}):
+                result = translate_units(provider=provider, units=[unit("U1", "配置主库")],
+                                         source_language="zh-CN", target_language="en")
+            self.assertEqual(result["units"][0]["suggested_target"], "Configure the primary instance.")
+            self.assertIn("rejected_phrases", provider.requests[0].user)
 
     def test_persistent_literal_mismatch_is_review_only(self):
         source = "检查 SELECT * FROM V$DATABASE 的结果。"

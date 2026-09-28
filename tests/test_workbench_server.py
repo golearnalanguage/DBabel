@@ -90,16 +90,41 @@ class ServerTests(unittest.TestCase):
         self.assertEqual((self.bundle/saved['file']).read_text(),'Keep XFS unchanged.\n')
     def test_workspace_position_is_saved_for_reopen(self):
         headers={'X-DBabel-Session':self.token,'Origin':self.origin}
-        position={'selected':'U1','page':0,'page_size':50,'view':'Review','scroll_top':183}
+        draft={'target':'Unconfirmed edited text','note':'Check this term','editing':True}
+        position={'selected':'U1','page':0,'page_size':50,'view':'Review',
+                  'scroll_top':183,'drafts':{'U1':draft}}
         status,result=self.req('PUT','/api/ui-state',position,headers)
         self.assertEqual(status,200)
         self.assertEqual(result['scroll_top'],183)
         status,reloaded=self.req('GET','/api/ui-state',headers=headers)
         self.assertEqual(status,200)
         self.assertEqual(reloaded['selected'],'U1')
+        self.assertEqual(reloaded['drafts']['U1'],draft)
         self.assertEqual(json.loads((self.bundle/'ui_state.backup.json').read_text())['scroll_top'],183)
         status,_=self.req('PUT','/api/ui-state',{**position,'selected':'MISSING'},headers)
         self.assertEqual(status,400)
+        status,_=self.req('PUT','/api/ui-state',{**position,'drafts':{'MISSING':draft}},headers)
+        self.assertEqual(status,400)
+
+    def test_chat_provider_can_be_connected_after_session_opens(self):
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        status,chat=self.req('GET','/api/chat',headers=headers)
+        self.assertEqual(status,200)
+        self.assertFalse(chat['available'])
+        config={'provider':'openai-compatible','base_url':'http://127.0.0.1:9090/v1',
+                'api_key_env':'DBABEL_TEST_KEY','model':'local-test',
+                'timeout_seconds':120,'max_response_bytes':2000000}
+        status,connected=self.req('POST','/api/chat/provider',
+                                  {'config':config,'key':'local-test-token'},headers)
+        self.assertEqual(status,200,connected)
+        self.assertTrue(connected['available'])
+        self.assertEqual(self.server.state.chat_provider.config.model,'local-test')
+        status,chat=self.req('GET','/api/chat',headers=headers)
+        self.assertTrue(chat['available'])
+        self.assertNotIn('key',chat)
+        status,_=self.req('POST','/api/chat/provider',
+                          {'config':config,'key':'new-token'})
+        self.assertEqual(status,403)
     def test_one_review_updates_exact_duplicate_but_keeps_both_rows(self):
         original=json.loads((self.bundle/'units.jsonl').read_text())
         duplicate={**original,'id':'U2','location':'another location'}
@@ -119,6 +144,41 @@ class ServerTests(unittest.TestCase):
         status,body=self.req('PUT','/api/decisions/U1',{'status':'KEEP_CURRENT'},headers);self.assertEqual(status,200);self.assertEqual(body['decision']['status'],'KEEP_CURRENT');self.assertEqual(body['decision']['recheck']['status'],'PASS')
         status,gate=self.req('POST','/api/export-gate',{},headers);self.assertEqual(status,200);self.assertEqual(gate['status'],'AUTHORIZED')
         self.assertEqual(json.loads((self.bundle/'decisions.backup.json').read_text())[0]['status'],'KEEP_CURRENT')
+
+    def test_rejection_memory_survives_reopen_and_can_be_removed(self):
+        unit=json.loads((self.bundle/'units.jsonl').read_text().splitlines()[0])
+        unit.update(source_language='zh-CN',target_language='en',suggested_target='Wrong term')
+        write_jsonl(self.bundle/'units.jsonl',[unit])
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        status,result=self.req('PUT','/api/decisions/U1',
+            {'status':'BLOCKED','rejection_reason':'This term changes the meaning.'},headers)
+        self.assertEqual(status,200,result)
+        self.assertEqual(result['decision']['status'],'BLOCKED')
+        self.assertEqual(result['rejection_memory']['rejected_target'],'Wrong term')
+        self.assertEqual(result['rejection_memory']['scope'],'TERM')
+        status,memory=self.req('GET','/api/rejection-memory',headers=headers)
+        self.assertEqual(status,200)
+        self.assertEqual(memory['records'][0]['source'],'s')
+        self.assertEqual(json.loads((self.bundle/'rejected-translations.backup.json').read_text()),memory['records'])
+        status,removed=self.req('POST','/api/rejection-memory/remove',
+            {'id':memory['records'][0]['id']},headers)
+        self.assertEqual(status,200)
+        self.assertEqual(removed['records'],[])
+
+    def test_bulk_accept_requires_real_suggestions_and_rechecks(self):
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        status,result=self.req('POST','/api/decisions/bulk',
+            {'status':'ACCEPT_SUGGESTION','unit_ids':['U1']},headers)
+        self.assertEqual(status,400)
+        unit=json.loads((self.bundle/'units.jsonl').read_text().splitlines()[0])
+        unit['suggested_target']='Proposed translation'
+        write_jsonl(self.bundle/'units.jsonl',[unit])
+        status,result=self.req('POST','/api/decisions/bulk',
+            {'status':'ACCEPT_SUGGESTION','unit_ids':['U1']},headers)
+        self.assertEqual(status,200,result)
+        decision=result['results'][0]['decision']
+        self.assertEqual(decision['approved_target'],'Proposed translation')
+        self.assertEqual(decision['recheck']['status'],'PASS')
 
 
     def test_bulk_decisions_fail_atomically_and_preserve_notes(self):
@@ -198,6 +258,7 @@ class ServerTests(unittest.TestCase):
         for fmt in ['json','csv','tsv','md','html','txt']:
             status,result=self.req('POST','/api/results',{'format':fmt},headers)
             self.assertEqual(status,200)
+            self.assertEqual(result['filename'],'Review - x.'+fmt)
             self.assertTrue(result['content'])
             self.assertIn('UNREVIEWED',result['content'])
         status,_=self.req('POST','/api/results',{'format':[]},headers)

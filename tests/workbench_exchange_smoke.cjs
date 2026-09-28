@@ -8,7 +8,7 @@ if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_OUTPUT)throw Error('Se
  const original=await page.locator('#sourceText').innerText();
  await page.selectOption('#languageSelect','zh-CN');await page.waitForSelector('html[lang="zh-CN"] #segmentRows tr');
  if(await page.locator('#sourceText').innerText()!==original)throw Error('Language switch changed source text');
- if(await page.locator('#acceptButton').innerText()!=='✓接受建议')throw Error('Primary action untranslated');
+ if(!(await page.locator('#acceptButton').innerText()).includes('接受译文'))throw Error('Primary action untranslated');
  await page.selectOption('#themeSelect','dark');
  for(const width of [1440,1100,768,390]){
   await page.setViewportSize({width,height:1000});await page.screenshot({path:path.join(out,`workbench-zh-dark-${width}.png`),fullPage:true});
@@ -17,8 +17,8 @@ if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_OUTPUT)throw Error('Se
   if(width>980){const a=await page.locator('.table-wrap').boundingBox(),b=await page.locator('.inspector').boundingBox();if(a.x+a.width>b.x+1)throw Error('Inspector overlays table at '+width);}
  }
  await page.setViewportSize({width:1440,height:1000});await page.selectOption('#themeSelect','light');await page.screenshot({path:path.join(out,'workbench-zh-light.png'),fullPage:true});
- for(const fmt of ['json','csv','tsv','md','html','txt']){await page.selectOption('#resultFormat',fmt);const d=page.waitForEvent('download');await page.click('#exportButton');const download=await d;await download.saveAs(path.join(out,download.suggestedFilename()));if(!fs.statSync(path.join(out,download.suggestedFilename())).size)throw Error('Empty export');}
- const json=JSON.parse(fs.readFileSync(path.join(out,'dbabel-review.json')));if(!json.units.length||!json.decisions.length)throw Error('Snapshot missing review data');
+ let jsonResultPath='';for(const fmt of ['json','csv','tsv','md','html','txt']){await page.selectOption('#resultFormat',fmt);const d=page.waitForEvent('download');await page.click('#exportButton');const download=await d;await download.saveAs(path.join(out,download.suggestedFilename()));if(fmt==='json')jsonResultPath=path.join(out,download.suggestedFilename());if(!fs.statSync(path.join(out,download.suggestedFilename())).size)throw Error('Empty export');}
+ const json=JSON.parse(fs.readFileSync(jsonResultPath));if(!json.units.length||!json.decisions.length)throw Error('Snapshot missing review data');
  await page.locator('[data-view="Terminology"]').click();await page.locator('#glossaryUpload').setInputFiles(path.join(__dirname,'../templates/project_glossary.csv'));await page.click('#validateGlossary');await page.waitForFunction(()=>document.querySelector('#validateGlossary')&&!document.querySelector('#validateGlossary').disabled);if(!await page.locator('#glossaryScore').innerText())throw Error('No glossary report');
  await page.click('#openIntake');await page.locator('#sourceUpload').setInputFiles({name:'source.txt',mimeType:'text/plain',buffer:Buffer.from('主库发送归档日志。\n最大连接数为 1000。')});await page.fill('#intakeTargetLanguages','en,ja');await page.click('#inspectDocument');await page.waitForFunction(()=>document.querySelector('#intakeStatus').textContent.includes('segment_count'));
  await page.click('#createIntake');await page.waitForFunction(()=>document.querySelectorAll('#segmentRows tr').length===4).catch(async e=>{console.error(await page.locator('body').innerText(),errors);throw e;});

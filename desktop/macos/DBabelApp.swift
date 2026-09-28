@@ -123,11 +123,40 @@ private enum DesktopAppearance: String {
     case system, light, dark
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKNavigationDelegate,
+private struct APIServicePreset {
+    let title: String
+    let baseURL: String
+    let models: [String]
+}
+
+// These are editable starting points. Availability and model access are checked
+// by the real Chat Completions test request before the user starts a project.
+private let apiServicePresets: [APIServicePreset] = [
+    .init(title: "DeepSeek", baseURL: "https://api.deepseek.com",
+          models: ["deepseek-v4-flash", "deepseek-v4-pro"]),
+    .init(title: "OpenAI", baseURL: "https://api.openai.com/v1",
+          models: ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"]),
+    .init(title: "Google Gemini", baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+          models: ["gemini-3.8-flash", "gemini-3.5-flash"]),
+    .init(title: "Kimi / Moonshot (global)", baseURL: "https://api.moonshot.ai/v1",
+          models: ["kimi-k2.5"]),
+    .init(title: "Kimi / Moonshot (中国)", baseURL: "https://api.moonshot.cn/v1",
+          models: ["kimi-k2.5"]),
+    .init(title: "Claude (compatibility)", baseURL: "https://api.anthropic.com/v1",
+          models: ["claude-sonnet-4-6"]),
+    .init(title: "xAI", baseURL: "https://api.x.ai/v1",
+          models: ["grok-4.7", "grok-4.6"]),
+    .init(title: "阿里云百炼 / Qwen (北京)", baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+          models: ["qwen-plus"])
+]
+
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSToolbarDelegate, WKNavigationDelegate,
                          WKUIDelegate, WKDownloadDelegate {
     private let desktop = DesktopController()
     private var window: NSWindow!
     private var root: NSView!
+    private var windowMaterial: NSVisualEffectView!
+    private var closingAfterSave = false
     private var body: NSView!
     private var browser: WKWebView?
     private var currentURL: URL?
@@ -141,6 +170,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     private var homeFieldConstraintsSet = false
     private var providerFieldConstraintsSet = false
     private var providerSheet: NSPanel?
+    private enum LandingPage { case welcome, translate, localReview, progress, workbench }
+    private var landingPage: LandingPage = .welcome
+    private var recentAPIKey: String?
+    private var recentAPIKeyBaseURL: String?
     private var apiTestButton: NSButton?
     private var appearance: DesktopAppearance = .system
     private var chinese = true
@@ -239,6 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.toolbarStyle = .unified
+        window.delegate = self
         let toolbar = NSToolbar(identifier: "DBabelToolbar")
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
@@ -248,6 +282,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         material.material = .underWindowBackground
         material.blendingMode = .behindWindow
         material.state = .active
+        windowMaterial = material
         root = material
         window.contentView = root
         buildChrome()
@@ -257,7 +292,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
            saved.validationError() == nil {
             providerSettings = saved
         }
-        showHome()
+        showWelcome()
         desktop.onStatus = { [weak self] text in self?.status.stringValue = text }
         desktop.onBusy = { [weak self] busy in
             self?.controls.forEach { $0.isEnabled = !busy }
@@ -265,7 +300,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         desktop.onWorkbench = { [weak self] url in self?.showWorkbench(url) }
         desktop.chatProvider = { [weak self] in
             guard let self = self, let settings = self.providerSettings else { return nil }
-            let key = ProviderCredentialStore.key(for: settings.baseURL)
+            let key = (self.recentAPIKeyBaseURL == settings.baseURL ? self.recentAPIKey : nil)
+                ?? ProviderCredentialStore.key(for: settings.baseURL)
                 ?? ProcessInfo.processInfo.environment[settings.apiKeyEnv]
                 ?? (settings.isLocal ? "local" : "")
             guard !key.isEmpty, let config = try? settings.temporaryFile() else { return nil }
@@ -280,24 +316,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationWillTerminate(_ notification: Notification) { desktop.close() }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !closingAfterSave, landingPage == .workbench, browser != nil else { return .terminateNow }
+        leaveWorkbench { saved in
+            if saved { self.closingAfterSave = true }
+            sender.reply(toApplicationShouldTerminate: saved)
+        }
+        return .terminateLater
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard !closingAfterSave, landingPage == .workbench, browser != nil else { return true }
+        leaveWorkbench { saved in
+            if saved {
+                self.closingAfterSave = true
+                sender.close()
+            }
+        }
+        return false
+    }
+
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        windowMaterial.material = .windowBackground
+        windowMaterial.blendingMode = .withinWindow
+        window.backgroundColor = .windowBackgroundColor
+    }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
+        windowMaterial.material = .underWindowBackground
+        windowMaterial.blendingMode = .behindWindow
+        window.backgroundColor = .clear
+    }
+
     private let homeItem = NSToolbarItem.Identifier("DBabelHome")
     private let providerItem = NSToolbarItem.Identifier("DBabelProvider")
     private let appearanceItem = NSToolbarItem.Identifier("DBabelAppearance")
     private let languageItem = NSToolbarItem.Identifier("DBabelLanguage")
+    private let pauseItem = NSToolbarItem.Identifier("DBabelPause")
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [providerItem, .flexibleSpace, homeItem, appearanceItem, languageItem]
+        [providerItem, .flexibleSpace, pauseItem, homeItem, appearanceItem, languageItem]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [providerItem, .flexibleSpace, homeItem, appearanceItem, languageItem]
+        [providerItem, .flexibleSpace, pauseItem, homeItem, appearanceItem, languageItem]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
                  willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         if identifier == appearanceItem {
             let item = NSToolbarItem(itemIdentifier: identifier)
-            item.label = "Appearance / 外观"
+            item.label = local("外观", "Appearance")
             item.image = NSImage(systemSymbolName: "circle.lefthalf.filled",
                                  accessibilityDescription: item.label)
             item.target = self
@@ -307,17 +376,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         let item = NSToolbarItem(itemIdentifier: identifier)
         item.target = self
         if identifier == homeItem {
-            item.label = "Home / 首页"
+            item.label = local("首页", "Home")
             item.image = NSImage(systemSymbolName: "house", accessibilityDescription: item.label)
             item.action = #selector(homeAction)
         } else if identifier == providerItem {
-            item.label = "API Service / API 服务"
+            item.label = local("API 服务", "API Service")
             item.image = NSImage(systemSymbolName: "network", accessibilityDescription: item.label)
             item.action = #selector(providerAction)
         } else if identifier == languageItem {
-            item.label = "Language / 语言"
+            item.label = local("语言", "Language")
             item.image = NSImage(systemSymbolName: "globe", accessibilityDescription: item.label)
             item.action = #selector(languageAction)
+        } else if identifier == pauseItem {
+            item.label = local("暂存并返回", "Save and return")
+            item.image = NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: item.label)
+            item.action = #selector(pauseAction)
         } else { return nil }
         return item
     }
@@ -326,27 +399,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         let menu = NSMenu()
         let app = NSMenuItem()
         let appMenu = NSMenu(title: "DBabel")
-        appMenu.addItem(withTitle: "Quit DBabel / 退出 DBabel",
+        appMenu.addItem(withTitle: local("退出 DBabel", "Quit DBabel"),
                             action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         app.submenu = appMenu
         menu.addItem(app)
         let file = NSMenuItem()
-        let fileMenu = NSMenu(title: "File / 文件")
-        let browserOption = NSMenuItem(title: "Open in Browser / 在浏览器中打开",
+        let fileMenu = NSMenu(title: local("文件", "File"))
+        let browserOption = NSMenuItem(title: local("在浏览器中打开", "Open in Browser"),
                                        action: #selector(browserAction), keyEquivalent: "b")
         browserOption.target = self
         fileMenu.addItem(browserOption)
+        let saveOption = NSMenuItem(title: local("暂存并返回", "Save and return"),
+                                    action: #selector(pauseAction), keyEquivalent: "s")
+        saveOption.target = self
+        fileMenu.addItem(saveOption)
         file.submenu = fileMenu
         menu.addItem(file)
         let edit = NSMenuItem()
-        let editMenu = NSMenu(title: "Edit / 编辑")
+        let editMenu = NSMenu(title: local("编辑", "Edit"))
         for (title, action, key) in [
-            ("Undo / 撤销", "undo:", "z"),
-            ("Redo / 重做", "redo:", "Z"),
-            ("Cut / 剪切", "cut:", "x"),
-            ("Copy / 复制", "copy:", "c"),
-            ("Paste / 粘贴", "paste:", "v"),
-            ("Select All / 全选", "selectAll:", "a")
+            (local("撤销", "Undo"), "undo:", "z"),
+            (local("重做", "Redo"), "redo:", "Z"),
+            (local("剪切", "Cut"), "cut:", "x"),
+            (local("复制", "Copy"), "copy:", "c"),
+            (local("粘贴", "Paste"), "paste:", "v"),
+            (local("全选", "Select All"), "selectAll:", "a")
         ] {
             let item = NSMenuItem(title: title, action: Selector(action), keyEquivalent: key)
             item.target = nil
@@ -390,7 +467,120 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         ])
     }
 
+    private func showWelcome() {
+        landingPage = .welcome
+        progressPageActive = false
+        body.subviews.forEach { $0.removeFromSuperview() }
+        browser = nil
+        controls.removeAll()
+        let logo = MaterialWebView()
+        logo.allowWindowMaterialToShowThrough()
+        logo.translatesAutoresizingMaskIntoConstraints = false
+        let assets = desktop.repository.appendingPathComponent("review_workbench/static")
+        let light = (try? Data(contentsOf: assets.appendingPathComponent("dbabel-logo-light.svg")))?.base64EncodedString() ?? ""
+        let dark = (try? Data(contentsOf: assets.appendingPathComponent("dbabel-logo-dark.svg")))?.base64EncodedString() ?? ""
+        let html = """
+        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>html,body{margin:0;background:transparent;height:100%;overflow:hidden}
+        .logo{width:100%;height:100%;background:center/contain no-repeat url('data:image/svg+xml;base64,\(light)');
+          animation:write 6.2s cubic-bezier(.32,0,.18,1) infinite}
+        @media(prefers-color-scheme:dark){.logo{background-image:url('data:image/svg+xml;base64,\(dark)')}}
+        @keyframes write{0%,8%{clip-path:inset(0 100% 0 0)}60%,99.9%{clip-path:inset(0 0 0 0)}100%{clip-path:inset(0 100% 0 0)}}
+        @media(prefers-reduced-motion:reduce){.logo{animation:none}}</style></head><body><div class="logo"></div></body></html>
+        """
+        logo.loadHTMLString(html, baseURL: nil)
+        let heading = label(local("欢迎使用 DBabel", "Welcome to DBabel"), size: 16)
+        heading.textColor = .secondaryLabelColor
+        let translate = button(local("AI 翻译全流程", "AI translation workflow"), #selector(translatePageAction))
+        translate.bezelStyle = .rounded
+        translate.controlSize = .large
+        translate.font = .systemFont(ofSize: 16, weight: .medium)
+        translate.keyEquivalent = "\r"
+        let review = button(local("本地双语对照审核", "Local bilingual review"), #selector(localReviewPageAction))
+        review.bezelStyle = .rounded
+        review.controlSize = .large
+        review.font = .systemFont(ofSize: 16, weight: .medium)
+        let options = row(translate, review)
+        options.spacing = 20
+        let stack = NSStackView(views: [logo, heading, options])
+        stack.orientation = .vertical
+        stack.alignment = .centerX
+        stack.spacing = 20
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        body.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.centerXAnchor.constraint(equalTo: body.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: body.centerYAnchor, constant: -36),
+            stack.widthAnchor.constraint(lessThanOrEqualTo: body.widthAnchor, multiplier: 0.8),
+            logo.widthAnchor.constraint(equalToConstant: 470),
+            logo.heightAnchor.constraint(equalToConstant: 182),
+            translate.widthAnchor.constraint(greaterThanOrEqualToConstant: 226),
+            review.widthAnchor.constraint(greaterThanOrEqualToConstant: 226),
+            translate.heightAnchor.constraint(equalToConstant: 52),
+            review.heightAnchor.constraint(equalToConstant: 52)
+        ])
+    }
+
+    @objc private func translatePageAction() { showHome() }
+    @objc private func localReviewPageAction() { showLocalReview() }
+
+    private func showLocalReview() {
+        landingPage = .localReview
+        progressPageActive = false
+        body.subviews.forEach { $0.removeFromSuperview() }
+        browser = nil
+        controls.removeAll()
+        sourceName.stringValue = source?.lastPathComponent ?? local("未选择文件", "No file selected")
+        targetName.stringValue = existingTarget?.lastPathComponent ?? local("未选择译文", "No target selected")
+        alignmentConfirmed.title = local("我已核对原文和现有译文的单元顺序一致",
+                                         "I checked that source and target segments align in order")
+        alignmentConfirmed.isHidden = existingTarget == nil
+        let title = label(local("本地双语对照审核", "Local bilingual review"), size: 30)
+        let description = NSTextField(wrappingLabelWithString: local(
+            "导入原文和可选的现有译文，建立本地审核会话。此入口不会调用 API。",
+            "Import a source and optional existing translation to create a local review session. This path does not call an API."))
+        description.textColor = .secondaryLabelColor
+        let stack = NSStackView(views: [
+            title, description,
+            row(button(local("选择原文", "Choose source"), #selector(sourceAction)),sourceName),
+            row(label(local("原文语言", "Source language")),from,label("→"),label(local("目标语言", "Target language")),to),
+            row(button(local("选择现有译文", "Choose existing translation"), #selector(targetAction)),targetName,
+                button(local("清除", "Clear"), #selector(clearTargetAction))),
+            alignmentConfirmed,
+            button(local("打开审核工作台", "Open review Workbench"), #selector(uploadAction)),
+            row(button(local("查看演示", "View demo"), #selector(demoAction)),
+                button(local("继续上次工作", "Resume previous work"), #selector(resumeLatestSessionAction))),
+            status
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 18
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        body.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: body.topAnchor, constant: 52),
+            stack.leadingAnchor.constraint(equalTo: body.leadingAnchor, constant: 56),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: body.trailingAnchor, constant: -40),
+            description.widthAnchor.constraint(lessThanOrEqualToConstant: 760)
+        ])
+    }
+
+    @objc private func resumeLatestSessionAction() {
+        let preferred = UserDefaults.standard.string(forKey: "DBabelLastReviewBundle.v1")
+        let bundle = preferred.flatMap { path -> URL? in
+            let candidate = URL(fileURLWithPath: path)
+            return FileManager.default.fileExists(atPath: candidate.appendingPathComponent("session.json").path)
+                ? candidate : nil
+        } ?? desktop.savedSessions().first?.bundle
+        guard let bundle else {
+            status.stringValue = local("尚无可恢复的审核会话。", "No review session is available to resume.")
+            return
+        }
+        desktop.openSession(bundle)
+    }
+
     private func showHome() {
+        landingPage = .translate
         progressPageActive = false
         body.subviews.forEach { $0.removeFromSuperview() }
         browser = nil
@@ -512,6 +702,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     }
 
     private func showProgress() {
+        landingPage = .progress
         progressPageActive = true
         progressLastEvent = nil
         body.subviews.forEach { $0.removeFromSuperview() }
@@ -641,6 +832,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     }
 
     private func showWorkbench(_ url: URL) {
+        landingPage = .workbench
+        if let bundle = desktop.lastBundle {
+            UserDefaults.standard.set(bundle.path, forKey: "DBabelLastReviewBundle.v1")
+        }
         progressPageActive = false
         body.subviews.forEach { $0.removeFromSuperview() }
         let view = MaterialWebView()
@@ -672,7 +867,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
 
     @objc private func homeAction() {
         if desktop.busy && progressPageActive { return }
-        showHome()
+        leaveWorkbench { [weak self] saved in if saved { self?.showWelcome() } }
+    }
+    private func showUnsavedAlert() {
+        let alert = NSAlert()
+        alert.messageText = local("进度尚未保存", "Progress could not be saved")
+        alert.informativeText = local("请检查本地会话文件是否可写，然后重试。当前工作台会保持打开。",
+                                      "Check that the local session is writable and try again. The Workbench remains open.")
+        alert.runModal()
+    }
+    @objc private func pauseAction() {
+        leaveWorkbench { [weak self] saved in if saved { self?.showWelcome() } }
+    }
+    private func leaveWorkbench(completion: @escaping (Bool) -> Void) {
+        guard landingPage == .workbench, let browser else { completion(true); return }
+        browser.evaluateJavaScript("window.workbenchNeedsSave?.()") { [weak self] result, error in
+            guard let self else { completion(false); return }
+            if error != nil { self.showUnsavedAlert(); completion(false); return }
+            if result as? Bool == true {
+                let alert = NSAlert()
+                alert.messageText = self.local("离开工作台？", "Leave the Workbench?")
+                let path = self.desktop.lastBundle?.path ?? ""
+                alert.informativeText = self.local(
+                    "当前译文或审核备注有新修改。默认保存到本地会话：\n\(path)",
+                    "The current translation or note has new edits. Save to the local session by default:\n\(path)")
+                alert.addButton(withTitle: self.local("保存并离开", "Save and Leave"))
+                alert.addButton(withTitle: self.local("不保存本次修改", "Discard New Edits"))
+                alert.addButton(withTitle: self.local("取消", "Cancel"))
+                switch alert.runModal() {
+                case .alertFirstButtonReturn: self.finishLeavingWorkbench("window.flushWorkbenchUiState?.()", completion: completion)
+                case .alertSecondButtonReturn: self.finishLeavingWorkbench("window.discardWorkbenchCurrentDraft?.()", completion: completion)
+                default: completion(false)
+                }
+            } else {
+                self.finishLeavingWorkbench("window.flushWorkbenchUiState?.()", completion: completion)
+            }
+        }
+    }
+    private func finishLeavingWorkbench(_ script: String, completion: @escaping (Bool) -> Void) {
+        guard let browser else { completion(false); return }
+        browser.callAsyncJavaScript("return await \(script);", arguments: [:],
+                                    in: nil, in: .page) { [weak self] result in
+            guard let self else { completion(false); return }
+            switch result {
+            case .success(let value) where value as? Bool == true: completion(true)
+            default: self.showUnsavedAlert(); completion(false)
+            }
+        }
     }
     @objc private func browserAction() {
         if let url = currentURL { NSWorkspace.shared.open(url) }
@@ -698,11 +939,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     @objc private func languageAction() {
         guard let browser = browser else {
             chinese.toggle()
+            refreshNativeLanguage()
             if progressPageActive {
                 let last = progressLastEvent
                 showProgress()
                 if let last = last { updateProgress(last) }
-            } else { showHome() }
+            } else {
+                switch landingPage {
+                case .welcome: showWelcome()
+                case .localReview: showLocalReview()
+                default: showHome()
+                }
+            }
             return
         }
         let script = """
@@ -715,6 +963,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         browser.evaluateJavaScript(script) { [weak self] result, _ in
             if let language = result as? String, !language.isEmpty {
                 self?.chinese = language == "zh-CN"
+                self?.refreshNativeLanguage()
+            }
+        }
+    }
+    private func refreshNativeLanguage() {
+        buildMenus()
+        window.toolbar?.items.forEach { item in
+            switch item.itemIdentifier {
+            case homeItem: item.label = local("首页", "Home")
+            case providerItem: item.label = local("API 服务", "API Service")
+            case appearanceItem: item.label = local("外观", "Appearance")
+            case languageItem: item.label = local("语言", "Language")
+            case pauseItem: item.label = local("暂存并返回", "Save and return")
+            default: break
             }
         }
     }
@@ -776,13 +1038,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         apiBaseURL.placeholderString = "https://api.example.com/v1"
         apiModel.placeholderString = local("服务中可用的模型 ID", "Model ID available from your service")
         apiProviderPreset.removeAllItems()
-        apiProviderPreset.addItems(withTitles: [local("自定义兼容服务／网关", "Custom compatible service / gateway"),
-                                                "DeepSeek", "OpenAI"])
-        if apiBaseURL.stringValue == "https://api.deepseek.com" {
-            apiProviderPreset.selectItem(at: 1)
-        } else if apiBaseURL.stringValue == "https://api.openai.com/v1" {
-            apiProviderPreset.selectItem(at: 2)
-        } else { apiProviderPreset.selectItem(at: 0) }
+        apiProviderPreset.addItems(withTitles: [local("自定义兼容服务／网关", "Custom compatible service / gateway")]
+                                      + apiServicePresets.map(\.title))
+        let savedIndex = apiServicePresets.firstIndex { $0.baseURL == apiBaseURL.stringValue }
+        apiProviderPreset.selectItem(at: savedIndex.map { $0 + 1 } ?? 0)
         apiProviderPreset.target = self
         apiProviderPreset.action = #selector(providerPresetAction)
         populateModelPresets()
@@ -859,12 +1118,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
 
     private func populateModelPresets() {
         apiModelPreset.removeAllItems()
-        let models: [String]
-        switch apiProviderPreset.indexOfSelectedItem {
-        case 1: models = ["deepseek-v4-flash", "deepseek-v4-pro"]
-        case 2: models = ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"]
-        default: models = []
-        }
+        let index = apiProviderPreset.indexOfSelectedItem - 1
+        let models = apiServicePresets.indices.contains(index) ? apiServicePresets[index].models : []
         apiModelPreset.addItems(withTitles: [local("自定义模型 ID", "Custom model ID")] + models)
         apiModelPreset.selectItem(withTitle: apiModel.stringValue)
         if apiModelPreset.indexOfSelectedItem < 0 { apiModelPreset.selectItem(at: 0) }
@@ -873,10 +1128,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     }
 
     @objc private func providerPresetAction() {
-        switch apiProviderPreset.indexOfSelectedItem {
-        case 1: apiBaseURL.stringValue = "https://api.deepseek.com"
-        case 2: apiBaseURL.stringValue = "https://api.openai.com/v1"
-        default: break
+        let index = apiProviderPreset.indexOfSelectedItem - 1
+        if apiServicePresets.indices.contains(index) {
+            apiBaseURL.stringValue = apiServicePresets[index].baseURL
+            apiModel.stringValue = apiServicePresets[index].models.first ?? ""
         }
         populateModelPresets()
     }
@@ -943,6 +1198,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
                                               "Could not save the key to macOS Keychain (\(result)).")
                 return
             }
+            recentAPIKey = apiKey.stringValue
+            recentAPIKeyBaseURL = settings.baseURL
         }
         do {
             UserDefaults.standard.set(try JSONEncoder().encode(settings),
@@ -956,6 +1213,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         providerName.stringValue = "\(settings.model) · \(settings.baseURL)"
         status.stringValue = local("API 服务已配置，可以开始翻译。", "API service configured; ready to translate.")
         cancelProviderAction()
+        updateCurrentWorkbenchChat(settings)
+    }
+
+    private func updateCurrentWorkbenchChat(_ settings: ProviderSettings) {
+        guard landingPage == .workbench,
+              let workbenchURL = desktop.workbenchURL,
+              let token = URLComponents(url: workbenchURL, resolvingAgainstBaseURL: false)?
+                .fragment?.components(separatedBy: "token=").last,
+              !token.isEmpty,
+              let host = workbenchURL.host,
+              host == "127.0.0.1" || host == "localhost" else { return }
+        let key = (recentAPIKeyBaseURL == settings.baseURL ? recentAPIKey : nil)
+            ?? ProviderCredentialStore.key(for: settings.baseURL)
+            ?? ProcessInfo.processInfo.environment[settings.apiKeyEnv]
+            ?? (settings.isLocal ? "local" : "")
+        guard !key.isEmpty,
+              let configURL = try? settings.temporaryFile(),
+              let configData = try? Data(contentsOf: configURL),
+              let config = try? JSONSerialization.jsonObject(with: configData) as? [String: Any] else {
+            status.stringValue = local("聊天 API 配置未能载入。", "Could not load the chat API configuration.")
+            return
+        }
+        try? FileManager.default.removeItem(at: configURL)
+        guard let body = try? JSONSerialization.data(withJSONObject: ["config": config, "key": key]) else { return }
+        var endpoint = URLComponents(url: workbenchURL, resolvingAgainstBaseURL: false)!
+        endpoint.path = "/api/chat/provider"
+        endpoint.fragment = nil
+        guard let url = endpoint.url else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(token, forHTTPHeaderField: "X-DBabel-Session")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if error == nil, (response as? HTTPURLResponse)?.statusCode == 200 {
+                    self.browser?.evaluateJavaScript("window.dbabelRefreshChat?.()", completionHandler: nil)
+                    self.status.stringValue = self.local("API 已连接到当前工作台聊天。", "API connected to this Workbench chat.")
+                } else {
+                    self.status.stringValue = self.local("当前工作台聊天连接失败；请重新打开会话。",
+                                                         "Chat connection failed; reopen the session.")
+                }
+            }
+        }.resume()
     }
 
     @objc private func testProviderAction() {
@@ -1022,7 +1324,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
             return
         }
         guard languagesAreValid() else { return }
-        let configuredKey = ProviderCredentialStore.key(for: settings.baseURL)
+        let configuredKey = (recentAPIKeyBaseURL == settings.baseURL ? recentAPIKey : nil)
+            ?? ProviderCredentialStore.key(for: settings.baseURL)
             ?? ProcessInfo.processInfo.environment[settings.apiKeyEnv] ?? ""
         if configuredKey.isEmpty && !settings.isLocal {
             status.stringValue = local("请在 API 服务设置中填写密钥。", "Enter the API key in API service settings.")
@@ -1077,6 +1380,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         (webView as? MaterialWebView)?.allowWindowMaterialToShowThrough()
         webView.evaluateJavaScript("window.dbabelSetDesktopTheme?.('\(appearance.rawValue)')")
+        guard landingPage == .workbench else { return }
+        let icon = NSWorkspace.shared.icon(for: .folder)
+        icon.size = NSSize(width: 32, height: 32)
+        guard let tiff = icon.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:]) else { return }
+        let dataURL = "data:image/png;base64," + png.base64EncodedString()
+        let script = """
+        (() => { const old = document.getElementById('documentIcon'); if (!old) return;
+          const image = document.createElement('img'); image.className = 'doc-icon-native';
+          image.alt = ''; image.src = '\(dataURL)'; old.replaceWith(image); })()
+        """
+        webView.evaluateJavaScript(script)
     }
 
     func webView(_ webView: WKWebView, navigationAction: WKNavigationAction,
@@ -1089,6 +1405,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
             NSWorkspace.shared.open(url)
         }
         return nil
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: local("确定", "OK"))
+        alert.beginSheetModal(for: window) { _ in completionHandler() }
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: local("继续", "Continue"))
+        alert.addButton(withTitle: local("取消", "Cancel"))
+        alert.beginSheetModal(for: window) { response in
+            completionHandler(response == .alertFirstButtonReturn)
+        }
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String,
+                 defaultText: String?, initiatedByFrame frame: WKFrameInfo,
+                 completionHandler: @escaping (String?) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = prompt
+        alert.addButton(withTitle: local("保存", "Save"))
+        alert.addButton(withTitle: local("取消", "Cancel"))
+        let field = NSTextField(string: defaultText ?? "")
+        field.frame = NSRect(x: 0, y: 0, width: 360, height: 26)
+        alert.accessoryView = field
+        alert.beginSheetModal(for: window) { response in
+            completionHandler(response == .alertFirstButtonReturn ? field.stringValue : nil)
+        }
     }
 
     func download(_ download: WKDownload, decideDestinationUsing response: URLResponse,

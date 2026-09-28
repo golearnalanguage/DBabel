@@ -1,7 +1,7 @@
 // Optional Playwright regression. Only run against disposable synthetic review sessions.
 const {chromium}=require('playwright');
 if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_PORTABLE)throw Error('Set DBABEL_TEST_URL and DBABEL_TEST_PORTABLE to disposable synthetic fixtures. This test changes decisions.');
-(async()=>{const browser=await chromium.launch({headless:true,...(process.env.DBABEL_CHROME ? {executablePath:process.env.DBABEL_CHROME} : {})});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];const checked=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+(async()=>{const browser=await chromium.launch({headless:true,...(process.env.DBABEL_CHROME ? {executablePath:process.env.DBABEL_CHROME} : {})});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];const checked=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.type()==='prompt'?d.accept('Synthetic review rejects this wording.'):d.accept());
 async function run(url,portable){await page.goto(url);await page.waitForSelector('#segmentRows tr');
 for(const t of ['dark','light','system']){await page.selectOption('#themeSelect',t);if(await page.locator('html').getAttribute('data-theme-pref')!==t)throw Error('theme mismatch');}checked.push('themes');
 await page.locator('#segmentRows tr').first().click();for(const t of ['evidence','terminology','suggestion']){await page.locator(`[data-tab="${t}"]`).click();}checked.push('inspector tabs');
