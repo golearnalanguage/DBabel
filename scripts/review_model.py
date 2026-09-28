@@ -79,11 +79,12 @@ def write_json(path: Path, value: Any) -> None:
             fh.flush()
             os.fsync(fh.fileno())
         temporary.replace(path)
-        directory_fd = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
+        if os.name == "posix":
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
