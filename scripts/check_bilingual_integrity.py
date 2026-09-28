@@ -27,11 +27,19 @@ PLACEHOLDER_RE = re.compile(
 )
 URL_RE = re.compile(r"(?i)\b(?:https?|ftp)://[^\s<>\"']+")
 WINDOWS_PATH_RE = re.compile(r"(?<![A-Za-z0-9_])(?:[A-Za-z]:\\(?:[^\\/:*?\"<>|\r\n]+\\)*[^\\/:*?\"<>|\r\n]*)")
-UNIX_PATH_RE = re.compile(r"(?<![:A-Za-z0-9_])/(?:[^\s/]+/)*[^\s/]+")
+# A slash inside a word is often a translated compound (文本/结构), not a
+# filesystem root.  Workflow arrows and quotation marks also terminate a
+# path; otherwise a whole quoted workflow can be mistaken for one literal.
+UNIX_PATH_RE = re.compile(
+    r"(?<![\w:])/(?:[^\s/→←↔“”‘’\"'，。；：！？]+/)*"
+    r"[^\s/→←↔“”‘’\"'，。；：！？]+"
+)
 FILENAME_RE = re.compile(r"(?<![\w./\\-])(?:[A-Za-z0-9_.-]+\.[A-Za-z][A-Za-z0-9]{0,9})(?![\w/\\-])")
 CLI_RE = re.compile(r"(?<![\w-])--?[A-Za-z][A-Za-z0-9_-]*")
-ENV_RE = re.compile(r"\$[A-Z_][A-Z0-9_]*|\$\{[A-Z_][A-Z0-9_]*\}|%[A-Z_][A-Z0-9_]*%")
+ENV_RE = re.compile(r"(?<![A-Za-z0-9_])\$[A-Z_][A-Z0-9_]*|(?<![A-Za-z0-9_])\$\{[A-Z_][A-Z0-9_]*\}|%[A-Z_][A-Z0-9_]*%")
+SQL_IDENTIFIER_RE = re.compile(r"\b(?:[A-Z][A-Z0-9]*\$[A-Z][A-Z0-9_]*|[A-Z][A-Z0-9]*_[A-Z0-9_]+)\b")
 VERSION_RE = re.compile(r"(?i)(?:\bversion\s+|\bver(?:sion)?\.?\s*|\bv)(\d+(?:\.\d+){1,3})(?!\d)")
+CJK_RE = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]+")
 NUMBER_RE = re.compile(r"(?<![\w.])[-+]?\d(?:[\d\s\u00A0\u202F,.]*\d)?(?![\w.])")
 TRAILING_URL_PUNCT = ".,;:!?)]}>，。；：！？）》】」』"
 
@@ -200,6 +208,10 @@ def extract_cli_options(text):
 
 def extract_env_vars(text):
     return [m.group(0) for m in ENV_RE.finditer(text)]
+
+
+def extract_sql_identifiers(text):
+    return [m.group(0) for m in SQL_IDENTIFIER_RE.finditer(text)]
 
 
 def extract_versions(text):
@@ -381,6 +393,34 @@ def _check_literal(unit, check_id, severity, source_items, target_items):
     )
 
 
+def _untranslated_cjk(unit, glossary):
+    """Find Han text left in an English target outside approved literals."""
+    source = unit["source"]
+    target = unit["target"]
+    source_language = str(unit.get("source_language") or "").casefold()
+    target_language = str(unit.get("target_language") or "").casefold()
+    if not (source_language.startswith(("zh", "ja")) and target_language.startswith("en")):
+        return []
+
+    allowed = []
+    for extractor in (extract_urls, extract_paths, extract_filenames,
+                      extract_placeholders, extract_cli_options, extract_env_vars,
+                      extract_versions, extract_sql_identifiers):
+        allowed.extend(x for x in extractor(source) if CJK_RE.search(x))
+    for entry in _approved_entries(glossary):
+        if entry.get("behavior") != "PROTECT" or not _scope_applies(entry, unit):
+            continue
+        record = entry.get("source") or {}
+        term = record.get("term") or ""
+        if term and term in source and CJK_RE.search(term):
+            allowed.append(term)
+
+    masked = target
+    for literal in sorted(set(allowed), key=len, reverse=True):
+        masked = masked.replace(literal, " " * len(literal))
+    return list(dict.fromkeys(match.group(0) for match in CJK_RE.finditer(masked)))
+
+
 def run_qa(units, config, glossary=None):
     checks = config.get("checks", {})
     unit_allowlist = config.get("unit_allowlist") or []
@@ -394,19 +434,30 @@ def run_qa(units, config, glossary=None):
         ("FILENAME_INTEGRITY", extract_filenames),
         ("CLI_OPTION_INTEGRITY", extract_cli_options),
         ("ENV_VAR_INTEGRITY", extract_env_vars),
+        ("SQL_IDENTIFIER_INTEGRITY", extract_sql_identifiers),
         ("VERSION_INTEGRITY", extract_versions),
     ]
 
     for check_id, _ in literal_extractors:
         if checks.get(check_id, {}).get("enabled"):
             checks_run.append(check_id)
-    for check_id in ("NUMBER_INTEGRITY", "NUMBER_UNIT_INTEGRITY", "PROTECTED_LITERAL", "FORBIDDEN_TERM", "PREFERRED_TERM"):
+    for check_id in ("NUMBER_INTEGRITY", "NUMBER_UNIT_INTEGRITY", "PROTECTED_LITERAL", "FORBIDDEN_TERM", "PREFERRED_TERM", "UNTRANSLATED_SOURCE_TEXT"):
         if checks.get(check_id, {}).get("enabled"):
             checks_run.append(check_id)
 
     for unit in units:
         source = unit["source"]
         target = unit["target"]
+
+        rule = checks.get("UNTRANSLATED_SOURCE_TEXT", {})
+        if rule.get("enabled"):
+            residue = _untranslated_cjk(unit, glossary)
+            if residue:
+                issues.append(_issue(
+                    unit, "UNTRANSLATED_SOURCE_TEXT", rule["severity"],
+                    "English target retains source-language Han text outside approved protected literals.",
+                    [], residue,
+                ))
 
         for check_id, extractor in literal_extractors:
             rule = checks.get(check_id, {})

@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Sequence
 
 from providers.base import (
     ProviderError,
+    ProviderResponseInterrupted,
     TextGenerationProvider,
 )
 from runtime.models import GenerationRequest
@@ -715,6 +716,7 @@ def adjudicate_semantics(
     target_language: str,
     document_name: str,
     limits: SemanticLimits = SemanticLimits(),
+    on_progress=None,
 ) -> Dict[str, Any]:
     units = _validate_input(
         post_translation
@@ -745,10 +747,19 @@ def adjudicate_semantics(
 
     receipts = []
 
-    for batch_index, batch in enumerate(
-        batches,
-        1,
-    ):
+    pending = list(batches)
+    completed = 0
+    while pending:
+        batch = pending.pop(0)
+        batch_index = len(receipts) + 1
+        if on_progress:
+            on_progress({
+                "stage": "ADJUDICATION", "state": "BATCH_STARTED",
+                "completed_units": completed, "total_units": len(units),
+                "batch_units": len(batch), "unit_id": batch[0]["id"],
+                "location": batch[0].get("location", ""),
+                "source_preview": batch[0].get("source", "")[:160],
+            })
         request = build_request(
             batch,
             issue_map,
@@ -760,6 +771,16 @@ def adjudicate_semantics(
             response = provider.generate(
                 request
             )
+        except ProviderResponseInterrupted as exc:
+            if len(batch) > 1:
+                middle = len(batch) // 2
+                pending[:0] = [batch[:middle], batch[middle:]]
+                continue
+            raise SemanticAdjudicationError(
+                "semantic provider failed for unit {} after retries: {}".format(
+                    batch[0]["id"], exc,
+                )
+            ) from exc
         except (
             ProviderError,
             OSError,
@@ -805,6 +826,14 @@ def adjudicate_semantics(
             "usage":
                 dict(response.usage),
         })
+        completed += len(batch)
+        if on_progress:
+            on_progress({
+                "stage": "ADJUDICATION", "state": "BATCH_COMPLETED",
+                "completed_units": completed, "total_units": len(units),
+                "unit_id": batch[-1]["id"],
+                "location": batch[-1].get("location", ""),
+            })
 
     expected_ids = [
         unit["id"]

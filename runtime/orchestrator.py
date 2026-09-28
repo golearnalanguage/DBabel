@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 from providers.base import TextGenerationProvider
 from providers.openai_compatible import (
@@ -354,6 +354,7 @@ class RuntimeOrchestrator:
             TextGenerationProvider
         ] = None,
         limits: TranslationLimits = TranslationLimits(),
+        on_progress: Optional[Callable[[dict], None]] = None,
     ) -> dict:
         """Run TRANSLATE through deterministic post-translation QA.
 
@@ -361,6 +362,8 @@ class RuntimeOrchestrator:
         review-session creation, human approval, or export.
         """
 
+        if on_progress:
+            on_progress({"stage": "FORMAT_PROBE", "state": "STARTED"})
         manifest = self.prepare_translation(
             source=source,
             source_language=source_language,
@@ -372,7 +375,11 @@ class RuntimeOrchestrator:
         )
 
         if manifest["status"] == "BLOCKED":
+            if on_progress:
+                on_progress({"stage": "FORMAT_PROBE", "state": "BLOCKED"})
             return manifest
+        if on_progress:
+            on_progress({"stage": "FORMAT_PROBE", "state": "COMPLETED"})
 
         if (
             manifest["status"]
@@ -415,6 +422,8 @@ class RuntimeOrchestrator:
         stage = "INGEST"
 
         try:
+            if on_progress:
+                on_progress({"stage": "INGEST", "state": "STARTED"})
             run.assert_source_unchanged()
 
             plan = json.loads(
@@ -457,6 +466,9 @@ class RuntimeOrchestrator:
                 default_text_role=
                     default_text_role,
             )
+            if on_progress:
+                on_progress({"stage": "INGEST", "state": "COMPLETED",
+                             "total_units": len(ingest["units"])})
 
             ingest_path = (
                 run.root / "ingest.json"
@@ -501,6 +513,9 @@ class RuntimeOrchestrator:
             # ---------------------------------------------
 
             stage = "TRANSLATION"
+            if on_progress:
+                on_progress({"stage": stage, "state": "STARTED",
+                             "total_units": len(ingest["units"])})
 
             audit.append(
                 stage=stage,
@@ -538,7 +553,12 @@ class RuntimeOrchestrator:
                 target_language=
                     target_language,
                 limits=limits,
+                on_progress=on_progress,
             )
+            if on_progress:
+                on_progress({"stage": stage, "state": "COMPLETED",
+                             "completed_units": len(ingest["units"]),
+                             "total_units": len(ingest["units"])})
 
             translation_path = (
                 run.root
@@ -588,6 +608,8 @@ class RuntimeOrchestrator:
             # ---------------------------------------------
 
             stage = "POST_TRANSLATION_QA"
+            if on_progress:
+                on_progress({"stage": stage, "state": "STARTED"})
 
             audit.append(
                 stage=stage,
@@ -628,6 +650,12 @@ class RuntimeOrchestrator:
                 ].get("summary")
                 or {}
             )
+            if on_progress:
+                on_progress({"stage": stage, "state": "COMPLETED",
+                             "completed_units": summary.get("units_checked"),
+                             "total_units": len(ingest["units"]),
+                             "error_count": summary.get("error_count"),
+                             "warning_count": summary.get("warning_count")})
 
             audit.append(
                 stage=stage,
@@ -727,6 +755,7 @@ class RuntimeOrchestrator:
             TranslationLimits = TranslationLimits(),
         semantic_limits:
             SemanticLimits = SemanticLimits(),
+        on_progress: Optional[Callable[[dict], None]] = None,
     ) -> dict:
         """Run TRANSLATE through the Full Local Workbench delivery gate.
 
@@ -754,6 +783,7 @@ class RuntimeOrchestrator:
                 provider=provider,
                 limits=
                     translation_limits,
+                on_progress=on_progress,
             )
         )
 
@@ -819,6 +849,8 @@ class RuntimeOrchestrator:
         stage = "ADJUDICATION"
 
         try:
+            if on_progress:
+                on_progress({"stage": stage, "state": "STARTED"})
             run.assert_source_unchanged()
 
             current = (
@@ -908,6 +940,7 @@ class RuntimeOrchestrator:
                         source.name,
                     limits=
                         semantic_limits,
+                    on_progress=on_progress,
                 )
             )
 
@@ -957,6 +990,11 @@ class RuntimeOrchestrator:
                 },
                 failure=None,
             )
+            if on_progress:
+                on_progress({"stage": "ADJUDICATION", "state": "COMPLETED",
+                             "completed_units": semantic["unit_count"],
+                             "total_units": semantic["unit_count"],
+                             "finding_count": semantic["finding_count"]})
 
             # ---------------------------------------------
             # REVIEW SESSION BINDING
@@ -965,6 +1003,8 @@ class RuntimeOrchestrator:
             stage = (
                 "REVIEW_SESSION_BINDING"
             )
+            if on_progress:
+                on_progress({"stage": stage, "state": "STARTED"})
 
             audit.append(
                 stage=stage,
@@ -997,6 +1037,8 @@ class RuntimeOrchestrator:
             )
 
             run.assert_source_unchanged()
+            if on_progress:
+                on_progress({"stage": stage, "state": "COMPLETED"})
 
             audit.append(
                 stage=stage,
@@ -1021,6 +1063,8 @@ class RuntimeOrchestrator:
             stage = (
                 "DELIVERY_VALIDATION"
             )
+            if on_progress:
+                on_progress({"stage": stage, "state": "STARTED"})
 
             receipt = binding[
                 "delivery_receipt"
@@ -1075,6 +1119,8 @@ class RuntimeOrchestrator:
                     artifacts,
                 failure=None,
             )
+            if on_progress:
+                on_progress({"stage": stage, "state": "COMPLETED"})
 
             audit.append(
                 stage="HUMAN_REVIEW",

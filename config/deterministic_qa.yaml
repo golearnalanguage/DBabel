@@ -24,7 +24,13 @@ checks:
   ENV_VAR_INTEGRITY:
     enabled: true
     severity: ERROR
+  SQL_IDENTIFIER_INTEGRITY:
+    enabled: true
+    severity: ERROR
   PROTECTED_LITERAL:
+    enabled: true
+    severity: ERROR
+  UNTRANSLATED_SOURCE_TEXT:
     enabled: true
     severity: ERROR
   FORBIDDEN_TERM:

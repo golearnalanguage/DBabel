@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import time
+from http.client import IncompleteRead, RemoteDisconnected
 from typing import Callable, Mapping, Optional, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -13,6 +15,8 @@ from urllib.request import (
 
 from providers.base import (
     ProviderError,
+    ProviderTransientError,
+    ProviderResponseInterrupted,
     TextGenerationProvider,
 )
 from runtime.models import (
@@ -104,6 +108,17 @@ def _default_transport(
                     "configured size limit"
                 )
 
+            declared_length = response.headers.get("Content-Length")
+            if declared_length is not None:
+                try:
+                    expected_length = int(declared_length)
+                except ValueError:
+                    expected_length = None
+                if expected_length is not None and len(raw) < expected_length:
+                    raise ProviderResponseInterrupted(
+                        "provider response ended before its declared length"
+                    )
+
             return int(response.status), raw
 
     except HTTPError as exc:
@@ -114,29 +129,35 @@ def _default_transport(
             404: "API route or model was not found",
             429: "quota or rate limit was reached",
         }.get(exc.code, "service returned an error")
-        raise ProviderError(
+        error_type = ProviderTransientError if exc.code in {408, 425, 429} or 500 <= exc.code <= 599 else ProviderError
+        raise error_type(
             "provider HTTP error: {} ({})".format(exc.code, guidance)
-        )
+        ) from exc
+
+    except (IncompleteRead, RemoteDisconnected) as exc:
+        raise ProviderResponseInterrupted(
+            "provider response ended before it was complete"
+        ) from exc
 
     except URLError as exc:
         reason = str(exc.reason)
         if any(marker in reason.lower() for marker in (
             "ssl", "tls", "connection reset", "eof occurred"
         )):
-            raise ProviderError(
+            raise ProviderTransientError(
                 "provider TLS/network connection failed before key or model "
                 "validation; check VPN and proxy settings: {}".format(reason)
             ) from exc
-        raise ProviderError(
+        raise ProviderTransientError(
             "provider connection error: {}".format(
                 reason
             )
-        )
+        ) from exc
 
     except OSError as exc:
-        raise ProviderError(
+        raise ProviderTransientError(
             "provider I/O error: {}".format(exc)
-        )
+        ) from exc
 
 
 class OpenAICompatibleProvider(
@@ -214,13 +235,28 @@ class OpenAICompatibleProvider(
                 "DBabel-Runtime/0.1",
         }
 
-        status, raw = self._transport(
-            endpoint,
-            headers,
-            body,
-            self._config.timeout_seconds,
-            self._config.max_response_bytes,
-        )
+        for attempt in range(3):
+            try:
+                status, raw = self._transport(
+                    endpoint,
+                    headers,
+                    body,
+                    self._config.timeout_seconds,
+                    self._config.max_response_bytes,
+                )
+                break
+            except (IncompleteRead, RemoteDisconnected) as exc:
+                transient = ProviderResponseInterrupted(
+                    "provider response ended before it was complete"
+                )
+                transient.__cause__ = exc
+            except ProviderTransientError as exc:
+                transient = exc
+            if attempt == 2:
+                raise type(transient)(
+                    "provider request failed after 3 attempts: {}".format(transient)
+                ) from transient
+            time.sleep(0.5 * (2 ** attempt))
 
         if not 200 <= int(status) < 300:
             raise ProviderError(

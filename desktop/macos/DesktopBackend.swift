@@ -20,6 +20,8 @@ final class DesktopController {
     var onStatus: (String) -> Void = { _ in }
     var onBusy: (Bool) -> Void = { _ in }
     var onWorkbench: (URL) -> Void = { _ in }
+    var onProgress: ([String: Any]) -> Void = { _ in }
+    var onTranslationFailure: (String) -> Void = { _ in }
     var workbenchURL: URL? { didSet { if let url = workbenchURL { onWorkbench(url) } } }
     var status = "" { didSet { onStatus(status) } }
     var busy = false { didSet { onBusy(busy) } }
@@ -27,6 +29,20 @@ final class DesktopController {
 
     private var server: Process?
     private var serverTimer: Timer?
+    private var progressTimer: Timer?
+    private var progressLineCount = 0
+
+    private func readProgress(_ file: URL) {
+        let lines = contents(file).split(whereSeparator: \.isNewline)
+        guard lines.count > progressLineCount else { return }
+        for line in lines.dropFirst(progressLineCount) {
+            if let data = String(line).data(using: .utf8),
+               let event = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                onProgress(event)
+            }
+        }
+        progressLineCount = lines.count
+    }
 
     private var bundledRepository: URL? {
         guard let resources = Bundle.main.resourceURL else { return nil }
@@ -182,6 +198,7 @@ final class DesktopController {
         guard bundle.pathExtension == "dbreview",
               FileManager.default.fileExists(atPath: bundle.path) else {
             status = "Choose an existing .dbreview session. / 请选择已有 .dbreview 会话。"
+            onTranslationFailure(status)
             return
         }
         busy = true
@@ -232,11 +249,13 @@ final class DesktopController {
                     self.busy = false
                     self.status = self.contents(error).trimmingCharacters(in: .whitespacesAndNewlines)
                     if self.status.isEmpty { self.status = "Workbench failed to start. / 工作台启动失败。" }
+                    self.onTranslationFailure(self.status)
                 }
             }
         } catch {
             busy = false
             status = error.localizedDescription
+            onTranslationFailure(status)
         }
     }
 
@@ -257,6 +276,10 @@ final class DesktopController {
         status = "Translating and checking… / 正在翻译并检查…"
         do {
             let (output, error) = try logFiles()
+            let progress = FileManager.default.temporaryDirectory
+                .appendingPathComponent("dbabel-progress-\(UUID().uuidString).jsonl")
+            FileManager.default.createFile(atPath: progress.path, contents: Data())
+            progressLineCount = 0
             let arguments = [
                 repository.appendingPathComponent("scripts/run_project.py").path,
                 source.path,
@@ -264,7 +287,8 @@ final class DesktopController {
                 "--target-language", to,
                 "--text-role", role,
                 "--provider-config", provider.path,
-                "--workspace-root", workspace.appendingPathComponent("runtime").path
+                "--workspace-root", workspace.appendingPathComponent("runtime").path,
+                "--progress-jsonl", progress.path
             ]
             var environment: [String: String] = [:]
             if !apiKey.isEmpty,
@@ -282,10 +306,18 @@ final class DesktopController {
             }
             let process = try launch(arguments, stdout: output, stderr: error,
                                      environment: environment)
+            progressTimer?.invalidate()
+            progressTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+                self?.readProgress(progress)
+            }
             process.terminationHandler = { [weak self] finished in
                 DispatchQueue.main.async {
                     if temporaryProvider { try? FileManager.default.removeItem(at: provider) }
                     guard let self = self else { return }
+                    self.progressTimer?.invalidate()
+                    self.progressTimer = nil
+                    self.readProgress(progress)
+                    try? FileManager.default.removeItem(at: progress)
                     self.busy = false
                     let manifest = self.contents(output).data(using: .utf8).flatMap {
                         try? JSONSerialization.jsonObject(with: $0) as? [String: Any]
@@ -305,18 +337,21 @@ final class DesktopController {
                             ? "Document preflight stopped before API translation. / 文档预检未通过，尚未调用翻译 API。"
                             : "Translation stopped at \(stage). / 翻译停在 \(stage) 阶段。"
                         self.status = heading + "\n" + String(reason.prefix(600))
+                        self.onTranslationFailure(self.status)
                         return
                     }
                     let detail = self.contents(error).trimmingCharacters(in: .whitespacesAndNewlines)
                     self.status = detail.isEmpty
                         ? "Translation stopped before human review; inspect the run report. / 翻译未进入人工审核，请检查运行记录。"
                         : detail
+                    self.onTranslationFailure(self.status)
                 }
             }
         } catch {
             if temporaryProvider { try? FileManager.default.removeItem(at: provider) }
             busy = false
             status = error.localizedDescription
+            onTranslationFailure(status)
         }
     }
 

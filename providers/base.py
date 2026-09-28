@@ -12,6 +12,14 @@ class ProviderError(RuntimeError):
     pass
 
 
+class ProviderTransientError(ProviderError):
+    """A request can be retried without changing the submitted content."""
+
+
+class ProviderResponseInterrupted(ProviderTransientError):
+    """A response was cut off; a smaller translation batch may succeed."""
+
+
 class TextGenerationProvider(ABC):
     @abstractmethod
     def generate(

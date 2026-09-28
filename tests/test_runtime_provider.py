@@ -1,6 +1,9 @@
 import json
 import tempfile
+import threading
 import unittest
+from http.client import IncompleteRead
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 from urllib.request import ProxyHandler
@@ -362,6 +365,61 @@ class ProviderTests(unittest.TestCase):
                     user="user",
                 )
             )
+
+    def test_incomplete_read_is_retried_with_same_request(self):
+        bodies = []
+
+        def transport(url, headers, body, timeout, max_bytes):
+            bodies.append(body)
+            if len(bodies) < 3:
+                raise IncompleteRead(b"partial", 5)
+            return 200, b'{"choices":[{"message":{"content":"OK"}}]}'
+
+        provider = OpenAICompatibleProvider(
+            self.config(), {"DBABEL_TEST_KEY": "test-key"}, transport)
+        with patch.object(openai_compatible.time, "sleep") as sleep:
+            result = provider.generate(GenerationRequest(system="S", user="U"))
+        self.assertEqual(result.text, "OK")
+        self.assertEqual(len(bodies), 3)
+        self.assertEqual(bodies[0], bodies[1])
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_short_http_body_is_retried_before_json_parse(self):
+        calls = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *_args):
+                pass
+
+            def do_POST(self):
+                length = int(self.headers["Content-Length"])
+                self.rfile.read(length)
+                calls.append(self.path)
+                body = (b'{' if len(calls) == 1 else
+                        b'{"choices":[{"message":{"content":"OK"}}]}')
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body) + (20 if len(calls) == 1 else 0)))
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.wfile.write(body)
+                self.close_connection = True
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            provider = OpenAICompatibleProvider(
+                ProviderConfig("openai-compatible", f"http://127.0.0.1:{server.server_port}/v1",
+                               "DBABEL_TEST_KEY", "model-a"),
+                {"DBABEL_TEST_KEY": "test-key"})
+            with patch.object(openai_compatible.time, "sleep"):
+                result = provider.generate(GenerationRequest(system="S", user="U"))
+            self.assertEqual(result.text, "OK")
+            self.assertEqual(calls, ["/v1/chat/completions"] * 2)
+        finally:
+            server.shutdown()
+            server.server_close()
 
 
 if __name__ == "__main__":

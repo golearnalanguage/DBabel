@@ -1,6 +1,8 @@
 import json
 import unittest
 
+from providers.base import ProviderResponseInterrupted
+
 from runtime.models import (
     GenerationResponse,
 )
@@ -64,6 +66,55 @@ class FakeProvider:
 class TranslationRuntimeTests(
     unittest.TestCase
 ):
+    def test_literal_count_is_retried_for_single_unit(self):
+        source = "先设置 --exec_mode，再检查 --exec_mode。"
+        def answer(target):
+            return json.dumps({"units": [{
+                "id": "U1", "suggested_target": target,
+                "proposal_decision": "REPLACE", "reason": "technical translation"
+            }]})
+        provider = FakeProvider([
+            answer("Set --exec_mode first, then check the option."),
+            answer("Set --exec_mode first, then check --exec_mode."),
+        ])
+        result = translate_units(provider=provider, units=[unit("U1", source)],
+                                 source_language="zh-CN", target_language="en")
+        self.assertEqual(len(provider.requests), 2)
+        self.assertEqual(result["units"][0]["proposal_decision"], "REPLACE")
+        self.assertEqual(result["units"][0]["suggested_target"].count("--exec_mode"), 2)
+        self.assertIn("protected_literal_counts", provider.requests[0].user)
+        self.assertIn("Previous response omitted", provider.requests[1].user)
+
+    def test_persistent_literal_mismatch_is_review_only(self):
+        source = "检查 SELECT * FROM V$DATABASE 的结果。"
+        response = json.dumps({"units": [{
+            "id": "U1", "suggested_target": "Check the database query result.",
+            "proposal_decision": "REPLACE", "reason": "technical translation"
+        }]})
+        provider = FakeProvider([response] * 3)
+        result = translate_units(provider=provider, units=[unit("U1", source)],
+                                 source_language="zh-CN", target_language="en")
+        proposal = result["units"][0]
+        self.assertEqual(len(provider.requests), 3)
+        self.assertEqual(proposal["proposal_decision"], "REVIEW")
+        self.assertIn("V$DATABASE", proposal["suggestion_reason"])
+        self.assertNotIn("approved_target", proposal)
+
+    def test_progress_reports_units_after_batch_succeeds(self):
+        response = json.dumps({"units": [{
+            "id": "U1", "suggested_target": "Configure the primary database.",
+            "proposal_decision": "REPLACE", "reason": "Translated instruction"
+        }]})
+        events = []
+        translate_units(provider=FakeProvider([response]),
+                        units=[unit("U1", "配置主库")],
+                        source_language="zh-CN", target_language="en",
+                        on_progress=events.append)
+        self.assertEqual([event["state"] for event in events],
+                         ["BATCH_STARTED", "BATCH_COMPLETED"])
+        self.assertEqual(events[-1]["completed_units"], 1)
+        self.assertEqual(events[0]["source_preview"], "配置主库")
+
     def test_batching_enforces_unit_and_character_limits(
         self,
     ):
@@ -219,6 +270,31 @@ class TranslationRuntimeTests(
             "8.1",
             values,
         )
+
+    def test_workflow_words_are_not_protected_as_a_path(self):
+        text = "“材料输入→文本/结构抽取→人工确认”"
+        self.assertEqual(protected_literals(text), [])
+        self.assertIn("ARCH_MODE", protected_literals("参数 ARCH_MODE"))
+        self.assertIn("V$DATABASE", protected_literals("SELECT * FROM V$DATABASE"))
+
+    def test_transient_failure_splits_batch_and_keeps_unit_order(self):
+        class SplittingProvider:
+            def generate(self, request):
+                ids = [item["id"] for item in json.loads(request.user)["units"]]
+                if len(ids) > 1:
+                    raise ProviderResponseInterrupted("truncated response")
+                return GenerationResponse(
+                    text=json.dumps({"units": [{
+                        "id": ids[0], "suggested_target": "Translated " + ids[0],
+                        "proposal_decision": "REPLACE", "reason": "translated"
+                    }]}), model="fake", provider="fake", response_id=None, usage={})
+
+        result = translate_units(
+            provider=SplittingProvider(),
+            units=[unit("U1", "第一句"), unit("U2", "第二句")],
+            source_language="zh-CN", target_language="en")
+        self.assertEqual(result["batch_count"], 2)
+        self.assertEqual([x["id"] for x in result["units"]], ["U1", "U2"])
 
     def test_success_is_proposal_only(
         self,

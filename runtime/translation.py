@@ -11,10 +11,11 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from providers.base import (
     ProviderError,
+    ProviderResponseInterrupted,
     TextGenerationProvider,
 )
 from runtime.models import GenerationRequest
@@ -28,6 +29,7 @@ if str(SCRIPTS) not in sys.path:
 from check_bilingual_integrity import (  # noqa: E402
     extract_cli_options,
     extract_env_vars,
+    extract_sql_identifiers,
     extract_filenames,
     extract_paths,
     extract_placeholders,
@@ -97,6 +99,7 @@ def protected_literals(text: str) -> List[str]:
         extract_filenames,
         extract_cli_options,
         extract_env_vars,
+        extract_sql_identifiers,
         extract_versions,
     )
 
@@ -238,6 +241,7 @@ def _request_payload(
     batch: Sequence[Dict[str, Any]],
     source_language: str,
     target_language: str,
+    retry_constraint: str = "",
 ) -> Dict[str, Any]:
     return {
         "task": "DBabel bounded technical translation proposal",
@@ -249,10 +253,13 @@ def _request_payload(
             "Keep unit ids unchanged and in the same order.",
             "Do not create human approval or approved_target.",
             "Preserve every protected literal exactly.",
+            "Quotation marks and workflow separators are structure, not a reason to leave the words inside untranslated.",
+            "Translate all ordinary source-language prose, including quoted workflow steps; keep only listed identifiers, paths, commands, placeholders, and versions unchanged.",
             "Use REPLACE for a translation proposal.",
             "Use PROTECT only when the source should remain unchanged.",
             "Use REVIEW when a reliable translation cannot be proposed.",
         ],
+        "retry_constraint": retry_constraint,
         "units": [
             {
                 "id": unit["id"],
@@ -265,6 +272,10 @@ def _request_payload(
                     protected_literals(
                         unit["source"]
                     ),
+                "protected_literal_counts": {
+                    literal: unit["source"].count(literal)
+                    for literal in protected_literals(unit["source"])
+                },
             }
             for unit in batch
         ],
@@ -287,6 +298,8 @@ Produce technical translation proposals only.
 You do not approve translations and you do not make human review decisions.
 Obey the supplied JSON contract exactly.
 Preserve protected literals byte-for-byte.
+Translate ordinary words inside quotations and around slashes or arrows; keep the structural separators.
+Do not leave source-language prose in an English translation.
 Return one JSON object and no surrounding prose or Markdown fences."""
 
 
@@ -294,11 +307,13 @@ def build_generation_request(
     batch: Sequence[Dict[str, Any]],
     source_language: str,
     target_language: str,
+    retry_constraint: str = "",
 ) -> GenerationRequest:
     payload = _request_payload(
         batch,
         source_language,
         target_language,
+        retry_constraint,
     )
 
     return GenerationRequest(
@@ -336,6 +351,8 @@ def _verify_literal_preservation(
 def parse_batch_response(
     text: str,
     expected_batch: Sequence[Dict[str, Any]],
+    *,
+    allow_literal_mismatch_for_review: bool = False,
 ) -> List[Dict[str, Any]]:
     try:
         value = json.loads(text)
@@ -472,11 +489,13 @@ def parse_batch_response(
                 )
             )
 
-        _verify_literal_preservation(
-            source,
-            suggested,
-            unit_id,
-        )
+        try:
+            _verify_literal_preservation(source, suggested, unit_id)
+        except RuntimeTranslationError as exc:
+            if not allow_literal_mismatch_for_review:
+                raise
+            decision = "REVIEW"
+            reason = "Protected literal mismatch; human correction required. " + str(exc)
 
         proposals.append({
             "id": unit_id,
@@ -495,6 +514,7 @@ def translate_units(
     source_language: str,
     target_language: str,
     limits: TranslationLimits = TranslationLimits(),
+    on_progress: Optional[Callable[[dict], None]] = None,
 ) -> Dict[str, Any]:
     if (
         not source_language
@@ -518,20 +538,48 @@ def translate_units(
 
     receipts = []
 
-    for batch_index, batch in enumerate(
-        batches,
-        1,
-    ):
+    pending = list(batches)
+    completed = 0
+    literal_retries: Dict[str, int] = {}
+    while pending:
+        batch = pending.pop(0)
+        batch_index = len(receipts) + 1
+        if on_progress:
+            on_progress({
+                "stage": "TRANSLATION", "state": "BATCH_STARTED",
+                "completed_units": completed, "total_units": len(units),
+                "batch_units": len(batch), "unit_id": batch[0]["id"],
+                "location": batch[0].get("location", ""),
+                "source_preview": batch[0].get("source", "")[:160],
+            })
+        retry_constraint = ""
+        if len(batch) == 1 and literal_retries.get(batch[0]["id"], 0):
+            retry_constraint = (
+                "Previous response omitted or changed a protected literal. "
+                "Translate the complete unit again and preserve every listed "
+                "literal exactly the stated number of times."
+            )
         request = build_generation_request(
             batch,
             source_language,
             target_language,
+            retry_constraint,
         )
 
         try:
             response = provider.generate(
                 request
             )
+        except ProviderResponseInterrupted as exc:
+            if len(batch) > 1:
+                middle = len(batch) // 2
+                pending[:0] = [batch[:middle], batch[middle:]]
+                continue
+            raise RuntimeTranslationError(
+                "provider generation failed for unit {} after retries: {}".format(
+                    batch[0]["id"], exc,
+                )
+            ) from exc
         except (
             ProviderError,
             OSError,
@@ -544,10 +592,41 @@ def translate_units(
                 )
             ) from exc
 
-        proposals = parse_batch_response(
-            response.text,
-            batch,
-        )
+        try:
+            proposals = parse_batch_response(response.text, batch)
+        except RuntimeTranslationError as exc:
+            if "changed protected literal" not in str(exc):
+                raise
+            if len(batch) > 1:
+                middle = len(batch) // 2
+                if on_progress:
+                    on_progress({"stage": "TRANSLATION", "state": "SPLITTING_BATCH",
+                                 "completed_units": completed, "total_units": len(units),
+                                 "unit_id": batch[0]["id"],
+                                 "location": batch[0].get("location", "")})
+                pending[:0] = [batch[:middle], batch[middle:]]
+                continue
+            unit_id = batch[0]["id"]
+            attempts = literal_retries.get(unit_id, 0)
+            if attempts < 2:
+                literal_retries[unit_id] = attempts + 1
+                if on_progress:
+                    on_progress({"stage": "TRANSLATION", "state": "RETRYING_LITERAL",
+                                 "completed_units": completed, "total_units": len(units),
+                                 "unit_id": unit_id,
+                                 "location": batch[0].get("location", ""),
+                                 "retry": attempts + 1})
+                pending.insert(0, batch)
+                continue
+            proposals = parse_batch_response(
+                response.text, batch,
+                allow_literal_mismatch_for_review=True,
+            )
+            if on_progress:
+                on_progress({"stage": "TRANSLATION", "state": "REVIEW_REQUIRED",
+                             "completed_units": completed, "total_units": len(units),
+                             "unit_id": unit_id,
+                             "location": batch[0].get("location", "")})
 
         for proposal in proposals:
             unit_id = proposal["id"]
@@ -582,6 +661,14 @@ def translate_units(
             "usage":
                 dict(response.usage),
         })
+        completed += len(batch)
+        if on_progress:
+            on_progress({
+                "stage": "TRANSLATION", "state": "BATCH_COMPLETED",
+                "completed_units": completed, "total_units": len(units),
+                "unit_id": batch[-1]["id"],
+                "location": batch[-1].get("location", ""),
+            })
 
     expected_ids = [
         unit["id"]
@@ -626,7 +713,7 @@ def translate_units(
         "format_version": "1.0",
         "status": "TRANSLATION_PROPOSED",
         "completion_allowed": False,
-        "batch_count": len(batches),
+        "batch_count": len(receipts),
         "unit_count": len(proposed_units),
         "units": proposed_units,
         "receipts": receipts,

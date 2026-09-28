@@ -78,6 +78,41 @@ class AccuracyCoreTests(unittest.TestCase):
         self.assertIn("PATH_INTEGRITY", self.ids(
             "Open /etc/example/app.conf.", "Open /etc/example/app.ini."))
 
+    def test_quoted_workflow_slash_is_not_a_path(self):
+        source = "当前按“材料输入→文本/结构抽取→人工确认”的流程设计。"
+        target = "The workflow is “material input→text/structure extraction→human confirmation.”"
+        self.assertEqual(qa.extract_paths(source), [])
+        self.assertNotIn("PATH_INTEGRITY", self.ids(
+            source, target, source_language="zh-CN", target_language="en"))
+
+    def test_quoted_real_path_stays_protected(self):
+        self.assertEqual(qa.extract_paths("文件位于 “/home/dmdba/dmdbms/bin”"),
+                         ["/home/dmdba/dmdbms/bin"])
+
+    def test_untranslated_chinese_blocks_english_target(self):
+        issues = self.issues(
+            "后续计划逐步扩展为内部工具。",
+            "Later, 后续计划逐步扩展为内部工具。",
+            source_language="zh-CN", target_language="en")
+        issue = next(x for x in issues if x["check_id"] == "UNTRANSLATED_SOURCE_TEXT")
+        self.assertEqual(issue["severity"], "ERROR")
+        self.assertIn("后续计划逐步扩展为内部工具", issue["target_items"])
+
+    def test_approved_protected_chinese_name_is_exempt(self):
+        protected = entry(source_term="麒麟 V10", behavior="PROTECT")
+        issues = self.issues(
+            "安装麒麟 V10。", "Install 麒麟 V10.",
+            glossary={"entries": [protected]},
+            source_language="zh-CN", target_language="en")
+        self.assertNotIn("UNTRANSLATED_SOURCE_TEXT", [x["check_id"] for x in issues])
+
+    def test_sql_identifier_is_not_environment_variable(self):
+        self.assertEqual(qa.extract_env_vars("SELECT * FROM V$DATABASE"), [])
+        self.assertEqual(qa.extract_sql_identifiers("SELECT * FROM V$DATABASE"),
+                         ["V$DATABASE"])
+        self.assertIn("SQL_IDENTIFIER_INTEGRITY", self.ids(
+            "配置 ARCH_MODE。", "Configure ARCH_SETTING."))
+
     def test_windows_path_preserved(self):
         self.assertNotIn("PATH_INTEGRITY", self.ids(
             r"Open C:\\ProgramData\\DBabel\\config.ini.",

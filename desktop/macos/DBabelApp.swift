@@ -144,6 +144,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     private var appearance: DesktopAppearance = .system
     private var chinese = true
     private var controls: [NSButton] = []
+    private var progressPageActive = false
+    private var progressLastEvent: [String: Any]?
+    private var progressSteps: [NSTextField] = []
+    private let progressHeading = NSTextField(labelWithString: "")
+    private let progressDetail = NSTextField(wrappingLabelWithString: "")
+    private let progressUnit = NSTextField(labelWithString: "")
+    private let progressSource = NSTextField(wrappingLabelWithString: "")
+    private let progressBar = NSProgressIndicator()
     private let status = NSTextField(labelWithString: "")
     private let sourceName = NSTextField(labelWithString: "")
     private let targetName = NSTextField(labelWithString: "")
@@ -241,6 +249,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
             self?.controls.forEach { $0.isEnabled = !busy }
         }
         desktop.onWorkbench = { [weak self] url in self?.showWorkbench(url) }
+        desktop.onProgress = { [weak self] event in self?.updateProgress(event) }
+        desktop.onTranslationFailure = { [weak self] message in self?.showProgressFailure(message) }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -369,6 +379,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     }
 
     private func showHome() {
+        progressPageActive = false
         body.subviews.forEach { $0.removeFromSuperview() }
         browser = nil
         controls.removeAll()
@@ -455,7 +466,144 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         ])
     }
 
+    private let progressStageIDs = ["FORMAT_PROBE", "INGEST", "TRANSLATION",
+                                    "POST_TRANSLATION_QA", "ADJUDICATION",
+                                    "REVIEW_SESSION_BINDING", "DELIVERY_VALIDATION"]
+
+    private func progressStageName(_ id: String) -> String {
+        switch id {
+        case "FORMAT_PROBE": return local("文档预检", "Document preflight")
+        case "INGEST": return local("提取审核单元", "Extract review units")
+        case "TRANSLATION": return local("生成翻译建议", "Generate translation proposals")
+        case "POST_TRANSLATION_QA": return local("确定性 QA", "Deterministic QA")
+        case "ADJUDICATION": return local("语义复核", "Semantic review")
+        case "REVIEW_SESSION_BINDING": return local("建立审核会话", "Create review session")
+        case "DELIVERY_VALIDATION": return local("验证并打开工作台", "Validate and open Workbench")
+        default: return id
+        }
+    }
+
+    private func showProgress() {
+        progressPageActive = true
+        progressLastEvent = nil
+        body.subviews.forEach { $0.removeFromSuperview() }
+        browser = nil
+        progressHeading.font = .systemFont(ofSize: 32, weight: .semibold)
+        progressHeading.stringValue = local("正在准备翻译", "Preparing translation")
+        progressDetail.stringValue = local("正在检查文档格式…", "Checking document format…")
+        progressDetail.textColor = .secondaryLabelColor
+        progressUnit.stringValue = local("等待提取审核单元", "Waiting for review units")
+        progressUnit.font = .systemFont(ofSize: 17, weight: .medium)
+        progressSource.stringValue = ""
+        progressSource.textColor = .secondaryLabelColor
+        progressSource.maximumNumberOfLines = 3
+        progressBar.isIndeterminate = true
+        progressBar.style = .bar
+        progressBar.minValue = 0
+        progressBar.maxValue = 1
+        progressBar.startAnimation(nil)
+        progressSteps = progressStageIDs.map { id in
+            let field = label("○  " + progressStageName(id), size: 16)
+            field.textColor = .secondaryLabelColor
+            return field
+        }
+        let document = label(source?.lastPathComponent ?? "", size: 17)
+        document.lineBreakMode = .byTruncatingMiddle
+        document.textColor = .secondaryLabelColor
+        let stack = NSStackView(views: [
+            progressHeading, document, progressDetail, progressBar,
+            label(local("处理步骤", "Processing steps"), size: 20)
+        ] + progressSteps + [
+            label(local("当前处理", "Current work"), size: 20),
+            progressUnit, progressSource
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 14
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        body.addSubview(stack)
+        let preferredWidth = stack.widthAnchor.constraint(equalTo: body.widthAnchor, constant: -104)
+        preferredWidth.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            preferredWidth,
+            stack.topAnchor.constraint(equalTo: body.topAnchor, constant: 44),
+            stack.leadingAnchor.constraint(equalTo: body.leadingAnchor, constant: 52),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: body.trailingAnchor, constant: -52),
+            stack.widthAnchor.constraint(lessThanOrEqualToConstant: 780),
+            progressBar.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            progressDetail.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            progressSource.widthAnchor.constraint(equalTo: stack.widthAnchor)
+        ])
+    }
+
+    private func updateProgress(_ event: [String: Any]) {
+        guard progressPageActive,
+              let stage = event["stage"] as? String,
+              let index = progressStageIDs.firstIndex(of: stage) else { return }
+        progressLastEvent = event
+        let state = event["state"] as? String ?? ""
+        for (position, field) in progressSteps.enumerated() {
+            let marker = position < index || (position == index && state == "COMPLETED")
+                ? "✓" : position == index ? "●" : "○"
+            field.stringValue = marker + "  " + progressStageName(progressStageIDs[position])
+            field.textColor = position == index ? .labelColor : .secondaryLabelColor
+        }
+        progressHeading.stringValue = progressStageName(stage)
+        let completed = event["completed_units"] as? Int ?? 0
+        let total = event["total_units"] as? Int ?? 0
+        if total > 0 {
+            progressBar.stopAnimation(nil)
+            progressBar.isIndeterminate = false
+            progressBar.maxValue = Double(total)
+            progressBar.doubleValue = Double(completed)
+            progressDetail.stringValue = local("已处理 \(completed) / \(total) 个审核单元",
+                                                "Processed \(completed) / \(total) review units")
+        } else {
+            progressBar.isIndeterminate = true
+            progressBar.startAnimation(nil)
+            progressDetail.stringValue = local("正在进行" + progressStageName(stage) + "…",
+                                                "Running " + progressStageName(stage) + "…")
+        }
+        if state == "SPLITTING_BATCH" {
+            progressDetail.stringValue = local("技术标记需要复核，正在拆小批次重试…",
+                                                "A technical literal needs review; retrying smaller batches…")
+        } else if state == "RETRYING_LITERAL" {
+            let attempt = event["retry"] as? Int ?? 1
+            progressDetail.stringValue = local("技术标记次数不符，正在重试（\(attempt)/2）…",
+                                                "Literal count mismatch; retrying (\(attempt)/2)…")
+        } else if state == "REVIEW_REQUIRED" {
+            progressDetail.stringValue = local("该单元保留为待人工修正，继续处理后续内容。",
+                                                "This unit needs human correction; continuing with the document.")
+        }
+        if let unitID = event["unit_id"] as? String {
+            let location = event["location"] as? String ?? ""
+            progressUnit.stringValue = local("单元 \(unitID)  ·  \(location)",
+                                             "Unit \(unitID)  ·  \(location)")
+        }
+        if let preview = event["source_preview"] as? String, !preview.isEmpty {
+            progressSource.stringValue = preview
+        }
+    }
+
+    private func showProgressFailure(_ message: String) {
+        guard progressPageActive else { return }
+        progressBar.stopAnimation(nil)
+        progressHeading.stringValue = local("翻译未完成", "Translation did not complete")
+        progressDetail.stringValue = message
+        progressDetail.textColor = .systemRed
+        progressUnit.stringValue = local("请查看上方原因，调整后重试。", "Review the reason above, then retry.")
+        progressSource.stringValue = ""
+        let back = button(local("返回首页", "Back to home"), #selector(homeAction))
+        back.translatesAutoresizingMaskIntoConstraints = false
+        body.addSubview(back)
+        NSLayoutConstraint.activate([
+            back.leadingAnchor.constraint(equalTo: body.leadingAnchor, constant: 52),
+            back.bottomAnchor.constraint(equalTo: body.bottomAnchor, constant: -40)
+        ])
+    }
+
     private func showWorkbench(_ url: URL) {
+        progressPageActive = false
         body.subviews.forEach { $0.removeFromSuperview() }
         let view = MaterialWebView()
         view.allowWindowMaterialToShowThrough()
@@ -484,7 +632,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         view.load(URLRequest(url: desktopURL))
     }
 
-    @objc private func homeAction() { showHome() }
+    @objc private func homeAction() {
+        if desktop.busy && progressPageActive { return }
+        showHome()
+    }
     @objc private func browserAction() {
         if let url = currentURL { NSWorkspace.shared.open(url) }
     }
@@ -509,7 +660,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
     @objc private func appearanceDarkAction() { setAppearance(.dark) }
 
     @objc private func languageAction() {
-        guard let browser = browser else { chinese.toggle(); showHome(); return }
+        guard let browser = browser else {
+            chinese.toggle()
+            if progressPageActive {
+                let last = progressLastEvent
+                showProgress()
+                if let last = last { updateProgress(last) }
+            } else { showHome() }
+            return
+        }
         let script = """
         (() => { const control = document.getElementById('languageSelect');
           if (!control) return '';
@@ -772,6 +931,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKN
         do {
             let provider = try settings.temporaryFile()
             let key = configuredKey.isEmpty && settings.isLocal ? "local" : configuredKey
+            showProgress()
             desktop.translate(source: source, from: languageCode(from), to: languageCode(to),
                               role: role.stringValue, provider: provider,
                               apiKey: key, proxyURL: settings.proxyURL,

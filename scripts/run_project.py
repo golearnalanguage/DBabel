@@ -100,6 +100,11 @@ def parser() -> argparse.ArgumentParser:
             "without opening a browser."
         ),
     )
+    value.add_argument(
+        "--progress-jsonl",
+        type=Path,
+        help="Write local, structured stage and unit progress to this file.",
+    )
 
     return value
 
@@ -117,8 +122,18 @@ def main() -> int:
         .expanduser()
         .resolve()
     )
-
+    progress_file = None
     try:
+        if args.progress_jsonl:
+            progress_path = args.progress_jsonl.expanduser().resolve()
+            progress_path.parent.mkdir(parents=True, exist_ok=True)
+            progress_file = progress_path.open("w", encoding="utf-8")
+
+        def report_progress(event: dict) -> None:
+            if progress_file:
+                progress_file.write(json.dumps(event, ensure_ascii=False) + "\n")
+                progress_file.flush()
+
         manifest = RuntimeOrchestrator(
             repo_root=ROOT,
             workspace_root=
@@ -135,6 +150,7 @@ def main() -> int:
                 args.text_role,
             declared_backends=
                 args.declare_backend,
+            on_progress=report_progress,
         )
 
     except (
@@ -148,6 +164,9 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
+    finally:
+        if progress_file:
+            progress_file.close()
 
     print(
         json.dumps(

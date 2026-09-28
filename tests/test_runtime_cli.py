@@ -39,6 +39,38 @@ class RuntimeCliTests(
             },
         }
 
+    def test_progress_jsonl_keeps_stdout_as_manifest(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            source = root / "source.txt"
+            source.write_text("配置主库\n", encoding="utf-8")
+            provider = root / "provider.json"
+            provider.write_text("{}", encoding="utf-8")
+            progress = root / "progress.jsonl"
+            orchestrator = MagicMock()
+
+            def execute(**kwargs):
+                kwargs["on_progress"]({
+                    "stage": "TRANSLATION", "state": "BATCH_STARTED",
+                    "completed_units": 0, "total_units": 1,
+                    "source_preview": "配置主库",
+                })
+                return self.manifest(root / "review.dbreview")
+
+            orchestrator.run_translation_to_review.side_effect = execute
+            argv = ["run_project.py", str(source), "--source-language", "zh-CN",
+                    "--target-language", "en", "--text-role", "PROSE",
+                    "--provider-config", str(provider), "--progress-jsonl", str(progress)]
+            stdout = io.StringIO()
+            with patch.object(sys, "argv", argv), patch.object(
+                run_project, "RuntimeOrchestrator", return_value=orchestrator
+            ), redirect_stdout(stdout):
+                self.assertEqual(run_project.main(), 0)
+            self.assertEqual(json.loads(stdout.getvalue())["status"],
+                             "READY_FOR_HUMAN_REVIEW")
+            self.assertEqual(json.loads(progress.read_text(encoding="utf-8"))["source_preview"],
+                             "配置主库")
+
     def test_cli_runs_complete_pipeline(
         self,
     ):
