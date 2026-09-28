@@ -40,6 +40,10 @@ Use **Upload documents** to inspect and import TXT, Markdown, CSV/TSV, JSON/JSON
 
 All local sessions, including the demo and review-only sessions, export **JSON, CSV, TSV, Markdown, HTML and TXT** review results. Original-format delivery supports **DOCX, TXT, Markdown and anchored XLSX**, with a receipt, bilingual HTML and Markdown/JSON Agent handoff. See [format dependencies and fidelity](docs/DOCUMENT_FORMATS.md).
 
+## Mac app on GitHub
+
+The [DBabel macOS App release](https://github.com/golearnalanguage/DBabel/releases/tag/app-2026-09-28) provides a self-contained Apple Silicon disk image. Drag **DBabel.app** into Applications, then choose **AI translation** to configure an OpenAI-compatible service and translate a document, or **Local bilingual review** to upload documents, open the demo, and resume a saved session. The Workbench saves review decisions and in-progress translation or note drafts locally; its right-hand chat can use the same configured API service. Downloaded review results include the source filename. See the [desktop guide](docs/DESKTOP_APP.md) for installation, format support, and export steps.
+
 ## Workflow
 
 | Step | Action | Next handoff |
@@ -143,7 +147,7 @@ references.
 
 ## Development and reference
 
-Repository version: **1.5.0**. Review Workbench version: **1.5.0**. Repository improvements since that release are recorded under Unreleased in [Changes](CHANGELOG.md). Merging changes does not create a new version tag or GitHub Release.
+Repository version: **1.5.0**. Review Workbench version: **1.5.0**. Repository changes are recorded in [Changes](CHANGELOG.md); the macOS App has a separate [download release](https://github.com/golearnalanguage/DBabel/releases/tag/app-2026-09-28).
 
 ```bash
 python -m py_compile scripts/*.py

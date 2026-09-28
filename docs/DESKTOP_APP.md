@@ -6,7 +6,9 @@ The macOS app opens the existing Full Local Review Workbench in a native window.
 
 ## Install and open
 
-The packaged Apple Silicon disk image is `output/release/DBabel-macOS-AppleSilicon.dmg`. Open it, drag **DBabel.app** to Applications, then launch it. The packaging command leaves one app bundle and one disk image in the release directory; its temporary build copies are removed. The app bundles Python 3.12, OpenSSL 3 and its runtime dependencies. Demo and new sessions are written to `~/Library/Application Support/DBabel/`; the installed app does not depend on the checkout or `.venv`. This local build is ad-hoc signed and not notarized; a public Developer ID distribution has not been prepared.
+Download the Apple Silicon disk image from the [DBabel App release](https://github.com/golearnalanguage/DBabel/releases/tag/app-2026-09-28), or build it at `output/release/DBabel-macOS-AppleSilicon.dmg`. Open the DMG, drag **DBabel.app** to Applications, then launch it. The packaging command leaves one app bundle and one disk image in the release directory; its temporary build copies are removed. The app bundles Python 3.12, OpenSSL 3 and its runtime dependencies. Demo and new sessions are written to `~/Library/Application Support/DBabel/`; replacing the app in Applications keeps that data. The installed app does not depend on the checkout or `.venv`. This build is ad-hoc signed and not notarized; a Developer ID distribution has not been prepared.
+
+The checkout-bound development app stores its sessions in `output/dbabel-sessions/`. To move them into the installed app, copy each `.dbreview` directory to `~/Library/Application Support/DBabel/dbabel-sessions/` while DBabel is closed. Keep the originals until the installed app lists and opens the copied sessions. Development and installed app builds now both include the same DBabel icon.
 
 To rebuild the disk image from source, use macOS on Apple Silicon with Xcode Command Line Tools and network access for the first dependency download:
 

@@ -42,28 +42,7 @@ rsync -a \
   --exclude='*.p12' --exclude='*.pfx' --exclude='.DS_Store' \
   "$ROOT/" "$APP/Contents/Resources/DBabel/"
 
-ICONSET="$BUILD_TMP/DBabelIcon.iconset"
-mkdir -p "$ICONSET"
-sips -Z 900 "$ROOT/review_workbench/static/dbabel-workbench-logo.png" \
-  --out "$BUILD_TMP/DBabelIcon-scaled.png" >/dev/null
-sips -p 1024 1024 --padColor FFFFFF \
-  "$BUILD_TMP/DBabelIcon-scaled.png" \
-  --out "$BUILD_TMP/DBabelIcon-square.png" >/dev/null
-for size in 16 32 128 256 512; do
-  sips -z "$size" "$size" "$BUILD_TMP/DBabelIcon-square.png" \
-    --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
-done
-for size in 16 32 128 256 512; do
-  double=$((size * 2))
-  sips -z "$double" "$double" "$BUILD_TMP/DBabelIcon-square.png" \
-    --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
-done
-iconutil -c icns "$ICONSET" \
-  -o "$APP/Contents/Resources/DBabelIcon.icns"
-
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier org.dbabel.desktop' \
-  "$APP/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c 'Add :CFBundleIconFile string DBabelIcon' \
   "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Add :LSMinimumSystemVersion string 13.0' \
   "$APP/Contents/Info.plist"

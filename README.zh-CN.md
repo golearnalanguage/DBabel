@@ -27,6 +27,10 @@ DBabel 提供审核流程、本地工具和格式适配器。用户提供文档�
 
 所有本地会话，包括演示和 review-only 会话，都可以导出 **JSON、CSV、TSV、Markdown、HTML、TXT** 审核结果。原格式交付支持 **DOCX、TXT、Markdown 和锚定 XLSX**，附带回执、HTML 双语对照和 Markdown/JSON Agent 交接记录。详见[格式依赖与保真度](docs/DOCUMENT_FORMATS.zh-CN.md)。
 
+## 在 GitHub 下载 Mac 应用
+
+[DBabel macOS App 发布页](https://github.com/golearnalanguage/DBabel/releases/tag/app-2026-09-28)提供自带运行环境的 Apple Silicon 安装镜像。打开 DMG，将 **DBabel.app** 拖入“应用程序”。选择**AI 翻译全流程**可配置兼容的 API 服务并翻译文档；选择**本地双语审核**可上传文档、打开演示或继续之前的会话。工作台会在本地保存审核决定、正在修改的译文和备注草稿；右侧聊天可使用已配置的 API。下载的审核结果会带上原文件名。安装、格式支持和导出步骤见[桌面应用手册](docs/DESKTOP_APP.zh-CN.md)。
+
 ## 工作流程
 
 | 阶段 | 做什么 | 交给下一步的内容 |
@@ -106,7 +110,7 @@ git clone https://github.com/golearnalanguage/DBabel.git \
 
 ## 开发与参考
 
-当前仓库包版本为 **1.5.0**。Review Workbench 当前版本为 **1.5.0**。该版本之后的仓库改进记录在[变更记录](CHANGELOG.md)的 Unreleased 部分。合并代码不会自动创建新版本标签或 GitHub Release。
+当前仓库包版本为 **1.5.0**。Review Workbench 当前版本为 **1.5.0**。仓库改动记录在[变更记录](CHANGELOG.md)中；macOS App 有独立的[下载发布页](https://github.com/golearnalanguage/DBabel/releases/tag/app-2026-09-28)。
 
 ```bash
 python -m py_compile scripts/*.py
