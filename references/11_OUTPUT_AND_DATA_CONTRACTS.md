@@ -6,12 +6,12 @@ project glossaries, bilingual units, and deterministic QA reports have separate
 schemas and must not be presented as audit-report findings unless the semantic
 workflow actually adjudicated them.
 
-## Audit report 1.5.0
+## Audit report 1.6.0
 
 The 1.5 package keeps the compatible audit-report structure introduced in 1.3
 and retained in 1.4. The `dbabel_version` field records the DBabel package version
 that produced the report. The current validator accepts `1.3.0`, `1.4.0`, and
-`1.5.0` reports; newly produced v1.5 reports should use `1.5.0`.
+`1.5.0` reports; `1.6.0` reports; newly produced v1.6 reports use `1.6.0`.
 
 - `mode` identifies the primary task; `secondary_modes` records combined tasks.
 - `status` describes completion, independently of individual terminology decisions.

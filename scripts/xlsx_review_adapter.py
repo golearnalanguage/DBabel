@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Loss-minimizing XLSX review adapter for DBabel.
 
-Only explicitly approved anchored worksheet cell elements are modified. All
-untouched OOXML package part payloads are preserved byte-for-byte. Formula cells
-fail closed and are never rewritten.
+Only explicitly approved anchored worksheet cells and worksheet tab names are
+modified. Untouched OOXML package parts are preserved byte-for-byte. Formula
+cells fail closed and are never rewritten.
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from xml.etree import ElementTree as ET
 MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 NS = {"m": MAIN_NS}
 CELL_RE = re.compile(r"^[A-Z]{1,3}[1-9][0-9]*$")
+SHEET_LOCATION_RE = re.compile(r"^xl/workbook\.xml:sheet:([1-9][0-9]*)$")
 COMPLETED = {
     "ACCEPT_SUGGESTION",
     "KEEP_CURRENT",
@@ -31,6 +32,9 @@ class XlsxExportError(ValueError):
 
 
 def _split_location(location: str):
+    match = SHEET_LOCATION_RE.fullmatch(location)
+    if match:
+        return "xl/workbook.xml", "sheet:" + match.group(1)
     if ":" not in location:
         raise XlsxExportError(
             "XLSX location must be worksheet-part:CELL: " + location
@@ -60,6 +64,14 @@ def _cell_map(xml_bytes: bytes):
         cell.get("r"): cell
         for cell in root.findall(".//m:c", NS)
         if cell.get("r")
+    }
+
+
+def _sheet_map(xml_bytes: bytes) -> Dict[str, str]:
+    root = ET.fromstring(xml_bytes)
+    return {
+        str(sheet.get("sheetId")): str(sheet.get("name") or "")
+        for sheet in root.findall(".//m:sheets/m:sheet", NS)
     }
 
 
@@ -131,15 +143,15 @@ def build_anchors(
                     }
                 continue
 
-            cells = _cell_map(zf.read(part))
+            cells = _sheet_map(zf.read(part)) if part == "xl/workbook.xml" else _cell_map(zf.read(part))
             for unit, cell_ref in items:
-                cell = cells.get(cell_ref)
+                cell = cells.get(cell_ref.removeprefix("sheet:")) if part == "xl/workbook.xml" else cells.get(cell_ref)
                 if cell is None:
-                    reason = "cell not found"
+                    reason = "sheet or cell not found"
                     actual = None
                 else:
                     try:
-                        actual = _cell_text(cell, shared)
+                        actual = cell if part == "xl/workbook.xml" else _cell_text(cell, shared)
                         reason = ""
                     except XlsxExportError as exc:
                         actual = None
@@ -240,6 +252,42 @@ def _patch_cell(xml_text: str, cell_ref: str, replacement: str) -> str:
     )
 
 
+def _patch_sheet(xml_text: str, sheet_id: str, replacement: str) -> str:
+    if (not replacement or len(replacement) > 31 or
+            any(char in replacement for char in '[]:*?/\\') or
+            replacement[0] == "'" or replacement[-1] == "'"):
+        raise XlsxExportError("invalid Excel worksheet name: " + repr(replacement))
+    tags = list(re.finditer(r"<sheet\b[^>]*>", xml_text))
+    matches = [m for m in tags if re.search(r'\bsheetId=["\']' + re.escape(sheet_id) + r'["\']', m.group(0))]
+    if len(matches) != 1:
+        raise XlsxExportError("worksheet tab anchor is missing or ambiguous: " + sheet_id)
+    match = matches[0]
+    tag = match.group(0)
+    name_match = re.search(r'\bname=(["\'])(.*?)\1', tag)
+    if name_match is None:
+        raise XlsxExportError("worksheet tab has no name: " + sheet_id)
+    old = html.unescape(name_match.group(2))
+    escaped = html.escape(replacement, quote=True)
+    new_tag = tag[:name_match.start(2)] + escaped + tag[name_match.end(2):]
+    xml_text = xml_text[:match.start()] + new_tag + xml_text[match.end():]
+    # Excel stores print areas and titles as defined names with sheet-name
+    # prefixes. Update those references without changing their coordinates.
+    def replace_defined_name(m):
+        body = m.group(2)
+        quoted = "'" + old.replace("'", "''") + "'!"
+        bare = old + "!"
+        if body.startswith(quoted):
+            prefix = quoted
+        elif body.startswith(bare):
+            prefix = bare
+        else:
+            return m.group(0)
+        new_prefix = "'" + replacement.replace("'", "''") + "'!"
+        return m.group(1) + new_prefix + body[len(prefix):] + m.group(3)
+    xml_text = re.sub(r'(<definedName\b[^>]*>)(.*?)(</definedName>)', replace_defined_name, xml_text, flags=re.S)
+    return xml_text
+
+
 def _approved_changes(units, decisions_by_id, anchors):
     changes: Dict[str, Dict[str, str]] = {}
     changed_ids = []
@@ -287,6 +335,22 @@ def _approved_changes(units, decisions_by_id, anchors):
     return changes, changed_ids
 
 
+def _patched_payload(name: str, payload: bytes, changes: Dict[str, Dict[str, str]]) -> bytes:
+    if name not in changes:
+        return payload
+    text = payload.decode("utf-8")
+    for anchor, replacement in changes[name].items():
+        if name == "xl/workbook.xml":
+            text = _patch_sheet(text, anchor.removeprefix("sheet:"), replacement)
+        else:
+            text = _patch_cell(text, anchor, replacement)
+    if name == "xl/workbook.xml":
+        names = list(_sheet_map(text.encode("utf-8")).values())
+        if len(names) != len({value.casefold() for value in names}):
+            raise XlsxExportError("translated worksheet names must be unique")
+    return text.encode("utf-8")
+
+
 def apply_reviewed_xlsx(
     original: Path,
     output: Path,
@@ -308,17 +372,20 @@ def apply_reviewed_xlsx(
                 "worksheet part missing: " + ", ".join(missing)
             )
 
+        if "xl/workbook.xml" in changes:
+            old_names = _sheet_map(src.read("xl/workbook.xml"))
+            for anchor in changes["xl/workbook.xml"]:
+                old = old_names.get(anchor.removeprefix("sheet:"), "")
+                for name in names:
+                    if not re.fullmatch(r"xl/worksheets/sheet\d+\.xml", name):
+                        continue
+                    root = ET.fromstring(src.read(name))
+                    for formula in root.findall(".//m:f", NS):
+                        if old and old in (formula.text or ""):
+                            raise XlsxExportError("worksheet formula refers to a renamed tab: " + old)
+
         for info in src.infolist():
-            payload = src.read(info.filename)
-            if info.filename in changes:
-                text = payload.decode("utf-8")
-                for cell_ref, replacement in changes[
-                    info.filename
-                ].items():
-                    text = _patch_cell(
-                        text, cell_ref, replacement
-                    )
-                payload = text.encode("utf-8")
+            payload = _patched_payload(info.filename, src.read(info.filename), changes)
 
             # Keep the original ZipInfo metadata/compression policy.
             dst.writestr(info, payload)
@@ -363,9 +430,9 @@ def round_trip_verify_xlsx(
             part = anchor["part"]
             cell = anchor["cell"]
             if part not in cache:
-                cache[part] = _cell_map(zf.read(part))
+                cache[part] = _sheet_map(zf.read(part)) if part == "xl/workbook.xml" else _cell_map(zf.read(part))
 
-            actual = _cell_text(cache[part][cell], shared)
+            actual = cache[part][cell.removeprefix("sheet:")] if part == "xl/workbook.xml" else _cell_text(cache[part][cell], shared)
             if actual != approved:
                 raise XlsxExportError(
                     "{} round-trip mismatch: expected {!r}, got {!r}".format(
@@ -373,7 +440,7 @@ def round_trip_verify_xlsx(
                     )
                 )
 
-    return ["Approved XLSX cell text round-trip verified"]
+    return ["Approved XLSX cell and worksheet tab text round-trip verified"]
 
 
 def _mask_cells(xml_text: str, refs):
@@ -415,32 +482,13 @@ def verify_package_fidelity_xlsx(
             before = src.read(name)
             after = dst.read(name)
 
-            if name not in changes:
-                if before != after:
-                    raise XlsxExportError(
-                        "untouched XLSX part payload changed: " + name
-                    )
-                continue
-
-            before_text = _mask_cells(
-                before.decode("utf-8"),
-                changes[name].keys(),
-            )
-            after_text = _mask_cells(
-                after.decode("utf-8"),
-                changes[name].keys(),
-            )
-            if before_text != after_text:
-                raise XlsxExportError(
-                    "worksheet changed outside approved cell elements: "
-                    + name
-                )
+            if _patched_payload(name, before, changes) != after:
+                raise XlsxExportError("XLSX part changed outside approved anchors: " + name)
 
     return [
         "All untouched XLSX OOXML part payloads are byte-identical",
         (
-            "Modified worksheets differ only inside approved anchored "
-            "cell elements"
+            "Modified worksheet cells and tab names match approved anchors"
         ),
         (
             "Relationships, media, drawings, charts, comments, styles "

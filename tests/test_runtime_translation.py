@@ -17,7 +17,11 @@ from runtime.translation import (
     parse_batch_response,
     protected_literals,
     translate_units,
+    general_term_candidates,
 )
+from runtime.general_terms import enabled as general_terms_enabled, set_enabled as set_general_terms_enabled
+from runtime.translation_memory import remember as remember_translation, match as memory_match, summary as memory_summary
+from runtime.local_precheck import inspect_segments
 
 
 def unit(
@@ -70,6 +74,73 @@ class FakeProvider:
 class TranslationRuntimeTests(
     unittest.TestCase
 ):
+    def test_local_translation_memory_skips_provider_but_requires_review(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {
+            "DBABEL_TRANSLATION_MEMORY": str(Path(directory) / "memory.sqlite3"),
+            "DBABEL_REJECTION_MEMORY": "",
+        }):
+            first = unit("U1", "配置主库")
+            remember_translation(first, {"status": "USER_EDITED", "approved_target": "Configure the primary database"})
+            self.assertEqual(memory_match(first, "zh-CN", "en"), "Configure the primary database")
+            provider = FakeProvider([])
+            result = translate_units(provider=provider, units=[first], source_language="zh-CN", target_language="en")
+            self.assertEqual(provider.requests, [])
+            self.assertEqual(result["units"][0]["proposal_decision"], "REVIEW")
+            self.assertEqual(result["units"][0]["suggested_target"], "Configure the primary database")
+            self.assertEqual(result["receipts"][0]["usage"]["total_tokens"], 0)
+            self.assertEqual(memory_summary()["count"], 1)
+            remember_translation(first | {"suggested_target": "Configure the primary database"}, {"status": "BLOCKED"})
+            self.assertIsNone(memory_match(first, "zh-CN", "en"))
+
+    def test_local_precheck_extracts_duplicates_literals_and_memory_hits(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {
+            "DBABEL_TRANSLATION_MEMORY": str(Path(directory) / "memory.sqlite3")
+        }):
+            remember_translation(unit("U1", "配置主库"),
+                                 {"status": "USER_EDITED", "approved_target": "Configure the primary database"})
+            rows = [{"location": "A1", "text": "配置主库"},
+                    {"location": "A2", "text": "配置主库"},
+                    {"location": "A3", "text": "操用户 ${DB_HOME}"}]
+            result = inspect_segments(rows, "zh-CN", "en")
+            self.assertEqual(result["repeated_source_segments"], 1)
+            self.assertEqual(result["exact_translation_memory_matches"], 2)
+            self.assertGreaterEqual(result["protected_literal_occurrences"], 1)
+            self.assertEqual(result["possible_source_typo_locations"], ["A3"])
+
+    def test_general_terms_are_reference_only_and_context_matched(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+                os.environ, {"DBABEL_GENERAL_TERMS_SETTINGS": str(Path(directory) / "terms.json")}):
+            self.assertFalse(general_terms_enabled())
+            self.assertEqual(general_term_candidates("提交事务并回滚", "zh-CN", "en"), [])
+            set_general_terms_enabled(True)
+            self.assertTrue(general_terms_enabled())
+            candidates = general_term_candidates("提交事务并回滚", "zh-CN", "en")
+            self.assertIn({"source": "事务", "suggested_target": "transaction"}, candidates)
+            self.assertIn({"source": "回滚", "suggested_target": "rollback"}, candidates)
+            self.assertNotIn({"source": "表", "suggested_target": "table"},
+                             general_term_candidates("表示成功", "zh-CN", "en"))
+            set_general_terms_enabled(False)
+            self.assertEqual(general_term_candidates("提交事务并回滚", "zh-CN", "en"), [])
+
+    def test_abusive_target_is_retried_and_never_returned(self):
+        def answer(target):
+            return json.dumps({"units": [{"id": "U1", "suggested_target": target,
+                "proposal_decision": "REPLACE", "reason": "technical wording"}]})
+        provider = FakeProvider([answer("Fuck the user."), answer("Operate as the user.")])
+        result = translate_units(provider=provider, units=[unit("U1", "操作用户")],
+                                 source_language="zh-CN", target_language="en")
+        self.assertEqual(result["units"][0]["suggested_target"], "Operate as the user.")
+        self.assertEqual(len(provider.requests), 2)
+
+    def test_likely_source_typo_requires_human_review(self):
+        answer = json.dumps({"units": [{"id": "U1", "suggested_target": "Operate as the user.",
+            "proposal_decision": "REPLACE", "reason": "neutral wording"}]})
+        provider = FakeProvider([answer])
+        result = translate_units(provider=provider, units=[unit("U1", "操用户")],
+                                 source_language="zh-CN", target_language="en")
+        self.assertEqual(result["units"][0]["proposal_decision"], "REVIEW")
+        self.assertIn("source_warning", provider.requests[0].user)
+
     def test_literal_count_is_retried_for_single_unit(self):
         source = "先设置 --exec_mode，再检查 --exec_mode。"
         def answer(target):

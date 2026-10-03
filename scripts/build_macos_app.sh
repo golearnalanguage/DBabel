@@ -22,7 +22,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleIdentifier</key><string>org.dbabel.desktop.local</string>
   <key>CFBundleExecutable</key><string>DBabel</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.5.0</string>
+  <key>CFBundleShortVersionString</key><string>1.6.0</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>CFBundleIconFile</key><string>DBabelIcon</string>
   <key>NSHighResolutionCapable</key><true/>

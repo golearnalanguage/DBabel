@@ -44,6 +44,15 @@ class ExchangeTests(unittest.TestCase):
                 if suffix=='pptx':z.writestr('ppt/presentation.xml','<presentation/>')
                 if suffix=='xlsx':z.writestr('xl/workbook.xml','<workbook/>')
             self.assertEqual([x['text'] for x in read_document(p)['segments']],['甲'])
+    def test_xlsx_sheet_tabs_are_review_units(self):
+        path=self.root/'tabs.xlsx'
+        with zipfile.ZipFile(path,'w') as z:
+            z.writestr('[Content_Types].xml','<Types><Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>')
+            z.writestr('xl/worksheets/sheet1.xml','<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row><c r="A1" t="inlineStr"><is><t>内容</t></is></c></row></sheetData></worksheet>')
+            z.writestr('xl/workbook.xml','<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheets><sheet name="总览" sheetId="1"/><sheet name="参数" sheetId="2"/></sheets></workbook>')
+        segments=read_document(path)['segments']
+        self.assertEqual([x['text'] for x in segments],['内容','总览','参数'])
+        self.assertEqual(segments[-1]['location'],'xl/workbook.xml:sheet:2')
     def test_binary_content_is_not_accepted_as_markdown(self):
         p=self.root/'binary.md';p.write_bytes(b'\x00\x00binary data')
         with self.assertRaisesRegex(ValueError, 'content does not confirm'):

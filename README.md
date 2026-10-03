@@ -40,9 +40,11 @@ Use **Upload documents** to inspect and import TXT, Markdown, CSV/TSV, JSON/JSON
 
 All local sessions, including the demo and review-only sessions, export **JSON, CSV, TSV, Markdown, HTML and TXT** review results. Original-format delivery supports **DOCX, TXT, Markdown and anchored XLSX**, with a receipt, bilingual HTML and Markdown/JSON Agent handoff. See [format dependencies and fidelity](docs/DOCUMENT_FORMATS.md).
 
-## Mac app on GitHub
+## The Babel App Now is available on GitHub
 
-The [DBabel macOS App release](https://github.com/golearnalanguage/DBabel/releases/tag/app-2026-09-28) provides a self-contained Apple Silicon disk image. Drag **DBabel.app** into Applications, then choose **AI translation** to configure an OpenAI-compatible service and translate a document, or **Local bilingual review** to upload documents, open the demo, and resume a saved session. The Workbench saves review decisions and in-progress translation or note drafts locally; its right-hand chat can use the same configured API service. Downloaded review results include the source filename. See the [desktop guide](docs/DESKTOP_APP.md) for installation, format support, and export steps.
+The [DBabel macOS App release](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0) provides a self-contained Apple Silicon disk image. Drag **DBabel.app** into Applications, then choose **AI translation** to configure an OpenAI-compatible service and translate a document, or **Local bilingual review** to upload documents, open the demo, and resume a saved session. The Workbench saves review decisions and in-progress translation or note drafts locally; its right-hand chat can use the same configured API service. Downloaded review results include the source filename. See the [desktop guide](docs/DESKTOP_APP.md) for installation, format support, and export steps.
+
+New in **1.6.0**: streaming and protocol selection for Chat Completions (including NewAPI gateways), Responses and Claude Messages; smaller-batch recovery for interrupted requests; configurable timeouts and model options; local translation memory and opt-in database terms. Portable Review adds cached draft recovery, explicit current/suggested acceptance, edit confirmation, resizable details and navigation that follows the selected segment. The Skill routes detailed procedures by stage instead of loading the full workflow into every call. Read [API compatibility](docs/PROVIDER_COMPATIBILITY.md) and [local memory](docs/LOCAL_PRECHECK_AND_MEMORY.md).
 
 ## Workflow
 
@@ -147,7 +149,7 @@ references.
 
 ## Development and reference
 
-Repository version: **1.5.0**. Review Workbench version: **1.5.0**. Repository changes are recorded in [Changes](CHANGELOG.md); the macOS App has a separate [download release](https://github.com/golearnalanguage/DBabel/releases/tag/app-2026-09-28).
+Repository version: **1.6.0**. Review Workbench version: **1.6.0**. Repository changes are recorded in [Changes](CHANGELOG.md); the macOS App has a separate [download release](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0).
 
 ```bash
 python -m py_compile scripts/*.py

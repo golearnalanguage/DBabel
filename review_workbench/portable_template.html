@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme-pref="system">
+<html class="portable-review" lang="en" data-theme-pref="system">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -82,7 +82,7 @@
       <section class="segment-panel">
         <div class="table-toolbar">
           <select id="quickFilter" aria-label="Segment filter"><option value="ALL">All Segments</option><option value="TO_REVIEW">To Review</option><option value="REVIEWED">Reviewed</option><option value="WITH_ISSUES">With Issues</option></select>
-          <div class="pager-buttons"><button id="pagePrev" title="Previous page"><svg><use href="#i-left"></use></svg></button><button id="pageNext" title="Next page"><svg><use href="#i-right"></use></svg></button></div>
+          <button id="saveProgress" type="button">Save progress</button><button id="restoreProgress" type="button">Restore progress</button><input id="restoreProgressInput" type="file" accept=".json,application/json" hidden><span id="saveStatus" role="status"></span><div class="pager-buttons"><button id="pagePrev" title="Previous page"><svg><use href="#i-left"></use></svg></button><button id="pageNext" title="Next page"><svg><use href="#i-right"></use></svg></button></div>
           <span id="pageInfo" class="page-info">0–0 of 0</span>
           <div id="bulkActions" class="bulk-actions" hidden>
             <strong id="bulkCount">0 selected</strong>
@@ -103,10 +103,10 @@
         </div>
       </section>
 
-      <aside class="inspector" id="inspector">
+      <div id="inspectorResizeHandle" class="inspector-resize-handle" role="separator" tabindex="0" aria-label="Resize review inspector" aria-orientation="vertical"></div><aside class="inspector" id="inspector">
         <div class="inspector-head"><strong id="segmentCounter">Segment 0 of 0</strong><div><button id="unitPrev"><svg><use href="#i-left"></use></svg></button><button id="unitNext"><svg><use href="#i-right"></use></svg></button><button id="closeInspector" class="close-inspector" title="Close inspector" aria-label="Close inspector">×</button></div></div>
-        <section class="inspector-block"><div class="field-head"><strong id="sourceLabel">Source</strong><button class="copy-button" data-copy="sourceText" title="Copy source">▣</button></div><div id="sourceText" class="readonly-text"></div></section>
-        <section class="inspector-block"><div class="field-head"><strong id="targetLabel">Target</strong><button id="editToggle" class="mini-edit"><svg><use href="#i-edit"></use></svg>Edit</button></div><textarea id="targetText" class="target-editor" spellcheck="true" readonly></textarea></section>
+<div class="portable-actions"><button id="acceptButton" class="accept" title="Accept current translation" aria-label="Accept current translation"><svg><use href="#i-check"></use></svg></button><button id="editAction" title="Edit Translation" aria-label="Edit Translation"><svg><use href="#i-edit"></use></svg></button><button id="blockButton" class="danger" title="Reject Translation" aria-label="Reject Translation"><svg><use href="#i-ban"></use></svg></button></div><div class="inspector-content">        <section class="inspector-block"><div class="field-head"><strong id="sourceLabel">Source</strong><button class="copy-button" data-copy="sourceText" title="Copy source">▣</button></div><div id="sourceText" class="readonly-text"></div></section>
+        <section class="inspector-block"><div class="field-head"><strong id="targetLabel">Target</strong><button id="editToggle" class="mini-edit"><svg><use href="#i-edit"></use></svg>Edit</button></div><textarea id="targetText" class="target-editor" spellcheck="true" readonly></textarea><div id="editConfirmation" hidden><button id="cancelEdit">Cancel</button><button id="confirmEdit">Confirm</button></div></section>
         <div class="status-issues-row"><label><strong>Status</strong><select id="decisionSelect"></select></label><div><strong>Issues</strong><div id="issueChips" class="issue-chips"></div></div></div>
         <div class="tabs" role="tablist"><button data-tab="suggestion" class="active">Suggested Translation</button><button data-tab="evidence">Evidence <span id="evidenceTabCount"></span></button><button data-tab="terminology">Terminology <span id="termTabCount"></span></button></div>
         <div id="tabSuggestion" class="tab-panel active"><div class="suggestion-head"><strong>DBabel Suggestion</strong><span>Human confirmation required</span></div><div id="suggestionBox" class="suggestion-box"></div><div id="reasonBox" class="reason-box"></div><div class="technique-section"><div class="evidence-heading"><strong>Technique reasoning</strong><span>Diagnostic · human decision unchanged</span></div><div id="techniqueList"></div></div><div class="inline-evidence"><div class="evidence-heading"><strong>Evidence from Reference Documents</strong><span id="suggestionEvidenceCount"></span></div><div id="suggestionEvidenceList"></div></div></div>
@@ -114,10 +114,10 @@
         <div id="tabTerminology" class="tab-panel"><div class="evidence-heading"><strong>Terminology & QA labels</strong></div><div id="terminologyList"></div></div>
         <details class="review-note review-note-details"><summary>Reviewer note</summary><textarea id="reviewerNote" placeholder="Optional note"></textarea><button id="saveNote" class="view-action">Save note</button></details>
         <div id="waiverField" class="waiver-panel hidden"><label>Waiver reason<textarea id="waiverReason" placeholder="Required when waiving unresolved ERROR"></textarea></label><button id="confirmWaiver">Confirm waiver</button></div>
-        <div class="primary-actions"><button id="acceptButton" class="accept"><span>✓</span>Accept Suggestion</button><button id="keepButton"><span>⊗</span>Keep Current</button></div>
-        <div class="secondary-actions"><button id="editAction"><svg><use href="#i-edit"></use></svg>Edit</button><button id="deferButton"><svg><use href="#i-clock"></use></svg>Defer</button><button id="blockButton" class="danger"><svg><use href="#i-ban"></use></svg>Block</button><button id="waiveButton"><svg><use href="#i-flag"></use></svg>Waive</button></div>
+        <button id="acceptSuggestionButton" class="view-action">Accept Suggested Translation</button>
+        <details class="advanced-decisions"><summary>More review actions</summary><div class="secondary-actions"><button id="keepButton">Keep Current</button><button id="deferButton">Defer</button><button id="waiveButton">Waive</button></div></details>
         <details class="gate-box"><summary>Portable review</summary><pre id="gateStatus">Native document export runs after decisions are imported into DBabel.</pre></details>
-      </aside>
+      </div></aside>
     </div>
   </section>
 </div>

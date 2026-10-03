@@ -15,6 +15,7 @@ DMG="$RELEASE/DBabel-macOS-AppleSilicon.dmg"
 BUILD_TMP=$(mktemp -d "${TMPDIR:-/tmp}/dbabel-package.XXXXXX")
 trap 'rm -rf "$BUILD_TMP"' EXIT
 STAGE="$BUILD_TMP/dmg-stage"
+DMG_TEMP="$BUILD_TMP/DBabel-macOS-AppleSilicon.dmg"
 
 if [ ! -x "$UV" ]; then
   /usr/bin/python3 -m pip install --disable-pip-version-check \
@@ -52,6 +53,7 @@ codesign --verify --deep --strict "$APP"
 ditto "$APP" "$STAGE/DBabel.app"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -volname DBabel -srcfolder "$STAGE" \
-  -format UDZO -ov "$DMG" >/dev/null
-hdiutil verify "$DMG" >/dev/null
+  -fs HFS+ -format UDZO "$DMG_TEMP" >/dev/null
+hdiutil verify "$DMG_TEMP" >/dev/null
+mv -f "$DMG_TEMP" "$DMG"
 printf '%s\n' "$DMG"

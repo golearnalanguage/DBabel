@@ -352,6 +352,19 @@ def final_target_for(unit: Dict[str, Any], decision: Dict[str, Any]) -> str:
     return str(unit.get("current_target") or "")
 
 
+def draft_target_for(unit: Dict[str, Any], decision: Dict[str, Any], mode: str) -> str:
+    """Preview target: human choice, AI proposal, or an aligned bilingual target."""
+    if decision.get("status") in COMPLETED_STATUSES:
+        return final_target_for(unit, decision)
+    suggestion = str(unit.get("suggested_target") or "")
+    current = str(unit.get("current_target") or "")
+    if decision.get("status") == "BLOCKED":
+        return current if mode == "BILINGUAL_REVIEW" and current.strip() and current != suggestion else ""
+    if suggestion.strip():
+        return suggestion
+    return current if mode == "BILINGUAL_REVIEW" and current.strip() else ""
+
+
 def normalize_decision(unit: Dict[str, Any], incoming: Dict[str, Any], previous: Dict[str, Any]) -> Dict[str, Any]:
     status = str(incoming.get("status") or "")
     if status not in REVIEW_STATUSES:
@@ -574,11 +587,19 @@ def evaluate_export_gate(
     excluded = [uid for uid in units_by_id if uid not in included_set]
     if export_mode == "DRAFT":
         for unit_id, unit in units_by_id.items():
-            if str(unit.get("alignment") or "ALIGNED") != "ALIGNED":
-                blockers.append("{} alignment is not ALIGNED".format(unit_id))
+            alignment = str(unit.get("alignment") or "ALIGNED")
+            anchor = bundle_data["anchors"].get(unit_id, {})
+            # A local bilingual review can have unconfirmed semantic alignment
+            # yet still have an exact write-back anchor in the existing target
+            # document. Draft export preserves that document and its layout.
+            anchored_bilingual = (session.get("mode") == "BILINGUAL_REVIEW"
+                                  and anchor.get("status") == "RESOLVED"
+                                  and str(unit.get("current_target") or "").strip())
+            if alignment != "ALIGNED" and not anchored_bilingual:
+                blockers.append("{} alignment is not ALIGNED and has no resolved bilingual target anchor".format(unit_id))
             decision = decisions_by_id[unit_id]
-            if decision["status"] not in COMPLETED_STATUSES and not str(unit.get("suggested_target") or "").strip():
-                blockers.append("{} has no suggested translation for draft export".format(unit_id))
+            if not draft_target_for(unit, decision, session.get("mode", "")):
+                blockers.append("{} has no usable translated target for draft export".format(unit_id))
         decisions_canonical = [decisions_by_id[k] for k in sorted(decisions_by_id)]
         return {
             "format_version": "1.0", "session_id": session["session_id"],

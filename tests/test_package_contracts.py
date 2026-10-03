@@ -91,10 +91,10 @@ class PackageContractTests(unittest.TestCase):
 
 
     def test_package_version_constant(self):
-        self.assertEqual(PACKAGE_VERSION, '1.5.0')
+        self.assertEqual(PACKAGE_VERSION, '1.6.0')
         self.assertEqual(
             REVIEW_WORKBENCH_VERSION,
-            '1.5.0',
+            '1.6.0',
         )
 
 
@@ -114,7 +114,7 @@ class PackageContractTests(unittest.TestCase):
         )
 
         self.assertNotIn(
-            '"dbabel_version": "1.5.0"',
+            '"dbabel_version": "1.6.0"',
             creator,
         )
 
@@ -124,7 +124,7 @@ class PackageContractTests(unittest.TestCase):
     def test_readme_version_drift_is_rejected(self):
         def mutate(path):
             text = path.read_text(encoding='utf-8')
-            path.write_text(text.replace('Repository version: **1.5.0**',
+            path.write_text(text.replace('Repository version: **1.6.0**',
                                          'Repository version: **9.9.9**'),
                             encoding='utf-8')
         self.assert_rejected_after(
@@ -180,7 +180,7 @@ class PackageContractTests(unittest.TestCase):
             text=path.read_text(encoding='utf-8')
             path.write_text(
                 text.replace(
-                    'Review Workbench version: **1.5.0**',
+                    'Review Workbench version: **1.6.0**',
                     'Review Workbench version: **9.9.9**',
                 ),
                 encoding='utf-8',

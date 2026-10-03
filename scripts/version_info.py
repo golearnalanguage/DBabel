@@ -8,5 +8,5 @@ explicitly aligned while remaining separate constants so version drift can
 still be detected by package validation.
 """
 
-PACKAGE_VERSION = "1.5.0"
-REVIEW_WORKBENCH_VERSION = "1.5.0"
+PACKAGE_VERSION = "1.6.0"
+REVIEW_WORKBENCH_VERSION = "1.6.0"

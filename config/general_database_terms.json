@@ -1,0 +1,36 @@
+{
+  "name": "General relational database terminology candidates",
+  "source_language": "zh-CN",
+  "target_language": "en",
+  "status": "REFERENCE_ONLY_NOT_PROJECT_APPROVED",
+  "references": {
+    "postgresql": "https://www.postgresql.org/docs/current/glossary.html",
+    "mysql": "https://dev.mysql.com/doc/refman/8.4/en/glossary.html"
+  },
+  "entries": [
+    {"zh": "数据库实例", "en": "database instance"},
+    {"zh": "数据库", "en": "database"},
+    {"zh": "数据类型", "en": "data type"},
+    {"zh": "存储过程", "en": "stored procedure"},
+    {"zh": "主键", "en": "primary key"},
+    {"zh": "外键", "en": "foreign key"},
+    {"zh": "表", "en": "table"},
+    {"zh": "行", "en": "row"},
+    {"zh": "列", "en": "column"},
+    {"zh": "索引", "en": "index"},
+    {"zh": "视图", "en": "view"},
+    {"zh": "查询", "en": "query"},
+    {"zh": "事务", "en": "transaction"},
+    {"zh": "提交", "en": "commit"},
+    {"zh": "回滚", "en": "rollback"},
+    {"zh": "约束", "en": "constraint"},
+    {"zh": "备份", "en": "backup"},
+    {"zh": "恢复", "en": "restore"},
+    {"zh": "复制", "en": "replication"},
+    {"zh": "日志", "en": "log"},
+    {"zh": "权限", "en": "privilege"},
+    {"zh": "连接", "en": "connection"},
+    {"zh": "锁", "en": "lock"},
+    {"zh": "死锁", "en": "deadlock"}
+  ]
+}

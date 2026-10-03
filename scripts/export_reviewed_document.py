@@ -34,6 +34,7 @@ from xlsx_review_adapter import (
 from review_model import (
     evaluate_export_gate,
     final_target_for,
+    draft_target_for,
     fresh_recheck_all,
     load_bundle,
     save_decisions,
@@ -115,7 +116,7 @@ def export_bundle(
                 if decision["status"] in {"ACCEPT_SUGGESTION", "KEEP_CURRENT", "USER_EDITED", "WAIVED"}:
                     target = final_target_for(unit, decision)
                 else:
-                    target = str(unit.get("suggested_target") or "")
+                    target = draft_target_for(unit, decision, data["session"].get("mode", ""))
                 exported_targets[unit["id"]] = target
             # Adapter-only values. They are never written to the review session.
             decisions_by_id = {

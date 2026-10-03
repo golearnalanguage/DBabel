@@ -1,4 +1,4 @@
-// Disposable sessions only: exercises layout hit targets and native ZIP delivery.
+// Disposable sessions only: exercises layout hit targets and native-format delivery.
 const {chromium}=require('playwright');
 const fs=require('fs'),path=require('path');
 if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_OUTPUT)throw Error('Set disposable DBABEL_TEST_URL and DBABEL_TEST_OUTPUT.');
@@ -8,7 +8,7 @@ if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_OUTPUT)throw Error('Se
     const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
     page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
     fs.mkdirSync(process.env.DBABEL_TEST_OUTPUT,{recursive:true});
-    await page.goto(process.env.DBABEL_TEST_URL);await page.waitForSelector('#segmentRows tr');
+    await page.goto(process.env.DBABEL_TEST_URL);await page.locator('[data-view="Review"]').click();await page.waitForSelector('#segmentRows tr');
     for(const language of ['en','zh-CN']){
       await page.selectOption('#languageSelect',language);await page.waitForSelector(`html[lang="${language}"] #segmentRows tr`);
       await page.waitForLoadState('networkidle');
@@ -30,7 +30,7 @@ if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_OUTPUT)throw Error('Se
             const buttons=document.querySelector('.inspector-head>div').getBoundingClientRect();
             if(counter.left<buttons.right&&counter.right>buttons.left&&counter.top<buttons.bottom&&counter.bottom>buttons.top)fails.push('counter overlaps navigation');
             const image=document.querySelector('.brand-lockup img');
-            if(!image.complete||!image.naturalWidth||!image.src.endsWith('dbabel-workbench-logo.png'))fails.push('original logo missing');
+            if(!image.complete||!image.naturalWidth||!image.src.endsWith('dbabel-logo-light.svg'))fails.push('logo missing');
             return fails;
           });
           if(failures.length){await page.screenshot({path:path.join(process.env.DBABEL_TEST_OUTPUT,'layout-failure.png'),fullPage:true});throw Error(`${language}/${theme}/${width}: ${failures.join(', ')}`);}
@@ -41,25 +41,29 @@ if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_OUTPUT)throw Error('Se
     await page.screenshot({path:path.join(process.env.DBABEL_TEST_OUTPUT,'restored-logo-layout.png'),fullPage:true});
     await page.click('#openIntake');
     await page.locator('#sourceUpload').setInputFiles({name:'manual.TXT',mimeType:'text/plain',buffer:Buffer.from('\ufeff你好。\r\n\r\n第二行。\r\n')});
-    await page.fill('#intakeTargetLanguages','en');await page.click('#createIntake');
+    await page.selectOption('#intakeTargetLanguages','en');await page.click('#createIntake');
     await page.waitForFunction(()=>document.querySelectorAll('#segmentRows tr').length===2);
     await page.locator('#segmentRows tr').first().click();await page.click('#editAction');
-    await page.fill('#targetText','Hello.');await page.click('#editAction');
+    await page.fill('#targetText','Hello.');await page.click('#confirmEdit');
     await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='USER_EDITED');
     await page.selectOption('#exportMode','CHECKPOINT');
     await page.waitForFunction(()=>!document.querySelector('#exportButton').disabled);
     let download=page.waitForEvent('download');await page.click('#exportButton');download=await download;
-    if(!download.suggestedFilename().endsWith('.delivery.zip'))throw Error('Native delivery ZIP missing');
-    await download.saveAs(path.join(process.env.DBABEL_TEST_OUTPUT,'native.delivery.zip'));
-    if(!fs.statSync(path.join(process.env.DBABEL_TEST_OUTPUT,'native.delivery.zip')).size)throw Error('Empty ZIP');
+    if(!download.suggestedFilename().toLowerCase().endsWith('.txt'))throw Error('Original TXT format missing');
+    const nativePath=path.join(process.env.DBABEL_TEST_OUTPUT,'native.txt');
+    await download.saveAs(nativePath);
+    const expected=Buffer.from('\ufeffHello.\r\n\r\n第二行。\r\n');
+    if(!fs.readFileSync(nativePath).equals(expected))throw Error('Native export changed BOM, line endings, spacing or pending source');
     await page.reload();await page.waitForSelector('#segmentRows tr');
     await page.selectOption('#exportMode','CHECKPOINT');
     await page.waitForFunction(()=>!document.querySelector('#exportButton').disabled);
     download=page.waitForEvent('download');await page.click('#exportButton');download=await download;
-    await download.saveAs(path.join(process.env.DBABEL_TEST_OUTPUT,'repeat.delivery.zip'));
+    const repeatPath=path.join(process.env.DBABEL_TEST_OUTPUT,'repeat.txt');
+    await download.saveAs(repeatPath);
+    if(!fs.readFileSync(repeatPath).equals(expected))throw Error('Repeat export changed content');
     await page.selectOption('#resultFormat','html');download=page.waitForEvent('download');await page.click('#downloadResults');download=await download;
     await download.saveAs(path.join(process.env.DBABEL_TEST_OUTPUT,'bilingual.html'));
     if(errors.length)throw Error(errors.join('\n'));
-    console.log('PASS: 28 language/theme/width combinations; comment hit targets; original logo; source-only uppercase extension intake; native ZIP; repeat export; bilingual download.');
+    console.log('PASS: 28 language/theme/width combinations; comment hit targets; original logo; source-only uppercase extension intake; native TXT with BOM/CRLF/blank lines preserved; repeat export; bilingual download.');
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

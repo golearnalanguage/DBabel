@@ -10,7 +10,8 @@ class VisualContractTests(unittest.TestCase):
         for marker in [
             'dbabel-logo-light.svg','dbabel-logo-dark.svg','class="sidebar"','class="document-bar"',
             'class="metrics-strip"','id="segmentRows"','class="inspector"',
-            'Suggested Translation','Evidence from Reference Documents','Accept Current',
+            'Suggested Translation','Evidence from Reference Documents','id="acceptButton"',
+            'id="cancelEdit"','id="confirmEdit"',
             'Accept Suggested Translation',
             'Keep Current','Quality Check','Project Settings','id="themeSelect"',
             'id="suggestionEvidenceList"'

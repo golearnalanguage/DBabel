@@ -434,7 +434,8 @@ final class DesktopController {
                 "--target-language", to,
                 "--text-role", role,
                 "--provider-config", provider.path,
-                "--workspace-root", workspace.appendingPathComponent("runtime").path,
+                "--workspace-root", (resumeRun?.deletingLastPathComponent()
+                    ?? workspace.appendingPathComponent("runtime")).path,
                 "--progress-jsonl", progress.path
             ]
             if let resumeRun = resumeRun {

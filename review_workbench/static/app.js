@@ -155,6 +155,27 @@
     el('bulkCount').textContent=trUI(`${count} selected`);
   }
 
+  // Keep the translucent macOS header while preventing rows from painting through it.
+  let rowClipFrame=0;
+  function clipRowsBelowHeader(){
+    rowClipFrame=0;
+    if(!document.documentElement.classList.contains('desktop-macos'))return;
+    const body=el('segmentRows');
+    const header=body.closest('table').querySelector('thead');
+    const headerBottom=Math.max(...[...header.querySelectorAll('th')]
+      .map(cell=>cell.getBoundingClientRect().bottom));
+    for(const row of body.rows){
+      const bounds=row.getBoundingClientRect();
+      const covered=Math.max(0,Math.min(bounds.height,headerBottom-bounds.top));
+      const mask=covered?`inset(${Math.ceil(covered)}px 0 0 0)`:'';
+      row.style.clipPath=mask;
+      for(const cell of row.cells)cell.style.clipPath=mask;
+    }
+  }
+  function scheduleRowClip(){
+    if(!rowClipFrame)rowClipFrame=requestAnimationFrame(clipRowsBelowHeader);
+  }
+
   function renderTable(){
     const items=filterUnits();
     const maxPage=Math.max(
@@ -347,10 +368,11 @@
     el('approveAll').disabled=!state.units.some(u=>
       decisionFor(u.id).status==='UNREVIEWED'&&Boolean(u.suggested_target?.trim()));
     if(scrollArea)scrollArea.scrollTop=previousScrollTop;
+    scheduleRowClip();
     scheduleUiSave();
   }
 
-  function selectUnit(id){const changed=state.selected!==id;if(state.selected&&changed)captureDraft();document.querySelector(".review-area").classList.remove("inspector-closed");state.selected=id;state.editing=false;const u=state.units.find(x=>x.id===id);if(!u)return;const d=decisionFor(id),idx=unitIndex(id);el('editAction').textContent=trUI('Edit Translation');const navigable=filterUnits(),navigationIndex=navigable.findIndex(x=>x.id===id);el('unitPrev').disabled=navigationIndex<=0;el('unitNext').disabled=navigationIndex<0||navigationIndex===navigable.length-1;el('targetText').lang=u.target_language||'';el('sourceLabel').textContent=trUI('Source')+' · '+(u.source_language||'');el('targetLabel').textContent=reviewTargetLabel(u)+' · '+(u.target_language||'');const accept=el('acceptButton');accept.disabled=false;accept.title=trUI('Accept the current translation');for(const [button,selected] of [[accept,d.status==='KEEP_CURRENT'],[el('editAction'),d.status==='USER_EDITED'],[el('blockButton'),d.status==='BLOCKED']]){button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));}el('decisionFeedback').textContent='';el('decisionFeedback').classList.remove('error');el('segmentCounter').textContent=trUI(`Segment ${idx+1} of ${state.units.length.toLocaleString()}`);el('sourceText').textContent=u.source;el('targetText').value=reviewTarget(u);el('targetText').readOnly=true;el('targetText').classList.remove('editing');el('editToggle').replaceChildren();el('editToggle').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));el('reviewerNote').value=d.reviewer_note||'';const draft=state.drafts[id];if(draft){el('targetText').value=draft.target;el('reviewerNote').value=draft.note;if(draft.editing||draft.target!==reviewTarget(u)){state.editing=true;el('targetText').readOnly=false;el('targetText').classList.add('editing');el('editToggle').textContent=trUI('Editing');el('editAction').textContent=trUI('Use Edit');}}el('waiverReason').value=d.waiver_reason||'';el('waiverField').classList.add('hidden');el('decisionSelect').value=d.status;el('decisionStatus').textContent=trUI(statusLabel[d.status]||d.status);const iss=issuesFor(id);const chips=el('issueChips');chips.replaceChildren();for(const i of iss.slice(0,5)){const raw=i.label||i.check_id||i.severity,txt=issueDisplay(raw);const chip=node('span',trUI(txt),'issue-chip '+issueClass(i));chip.title=raw;chips.append(chip);}if(evidenceFor(u).length&&!iss.some(i=>(i.label||i.check_id||'').includes('EVIDENCE'))){const ev=node('span',trUI('EVIDENCE'),'issue-chip evidence');ev.title='Linked evidence';chips.append(ev);}if(!iss.length&&!evidenceFor(u).length)chips.append(node('span',trUI('CLEAN'),'issue-chip default'));el('evidenceTabCount').textContent=`(${evidenceFor(u).length})`;const terms=[...(u.labels||[]),...iss.map(i=>i.label||i.check_id||'')].filter(Boolean);el('termTabCount').textContent=`(${new Set(terms).size})`;el('chatContext').textContent=trUI('Current segment')+' · '+u.id;renderSuggestion(u);renderEvidence(u);renderTerminology(u);setTab('suggestion');renderTable();if(changed)el('inspector').querySelector('.inspector-content').scrollTop=0;scheduleUiSave();}
+  function selectUnit(id){const changed=state.selected!==id;if(state.selected&&changed)captureDraft();document.querySelector(".review-area").classList.remove("inspector-closed");state.selected=id;state.editing=false;const u=state.units.find(x=>x.id===id);if(!u)return;const d=decisionFor(id),idx=unitIndex(id);setEditActionLabel('Edit Translation');const navigable=filterUnits(),navigationIndex=navigable.findIndex(x=>x.id===id);el('unitPrev').disabled=navigationIndex<=0;el('unitNext').disabled=navigationIndex<0||navigationIndex===navigable.length-1;el('targetText').lang=u.target_language||'';el('sourceLabel').textContent=trUI('Source')+' · '+(u.source_language||'');el('targetLabel').textContent=reviewTargetLabel(u)+' · '+(u.target_language||'');const accept=el('acceptButton');accept.disabled=false;accept.title=trUI('Accept the current translation');accept.setAttribute('aria-label',accept.title);el('blockButton').title=trUI('Reject Translation');el('blockButton').setAttribute('aria-label',el('blockButton').title);for(const [button,selected] of [[accept,d.status==='KEEP_CURRENT'],[el('editAction'),d.status==='USER_EDITED'],[el('blockButton'),d.status==='BLOCKED']]){button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));}el('decisionFeedback').textContent='';el('decisionFeedback').classList.remove('error');el('segmentCounter').textContent=trUI(`Segment ${idx+1} of ${state.units.length.toLocaleString()}`);el('sourceText').textContent=u.source;el('targetText').value=reviewTarget(u);el('targetText').readOnly=true;el('targetText').classList.remove('editing');el('editToggle').replaceChildren();el('editToggle').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));el('reviewerNote').value=d.reviewer_note||'';const draft=state.drafts[id];if(draft){el('targetText').value=draft.target;el('reviewerNote').value=draft.note;if(draft.editing||draft.target!==reviewTarget(u)){state.editing=true;el('targetText').readOnly=false;el('targetText').classList.add('editing');el('editToggle').textContent=trUI('Editing');setEditActionLabel('Edit Translation');}}el('editControls').hidden=!state.editing;el('waiverReason').value=d.waiver_reason||'';el('waiverField').classList.add('hidden');el('decisionSelect').value=d.status;el('decisionStatus').textContent=trUI(statusLabel[d.status]||d.status);const iss=issuesFor(id);const chips=el('issueChips');chips.replaceChildren();for(const i of iss.slice(0,5)){const raw=i.label||i.check_id||i.severity,txt=issueDisplay(raw);const chip=node('span',trUI(txt),'issue-chip '+issueClass(i));chip.title=raw;chips.append(chip);}if(evidenceFor(u).length&&!iss.some(i=>(i.label||i.check_id||'').includes('EVIDENCE'))){const ev=node('span',trUI('EVIDENCE'),'issue-chip evidence');ev.title='Linked evidence';chips.append(ev);}if(!iss.length&&!evidenceFor(u).length)chips.append(node('span',trUI('CLEAN'),'issue-chip default'));el('evidenceTabCount').textContent=`(${evidenceFor(u).length})`;const terms=[...(u.labels||[]),...iss.map(i=>i.label||i.check_id||'')].filter(Boolean);el('termTabCount').textContent=`(${new Set(terms).size})`;el('chatContext').textContent=trUI('Current segment')+' · '+u.id;renderSuggestion(u);renderEvidence(u);renderTerminology(u);setTab('suggestion');renderTable();if(changed)el('inspector').querySelector('.inspector-content').scrollTop=0;scheduleUiSave();}
   function renderSuggestion(u){
     const iss=issuesFor(u.id);
     const advice=window.dbabelI18n.suggestion(u,iss);
@@ -495,7 +517,33 @@
   function renderEvidence(u){const evs=evidenceFor(u),root=el('evidenceList');root.replaceChildren();el('evidenceCountText').textContent=evs.length?trUI(`View all (${evs.length})`):trUI('No linked evidence');for(const e of evs){const c=node('div',undefined,'evidence-card');c.append(node('div',e.source_title||e.id,'evidence-title'));c.append(node('div',e.support_note||'','evidence-note'));c.append(node('div',e.locator||'','evidence-locator'));root.append(c);}if(!evs.length)root.append(node('div',trUI('No evidence record is linked to this unit.'),'evidence-card'));}
   function renderTerminology(u){const root=el('terminologyList');root.replaceChildren();const labels=new Set([...(u.labels||[]),...issuesFor(u.id).map(i=>i.label||i.check_id||i.classification).filter(Boolean)]);for(const t of labels){const c=node('div',undefined,'term-card');const tc=node('span',trUI(issueDisplay(t)),'issue-chip term');tc.title=t;c.append(tc);c.append(node('span',trUI('DBabel review label')));root.append(c);}if(!labels.size)root.append(node('div',trUI('No terminology labels for this unit.'),'evidence-card'));}
   function setTab(name){state.activeTab=name;for(const b of document.querySelectorAll('.tabs button'))b.classList.toggle('active',b.dataset.tab===name);for(const p of document.querySelectorAll('.tab-panel'))p.classList.remove('active');const map={suggestion:'tabSuggestion',evidence:'tabEvidence',terminology:'tabTerminology'};el(map[name]).classList.add('active');}
-  function editTarget(){if(!state.selected)return;state.editing=!state.editing;el('targetText').readOnly=!state.editing;el('targetText').classList.toggle('editing',state.editing);if(state.editing){el('targetText').focus();el('editToggle').textContent=trUI('Editing');el('editAction').textContent=trUI('Use Edit');el('decisionFeedback').textContent=trUI('Edit the translation, then select Use Edit.');}else{el('editToggle').replaceChildren();el('editToggle').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));el('editAction').replaceChildren();el('editAction').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));}}
+  function setEditActionLabel(label){const button=el('editAction');button.title=trUI(label);button.setAttribute('aria-label',trUI(label));}
+  function editTarget(){
+    if(!state.selected)return;
+    if(state.editing){el('targetText').focus();return;}
+    state.editing=true;
+    el('targetText').readOnly=false;
+    el('targetText').classList.add('editing');
+    el('editControls').hidden=false;
+    el('targetText').focus();
+    el('editToggle').textContent=trUI('Editing');
+    el('decisionFeedback').textContent='';
+    scheduleUiSave();
+  }
+  function cancelEdit(){
+    if(!state.selected)return;
+    const unit=state.units.find(x=>x.id===state.selected);
+    if(!unit)return;
+    state.editing=false;
+    el('targetText').value=reviewTarget(unit);
+    el('targetText').readOnly=true;
+    el('targetText').classList.remove('editing');
+    el('editControls').hidden=true;
+    el('editToggle').replaceChildren();
+    el('editToggle').append(svgUse('i-edit'),document.createTextNode(trUI('Edit')));
+    captureDraft();
+    scheduleUiSave();
+  }
   async function setDecision(status,rejectionReason=""){
     const u=state.units.find(x=>x.id===state.selected);if(!u)return;
     if(status==='KEEP_CURRENT'&&!u.current_target?.trim()){
@@ -659,7 +707,7 @@
 
       if(authorized){
         el('exportHint').textContent=el('exportMode').value==='DRAFT'
-          ? trUI('Draft export uses suggestions for pending units and preserves the original document format.')
+          ? trUI('Draft export uses AI suggestions or existing target text for pending units and preserves the original document format.')
           : 'Reviewed scope passed. Native export is ready'+
             (state.outputName ? ': '+state.outputName : '.');
 
@@ -685,17 +733,18 @@
     if(!state.exportAvailable){await window.exportReviewResults();return;}
     if(el('exportMode').value==='CHECKPOINT'&&!confirm(trUI('Export reviewed changes only? Unreviewed content stays unchanged. This is not a fully reviewed release.')))return;
     try{
-      const result=await api('/api/export',{method:'POST',body:JSON.stringify({export_mode:el('exportMode').value})});
-      const archive=result.delivery_archive;delete result.delivery_archive;
+      const result=await api('/api/export',{method:'POST',body:JSON.stringify({export_mode:el('exportMode').value,native_only:true})});
+      const documentFile=result.delivery_document||result.delivery_archive;
+      delete result.delivery_document;delete result.delivery_archive;
       el('gateStatus').textContent=JSON.stringify(result,null,2);
-      if((result.status==='VERIFIED'||result.status==='DRAFT_EXPORTED')&&archive){
-        const bytes=Uint8Array.from(atob(archive.content_base64),c=>c.charCodeAt(0));
-        const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'}));
-        const a=document.createElement('a');a.href=url;a.download=archive.filename;a.click();
+      if((result.status==='VERIFIED'||result.status==='DRAFT_EXPORTED')&&documentFile){
+        const bytes=Uint8Array.from(atob(documentFile.content_base64),c=>c.charCodeAt(0));
+        const url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'}));
+        const a=document.createElement('a');a.href=url;a.download=documentFile.filename;a.click();
         setTimeout(()=>URL.revokeObjectURL(url),1000);
         window.workbenchNotice(trUI(result.status==='DRAFT_EXPORTED'
-          ? 'Draft downloaded: original-format translation, bilingual view, Agent handoff and receipt.'
-          : 'Delivery downloaded: original-format copy, bilingual view, Agent handoff and receipt.'));
+          ? 'Draft downloaded in the original document format.'
+          : 'Translation downloaded in the original document format.'));
       }else if(result.status!=='VERIFIED'&&result.status!=='DRAFT_EXPORTED'){window.workbenchNotice((result.blockers||[]).join('\n'));}
     }catch(err){alert(err.message);}
   }
@@ -860,7 +909,7 @@
   function setupControls(){el('saveNote').addEventListener('click',async()=>{if(!state.selected)return;try{const d=decisionFor(state.selected),saved=await api('/api/decisions/'+encodeURIComponent(state.selected),{method:'PUT',body:JSON.stringify({...d,reviewer_note:el('reviewerNote').value})});state.decisions.set(state.selected,saved.decision);window.workbenchNotice('Reviewer note saved.');}catch(e){window.workbenchNotice(e.message);}});
         window.installWorkbenchViews({filteredUnits:filterUnits,state,el,node,decisionFor,issuesFor,evidenceFor,selectUnit,renderTable,applyTheme,
       recheck: typeof refreshGate==='function' ? refreshGate : null,
-      getReport: ()=>api('/api/post-review-report'),getRejections: ()=>api('/api/rejection-memory'),removeRejection: id=>api('/api/rejection-memory/remove',{method:'POST',body:JSON.stringify({id})}) });window.installExchange({api,state,el,node,refreshGate});el('exportMode').addEventListener('change',refreshGate);el('themeSelect').addEventListener('change',()=>applyTheme(el('themeSelect').value));for(const s of statusOrder){const o=new Option(trUI(statusLabel[s]),s);el('decisionSelect').append(o);}el('decisionSelect').addEventListener('change',()=>{const s=el('decisionSelect').value; if(s==='WAIVED'){el('waiverField').classList.remove('hidden');return;}setDecision(s);});el('searchBox').addEventListener('input',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const id of ['quickFilter','sortSelect'])el(id).addEventListener('change',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const cb of document.querySelectorAll('[data-review-filter]'))cb.addEventListener('change',()=>{const k=cb.dataset.reviewFilter;cb.checked?state.reviewFilters.add(k):state.reviewFilters.delete(k);state.selectedUnits.clear();state.page=0;renderTable();});el('clearFilters').addEventListener('click',()=>{state.reviewFilters.clear();state.issueFilters.clear();for(const cb of document.querySelectorAll('.filters-panel input[type=checkbox]'))cb.checked=false;el('quickFilter').value='ALL';el('searchBox').value='';state.page=0;renderIssueFilters();renderTable();});el('pagePrev').addEventListener('click',()=>{if(state.page>0){state.selectedUnits.clear();state.page--;renderTable();}});el('pageNext').addEventListener('click',()=>{state.selectedUnits.clear();state.page++;renderTable();});el('unitPrev').addEventListener('click',()=>moveUnit(-1));el('unitNext').addEventListener('click',()=>moveUnit(1));for(const b of document.querySelectorAll('.tabs button'))b.addEventListener('click',()=>setTab(b.dataset.tab));el('editToggle').addEventListener('click',editTarget);el('editAction').addEventListener('click',()=>{if(!state.editing){editTarget();return;}setDecision('USER_EDITED');});el('acceptButton').addEventListener('click',()=>setDecision('KEEP_CURRENT'));el('acceptSuggestionButton').addEventListener('click',()=>setDecision('ACCEPT_SUGGESTION'));el('keepButton').addEventListener('click',()=>setDecision('KEEP_CURRENT'));el('deferButton').addEventListener('click',()=>setDecision('DEFERRED'));el('blockButton').addEventListener('click',()=>{const reason=window.prompt(trUI('Why should this translation never be suggested again?'));if(reason?.trim())setDecision('BLOCKED',reason.trim());});el('waiveButton').addEventListener('click',()=>{el('waiverField').classList.remove('hidden');el('waiverReason').focus();});el('confirmWaiver').addEventListener('click',()=>setDecision('WAIVED'));for(const b of document.querySelectorAll('[data-copy]'))b.addEventListener('click',()=>copyText(b.dataset.copy));el('exportButton').addEventListener('click',doExport);el('selectPage').addEventListener('change',()=>{for(const u of currentPageUnits()){if(el('selectPage').checked){state.selectedUnits.add(u.id);}else{state.selectedUnits.delete(u.id);}}renderTable();});el('approveAll').addEventListener('click',approveAllSuggestions);el('bulkKeep').addEventListener('click',()=>bulkDecision('KEEP_CURRENT'));el('bulkDefer').addEventListener('click',()=>bulkDecision('DEFERRED'));el('bulkClear').addEventListener('click',()=>{state.selectedUnits.clear();renderTable();});}
+      getReport: ()=>api('/api/post-review-report'),getRejections: ()=>api('/api/rejection-memory'),removeRejection: id=>api('/api/rejection-memory/remove',{method:'POST',body:JSON.stringify({id})}) });window.installExchange({api,state,el,node,refreshGate});el('exportMode').addEventListener('change',refreshGate);el('themeSelect').addEventListener('change',()=>applyTheme(el('themeSelect').value));for(const s of statusOrder){const o=new Option(trUI(statusLabel[s]),s);el('decisionSelect').append(o);}el('decisionSelect').addEventListener('change',()=>{const s=el('decisionSelect').value; if(s==='WAIVED'){el('waiverField').classList.remove('hidden');return;}setDecision(s);});el('searchBox').addEventListener('input',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const id of ['quickFilter','sortSelect'])el(id).addEventListener('change',()=>{state.selectedUnits.clear();state.page=0;renderTable();});for(const cb of document.querySelectorAll('[data-review-filter]'))cb.addEventListener('change',()=>{const k=cb.dataset.reviewFilter;cb.checked?state.reviewFilters.add(k):state.reviewFilters.delete(k);state.selectedUnits.clear();state.page=0;renderTable();});el('clearFilters').addEventListener('click',()=>{state.reviewFilters.clear();state.issueFilters.clear();for(const cb of document.querySelectorAll('.filters-panel input[type=checkbox]'))cb.checked=false;el('quickFilter').value='ALL';el('searchBox').value='';state.page=0;renderIssueFilters();renderTable();});el('pagePrev').addEventListener('click',()=>{if(state.page>0){state.selectedUnits.clear();state.page--;renderTable();}});el('pageNext').addEventListener('click',()=>{state.selectedUnits.clear();state.page++;renderTable();});el('unitPrev').addEventListener('click',()=>moveUnit(-1));el('unitNext').addEventListener('click',()=>moveUnit(1));for(const b of document.querySelectorAll('.tabs button'))b.addEventListener('click',()=>setTab(b.dataset.tab));el('editToggle').addEventListener('click',editTarget);el('editAction').addEventListener('click',editTarget);el('cancelEdit').addEventListener('click',cancelEdit);el('confirmEdit').addEventListener('click',()=>setDecision('USER_EDITED'));el('acceptButton').addEventListener('click',()=>setDecision('KEEP_CURRENT'));el('acceptSuggestionButton').addEventListener('click',()=>setDecision('ACCEPT_SUGGESTION'));el('keepButton').addEventListener('click',()=>setDecision('KEEP_CURRENT'));el('deferButton').addEventListener('click',()=>setDecision('DEFERRED'));el('blockButton').addEventListener('click',()=>{const reason=window.prompt(trUI('Why should this translation never be suggested again?'));if(reason?.trim())setDecision('BLOCKED',reason.trim());});el('waiveButton').addEventListener('click',()=>{el('waiverField').classList.remove('hidden');el('waiverReason').focus();});el('confirmWaiver').addEventListener('click',()=>setDecision('WAIVED'));for(const b of document.querySelectorAll('[data-copy]'))b.addEventListener('click',()=>copyText(b.dataset.copy));el('exportButton').addEventListener('click',doExport);el('selectPage').addEventListener('change',()=>{for(const u of currentPageUnits()){if(el('selectPage').checked){state.selectedUnits.add(u.id);}else{state.selectedUnits.delete(u.id);}}renderTable();});el('approveAll').addEventListener('click',approveAllSuggestions);el('bulkKeep').addEventListener('click',()=>bulkDecision('KEEP_CURRENT'));el('bulkDefer').addEventListener('click',()=>bulkDecision('DEFERRED'));el('bulkClear').addEventListener('click',()=>{state.selectedUnits.clear();renderTable();});}
   function initHeader(){const u=state.units[0]||{},s=trUI(languageNames[u.source_language]||u.source_language||'Source'),targetNames=[...new Set(state.units.map(x=>x.target_language).filter(Boolean))].map(x=>trUI(languageNames[x]||x)).join(' / ')||'Target';el('reviewBreadcrumb').textContent=trUI('Review')+' /';el('documentTitle').textContent=state.session.original.filename||state.session.title||'DBabel Review';el('documentMeta').textContent=`${trUI('Technical Documentation')}   |   ${s} → ${targetNames}   |   ${state.session.dbabel_version||'v1.5'}`;el('sourceLanguage').textContent=`(${s})`;el('targetLanguage').textContent=`(${targetNames})`;el('sourceLabel').textContent=window.dbabelI18n.t(`Source (${window.dbabelI18n.t(s)})`);el('targetLabel').textContent=window.dbabelI18n.t(`Target (${targetNames})`);}
   async function boot(){
     initTheme();state.token=tokenFromHash();
@@ -885,7 +934,10 @@
     if(window.showWorkbenchView&&savedUi.view)window.showWorkbenchView(savedUi.view);
     if(Number.isFinite(savedUi.scroll_top))el('segmentRows').closest('.table-wrap').scrollTop=savedUi.scroll_top;
     state.restoringUi=false;
-    el('segmentRows').closest('.table-wrap').addEventListener('scroll',scheduleUiSave,{passive:true});
+    el('segmentRows').closest('.table-wrap').addEventListener('scroll',()=>{
+      scheduleRowClip();scheduleUiSave();
+    },{passive:true});
+    window.addEventListener('resize',scheduleRowClip,{passive:true});
     for(const id of ['targetText','reviewerNote'])el(id).addEventListener('input',()=>{
       captureDraft();
       state.manualSavePending=JSON.stringify(state.drafts)!==JSON.stringify(state.checkpointDrafts);

@@ -97,6 +97,28 @@ class RuntimeResumeTests(unittest.TestCase):
         self.assertEqual(result["run_id"], failed["run_id"])
         self.assertEqual(len(provider.calls["TRANSLATION"]), 2)
 
+    def test_transport_changes_resume_successful_batches(self):
+        root, _ = self.failed_run("ADJUDICATION")
+        config = json.loads(self.config.read_text())
+        config.update(timeout_seconds=300, stream=True, proxy_mode="none", temperature_mode="omit",
+                      extra_body={"thinking": {"type": "disabled"}})
+        self.config.write_text(json.dumps(config))
+        provider = InterruptingProvider()
+        result = self.run_pipeline(provider, resume_run=root)
+        self.assertEqual(result["status"], "READY_FOR_HUMAN_REVIEW")
+        self.assertEqual(provider.calls["TRANSLATION"], [])
+        self.assertEqual(len(provider.calls["ADJUDICATION"]), 2)
+
+    def test_changed_provider_identity_refuses_resume(self):
+        root, _ = self.failed_run("ADJUDICATION")
+        config = json.loads(self.config.read_text())
+        config["model"] = "different-model"
+        self.config.write_text(json.dumps(config))
+        provider = InterruptingProvider()
+        with self.assertRaisesRegex(OrchestrationError, "API service"):
+            self.run_pipeline(provider, resume_run=root)
+        self.assertEqual(provider.calls["ADJUDICATION"], [])
+
     def test_changed_source_refuses_resume_before_provider_call(self):
         root, _ = self.failed_run("ADJUDICATION")
         self.source.write_text("changed\n", encoding="utf-8")

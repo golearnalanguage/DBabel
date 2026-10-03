@@ -1,0 +1,36 @@
+// Run only on a disposable, long synthetic Portable Review file.
+const {chromium}=require('playwright');
+const {pathToFileURL}=require('url');
+if(!process.env.DBABEL_TEST_PORTABLE)throw Error('Set DBABEL_TEST_PORTABLE to a disposable fixture.');
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.DBABEL_CHROME?{executablePath:process.env.DBABEL_CHROME}:{})});
+ const page=await browser.newPage({viewport:{width:1500,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+ await page.goto(pathToFileURL(process.env.DBABEL_TEST_PORTABLE).href);await page.waitForSelector('#segmentRows tr');
+ await page.locator('#segmentRows tr').nth(1).click();
+ if(await page.locator('#acceptButton').isDisabled())throw Error('Current translation unavailable without suggestion');
+ await page.click('#acceptButton');if(await page.inputValue('#decisionSelect')!=='KEEP_CURRENT')throw Error('Wrong current acceptance');
+ await page.locator('#segmentRows tr').nth(0).click();await page.click('#acceptSuggestionButton');
+ if(await page.inputValue('#decisionSelect')!=='ACCEPT_SUGGESTION')throw Error('Wrong suggestion acceptance');
+ await page.click('#editAction');await page.fill('#targetText','Unsaved edit\n  /data/db');await page.reload();await page.waitForSelector('#segmentRows tr');
+ if(await page.inputValue('#targetText')!=='Unsaved edit\n  /data/db'||!await page.locator('#confirmEdit').isVisible())throw Error('Draft lost on reload');
+ await page.click('#cancelEdit');if((await page.inputValue('#targetText')).includes('Unsaved edit'))throw Error('Cancel failed');
+ await page.click('#editAction');await page.fill('#targetText','Reviewed edit\n  /data/db');await page.click('#confirmEdit');
+ await page.reload();await page.waitForSelector('#segmentRows tr');if(await page.inputValue('#decisionSelect')!=='USER_EDITED'||await page.inputValue('#targetText')!=='Reviewed edit\n  /data/db')throw Error('Confirmed edit lost');
+ await page.locator('.review-note-details summary').click();await page.fill('#reviewerNote','Pending note');await page.reload();await page.waitForSelector('#segmentRows tr');
+ if(await page.inputValue('#reviewerNote')!=='Pending note')throw Error('Note draft lost');
+ await page.selectOption('#languageSelect','zh-CN');await page.waitForSelector('html[lang="zh-CN"] #segmentRows tr');await page.selectOption('#languageSelect','en');await page.waitForSelector('html[lang="en"] #segmentRows tr');
+ for(let i=0;i<51;i++)await page.click('#unitNext');
+ const selected=page.locator('#segmentRows tr.active');if(await selected.count()!==1)throw Error('Navigation did not follow page');
+ const rect=await selected.boundingBox(),wrap=await page.locator('.table-wrap').boundingBox();
+ if(rect.y<wrap.y||rect.y+rect.height>wrap.y+wrap.height+2)throw Error('Navigated row not visible');
+ await page.locator('.table-wrap').evaluate(e=>{e.scrollTop+=80;});await page.waitForTimeout(50);
+ if(!await page.locator('#segmentRows tr').evaluateAll(rows=>rows.some(r=>r.style.clipPath.startsWith('inset'))))throw Error('Rows overlap sticky header');
+ const before=await page.locator('#inspector').boundingBox();await page.focus('#inspectorResizeHandle');await page.keyboard.press('ArrowLeft');const after=await page.locator('#inspector').boundingBox();if(after.width<=before.width)throw Error('Resize failed');
+ const download=page.waitForEvent('download');await page.click('#saveProgress');const backup=await download;const file='/tmp/dbabel-test-recovery.json';await backup.saveAs(file);
+ await page.click('#editAction');await page.fill('#targetText','Replacement after backup');await page.click('#confirmEdit');await page.locator('#restoreProgressInput').setInputFiles(file);await page.waitForFunction(()=>!document.querySelector('#targetText').value.includes('Replacement after backup'));
+ const fs=require('fs'),saved=JSON.parse(fs.readFileSync(file));saved.session_id='OTHER_SESSION';await page.locator('#restoreProgressInput').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(saved))});await page.getByText('Recovery file does not match this session.',{exact:true}).waitFor();
+ for(const theme of ['dark','light','system'])await page.selectOption('#themeSelect',theme);
+ await page.screenshot({path:process.env.DBABEL_SCREENSHOT||'/tmp/dbabel-portable.png'});
+ await browser.close();if(errors.length)throw Error(errors.join('\n'));
+ console.log('PASS: current/suggested acceptance, edit cancel/confirm, draft/decision/note recovery, language, follow navigation, header clipping, resizing, backup and themes.');
+})().catch(e=>{console.error(e);process.exit(1)});

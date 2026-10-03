@@ -9,7 +9,10 @@ from runtime.models import (
 
 
 class ProviderError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, status: int = None, retry_after: float = None):
+        super().__init__(message)
+        self.status = status
+        self.retry_after = retry_after
 
 
 class ProviderTransientError(ProviderError):

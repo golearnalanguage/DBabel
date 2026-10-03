@@ -8,11 +8,11 @@ Export downloads a ZIP with the document, receipt, bilingual HTML and Markdown/J
 handoff. Source-only input is an unreviewed working copy until translated and reviewed.
 Original-format delivery preserves structure; inspect rendered wrapping and pagination.
 
-Current DBabel Skill/package version: **1.5.0**.
+Current DBabel Skill/package version: **1.6.0**.
 
-Current Review Workbench version: **1.5.0**.
+Current Review Workbench version: **1.6.0**.
 
-The Review Workbench is part of the DBabel v1.5.0 release contract. A repository
+The Review Workbench is part of the DBabel v1.6.0 release contract. A repository
 version change does not by itself create or move a Git tag or GitHub Release;
 those release artifacts are created only after validation succeeds.
 

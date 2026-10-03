@@ -115,7 +115,12 @@ def _read_document(path):
                         if kind == 's': value = strings[int(value)]
                         if kind == 'inlineStr': value = ''.join(t.text or '' for t in cell.findall('.//s:t', ns))
                         add('{}:{}'.format(name, cell.get('r')), value)
-                limitations = ['Stored text cells, including hidden sheets; numeric, date, boolean and formula cells, formatting, charts and comments are not extracted.']
+                # Worksheet tabs are user-visible text, separate from cells. Keep
+                # their stable sheetId so an unchanged workbook can be patched.
+                if 'xl/workbook.xml' in z.namelist():
+                    for sheet in xml('xl/workbook.xml').findall('.//s:sheets/s:sheet', ns):
+                        add('xl/workbook.xml:sheet:{}'.format(sheet.get('sheetId')), sheet.get('name', ''))
+                limitations = ['Stored text cells and worksheet tab names, including hidden sheets; numeric, date, boolean and formula cells, formatting, charts and comments are not extracted.']
     elif fmt == 'pdf':
         try:
             from pypdf import PdfReader

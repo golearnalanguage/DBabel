@@ -29,7 +29,9 @@ DBabel 提供审核流程、本地工具和格式适配器。用户提供文档�
 
 ## 在 GitHub 下载 Mac 应用
 
-[DBabel macOS App 发布页](https://github.com/golearnalanguage/DBabel/releases/tag/app-2026-09-28)提供自带运行环境的 Apple Silicon 安装镜像。打开 DMG，将 **DBabel.app** 拖入“应用程序”。选择**AI 翻译全流程**可配置兼容的 API 服务并翻译文档；选择**本地双语审核**可上传文档、打开演示或继续之前的会话。工作台会在本地保存审核决定、正在修改的译文和备注草稿；右侧聊天可使用已配置的 API。下载的审核结果会带上原文件名。安装、格式支持和导出步骤见[桌面应用手册](docs/DESKTOP_APP.zh-CN.md)。
+[DBabel macOS App 发布页](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0)提供自带运行环境的 Apple Silicon 安装镜像。打开 DMG，将 **DBabel.app** 拖入“应用程序”。选择**AI 翻译全流程**可配置兼容的 API 服务并翻译文档；选择**本地双语审核**可上传文档、打开演示或继续之前的会话。工作台会在本地保存审核决定、正在修改的译文和备注草稿；右侧聊天可使用已配置的 API。下载的审核结果会带上原文件名。安装、格式支持和导出步骤见[桌面应用手册](docs/DESKTOP_APP.zh-CN.md)。
+
+**1.6.0 更新：**支持 NewAPI 等 Chat Completions 网关的流式响应，以及 Responses、Claude Messages 协议；支持超时和模型参数配置，遇到响应截断会拆小批次并保留已完成进度。新增本地翻译记忆、可选通用术语参考；便携审核支持编辑草稿缓存、恢复、明确区分接受现有译文和接受建议译文、编辑确认、可调详情栏与跟随定位。Skill 改为按阶段加载详细流程。详见[API 兼容配置](docs/PROVIDER_COMPATIBILITY.zh-CN.md)和[本地记忆库](docs/LOCAL_PRECHECK_AND_MEMORY.zh-CN.md)。
 
 ## 工作流程
 
@@ -110,7 +112,7 @@ git clone https://github.com/golearnalanguage/DBabel.git \
 
 ## 开发与参考
 
-当前仓库包版本为 **1.5.0**。Review Workbench 当前版本为 **1.5.0**。仓库改动记录在[变更记录](CHANGELOG.md)中；macOS App 有独立的[下载发布页](https://github.com/golearnalanguage/DBabel/releases/tag/app-2026-09-28)。
+当前仓库包版本为 **1.6.0**。Review Workbench 当前版本为 **1.6.0**。仓库改动记录在[变更记录](CHANGELOG.md)中；macOS App 有独立的[下载发布页](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0)。
 
 ```bash
 python -m py_compile scripts/*.py

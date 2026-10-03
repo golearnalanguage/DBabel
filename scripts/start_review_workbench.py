@@ -8,6 +8,7 @@ import hashlib
 import json
 import mimetypes
 import secrets
+import sqlite3
 import sys
 import threading
 import tempfile
@@ -54,6 +55,17 @@ from review_model import (
 from review_chat import append_message, chat_request, load_messages, prepare_attachments
 from providers.openai_compatible import OpenAICompatibleProvider
 from runtime.models import ProviderConfig
+from runtime.general_terms import catalog as general_terms_catalog
+from runtime.general_terms import enabled as general_terms_enabled
+from runtime.general_terms import set_enabled as set_general_terms_enabled
+from runtime.translation_memory import remember as remember_translation
+from runtime.translation_memory import summary as translation_memory_summary
+from runtime.translation_memory import forget_rejection as forget_memory_rejection
+from runtime.translation_memory import backup as backup_translation_memory
+from runtime.translation_memory import edit_entry as edit_memory_entry
+from runtime.translation_memory import delete_entry as delete_memory_entry
+from runtime.translation_memory import export_entries as export_translation_memory
+from runtime.local_precheck import inspect_segments as local_inspect_segments
 
 MAX_BODY = 48 * 1024 * 1024
 
@@ -94,9 +106,13 @@ class WorkbenchState:
         layout_copy = info.get('layout_copy') is True
         target = info.get('source' if layout_copy else 'target') or {}
         fmt = target.get('format')
-        if (layout_copy or info.get('alignment_confirmed')) and fmt in {'docx', 'txt', 'md', 'xlsx'}:
+        if (layout_copy or info.get('target')) and fmt in {'docx', 'txt', 'md', 'xlsx'}:
             original = self.bundle / 'inputs' / (('source.' if layout_copy else 'target.') + fmt)
             if original.is_file():
+                session = json.loads((self.bundle / 'session.json').read_text(encoding='utf-8'))
+                expected = session.get('original', {}).get('sha256')
+                if not expected or hashlib.sha256(original.read_bytes()).hexdigest() != expected:
+                    return
                 self.original = original
                 self.output = self.bundle / ('reviewed.' + fmt)
                 self.receipt = Path(str(self.output) + '.receipt.json')
@@ -258,6 +274,36 @@ class Handler(BaseHTTPRequestHandler):
             except (ValueError, OSError) as exc:
                 self._error(400, str(exc))
             return
+        if parsed.path == "/api/general-terms":
+            try:
+                resource = general_terms_catalog()
+                self._json(200, {"enabled": general_terms_enabled(),
+                                 "status": resource["status"],
+                                 "references": resource["references"],
+                                 "entries": resource["entries"]})
+            except (OSError, ValueError) as exc:
+                self._error(500, str(exc))
+            return
+        if parsed.path == "/api/translation-memory":
+            try:
+                self._json(200, translation_memory_summary())
+            except (OSError, ValueError) as exc:
+                self._error(500, str(exc))
+            return
+        if parsed.path == "/api/translation-memory/export":
+            try:
+                self._json(200, {"filename": "dbabel-translation-memory.json",
+                                 "entries": export_translation_memory()})
+            except (OSError, ValueError) as exc:
+                self._error(500, str(exc))
+            return
+        if parsed.path == "/api/glossary/template":
+            try:
+                content = (ROOT / "templates/database_term_recognition.csv").read_text(encoding="utf-8")
+                self._json(200, {"filename": "database_term_recognition.csv", "content": content})
+            except OSError as exc:
+                self._error(500, str(exc))
+            return
         if parsed.path == "/api/progress":
             with self.state.lock:
                 self._json(200, progress(self.state.data()))
@@ -404,8 +450,17 @@ class Handler(BaseHTTPRequestHandler):
                     "revision": saved["revision"], "actor": "SYSTEM",
                     "detail": saved["recheck"]["status"]
                 })
+                memory_warning = None
+                try:
+                    remember_translation(unit, saved)
+                    for candidate, _, proposed, _ in linked:
+                        remember_translation(candidate, proposed)
+                    backup_translation_memory()
+                except (OSError, sqlite3.Error) as exc:
+                    memory_warning = "Review was saved, but local translation memory backup failed: " + str(exc)
                 self._json(200, {"decision": saved, "recheck_issues": recheck_issues,
                                  "rejection_memory": remembered,
+                                 "memory_warning": memory_warning,
                                  "linked_decisions": [{"decision": proposed, "recheck_issues": issues}
                                                       for _, _, proposed, issues in linked]})
         except (ValueError, RuntimeError, OSError, json.JSONDecodeError, zipfile.BadZipFile, ET.ParseError, KeyError, IndexError) as exc:
@@ -429,7 +484,8 @@ class Handler(BaseHTTPRequestHandler):
             key = body.get("key")
             allowed = {"provider", "base_url", "api_key_env", "model",
                        "timeout_seconds", "max_response_bytes",
-                       "allow_insecure_http", "proxy_mode"}
+                       "allow_insecure_http", "proxy_mode", "stream", "api_mode",
+                       "temperature_mode", "max_output_tokens", "extra_body"}
             required = {"provider", "base_url", "api_key_env", "model"}
             if (not isinstance(config_data, dict)
                     or not required <= set(config_data)
@@ -494,13 +550,38 @@ class Handler(BaseHTTPRequestHandler):
                     retained = [item for item in records if item.get("id") != record_id]
                     if len(retained) == len(records):
                         raise ValueError("rejection record not found")
+                    removed = next(item for item in records if item.get("id") == record_id)
                     write_json(self.state.bundle / "rejected-translations.json", retained)
                     write_json(self.state.bundle / "rejected-translations.backup.json", retained)
+                    forget_memory_rejection(removed)
+                    backup_translation_memory()
                     append_event(self.state.bundle / "events.jsonl", {
                         "event": "REJECTION_MEMORY_REMOVED", "at": utc_now(),
                         "actor": "HUMAN", "detail": record_id,
                     })
                     self._json(200, {"records": retained})
+                return
+
+            if parsed.path == "/api/general-terms":
+                if type(body.get("enabled")) is not bool:
+                    raise ValueError("enabled must be a boolean")
+                set_general_terms_enabled(body["enabled"])
+                self._json(200, {"enabled": general_terms_enabled()})
+                return
+
+            if parsed.path in {"/api/translation-memory/edit", "/api/translation-memory/delete"}:
+                entry_id = body.get("id")
+                if type(entry_id) is not int:
+                    raise ValueError("translation memory id must be an integer")
+                if parsed.path.endswith("/edit"):
+                    target = body.get("target")
+                    if not isinstance(target, str):
+                        raise ValueError("translation memory target must be text")
+                    edit_memory_entry(entry_id, target)
+                else:
+                    delete_memory_entry(entry_id)
+                backup_translation_memory()
+                self._json(200, translation_memory_summary())
                 return
 
             if parsed.path in {"/api/intake/inspect", "/api/intake/create"}:
@@ -509,6 +590,11 @@ class Handler(BaseHTTPRequestHandler):
                     source = upload_file(body.get("source"), source_dir)
                     if parsed.path.endswith("inspect"):
                         info = read_document(source)
+                        segments = info["segments"]
+                        targets = body.get("target_languages") or []
+                        target_language = targets[0] if isinstance(targets, list) and targets else ""
+                        info["local_precheck"] = local_inspect_segments(
+                            segments, str(body.get("source_language") or ""), str(target_language))
                         info["segment_count"] = len(info.pop("segments"))
                         self._json(200, info)
                         return
@@ -753,10 +839,19 @@ class Handler(BaseHTTPRequestHandler):
                             }
                         )
 
+                    memory_warning = None
+                    try:
+                        for unit_id, _, saved, _ in changes:
+                            remember_translation(data["units_by_id"][unit_id], saved)
+                        backup_translation_memory()
+                    except (OSError, sqlite3.Error) as exc:
+                        memory_warning = "Review was saved, but local translation memory backup failed: " + str(exc)
+
                     self._json(
                         200,
                         {
                             "results": results,
+                            "memory_warning": memory_warning,
                         },
                     )
 
@@ -824,14 +919,19 @@ class Handler(BaseHTTPRequestHandler):
                     response = dict(receipt)
                     if succeeded:
                         import base64
-                        import io
-                        archive = io.BytesIO()
-                        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as package:
-                            paths = [export_output, export_receipt] + [Path(a['path']) for a in receipt.get('artifacts', [])]
-                            for path in paths:
-                                package.writestr(path.name, path.read_bytes())
-                        response['delivery_archive'] = {'filename': export_output.name + '.delivery.zip',
-                            'content_base64': base64.b64encode(archive.getvalue()).decode('ascii')}
+                        response['delivery_document'] = {
+                            'filename': export_output.name,
+                            'content_base64': base64.b64encode(export_output.read_bytes()).decode('ascii'),
+                        }
+                        if not body.get('native_only'):
+                            import io
+                            archive = io.BytesIO()
+                            with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as package:
+                                paths = [export_output, export_receipt] + [Path(a['path']) for a in receipt.get('artifacts', [])]
+                                for path in paths:
+                                    package.writestr(path.name, path.read_bytes())
+                            response['delivery_archive'] = {'filename': export_output.name + '.delivery.zip',
+                                'content_base64': base64.b64encode(archive.getvalue()).decode('ascii')}
                     self._json(200, response)
                 return
             self._error(404, "not found")

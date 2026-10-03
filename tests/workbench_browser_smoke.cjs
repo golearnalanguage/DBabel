@@ -2,13 +2,14 @@
 const {chromium}=require('playwright');
 if(!process.env.DBABEL_TEST_URL||!process.env.DBABEL_TEST_PORTABLE)throw Error('Set DBABEL_TEST_URL and DBABEL_TEST_PORTABLE to disposable synthetic fixtures. This test changes decisions.');
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.DBABEL_CHROME ? {executablePath:process.env.DBABEL_CHROME} : {})});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];const checked=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.type()==='prompt'?d.accept('Synthetic review rejects this wording.'):d.accept());
-async function run(url,portable){await page.goto(url);await page.waitForSelector('#segmentRows tr');
+async function run(url,portable){await page.goto(url);await page.locator('[data-view="Review"]').click();await page.waitForSelector('#segmentRows tr');
 for(const t of ['dark','light','system']){await page.selectOption('#themeSelect',t);if(await page.locator('html').getAttribute('data-theme-pref')!==t)throw Error('theme mismatch');}checked.push('themes');
 await page.locator('#segmentRows tr').first().click();for(const t of ['evidence','terminology','suggestion']){await page.locator(`[data-tab="${t}"]`).click();}checked.push('inspector tabs');
-await page.click(portable?'#acceptButton':'#acceptSuggestionButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='ACCEPT_SUGGESTION');
+await page.click('#acceptSuggestionButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='ACCEPT_SUGGESTION');
 if(!portable){await page.click('#acceptButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='KEEP_CURRENT');}
+await page.locator('.advanced-decisions summary').click();
 await page.click('#keepButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='KEEP_CURRENT');
-await page.click('#editAction');await page.fill('#targetText','The primary database sends archived logs to the standby database.');await page.click('#editAction');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='USER_EDITED');checked.push('accept/keep/edit');
+await page.click('#editAction');await page.fill('#targetText','The primary database sends archived logs to the standby database.');await page.click('#confirmEdit');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='USER_EDITED');checked.push('accept/keep/edit');
 await page.locator('.review-note-details summary').click();await page.fill('#reviewerNote','Language review follow-up.');await page.click('#saveNote');await page.waitForTimeout(100);await page.click('#unitNext');await page.click('#unitPrev');if(await page.inputValue('#reviewerNote')!=='Language review follow-up.')throw Error('note lost');checked.push('save note/navigation');
 await page.click('#deferButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='DEFERRED');await page.click('#blockButton');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='BLOCKED');
 await page.click('#waiveButton');await page.click('#confirmWaiver');if(!await page.locator('#waiverField').isVisible())throw Error('Missing waiver reason accepted');await page.fill('#waiverReason','Synthetic regression only.');await page.click('#confirmWaiver');await page.waitForFunction(()=>document.querySelector('#decisionSelect').value==='WAIVED');await page.selectOption('#decisionSelect','UNREVIEWED');await page.waitForTimeout(150);checked.push('defer/block/waiver/reset');
@@ -19,6 +20,21 @@ checked.push('search/status/location/tag/sort');
 await page.check('#selectPage');await page.click('#selectFiltered');await page.click('#bulkDefer');await page.waitForTimeout(150);await page.check('#selectPage');await page.click('#bulkKeep');await page.waitForTimeout(500);checked.push('bulk keep/defer');
 await page.click('#notificationsButton');await page.getByRole('heading',{name:'Review activity'}).waitFor();await page.locator('[data-view="Quality Check"]').click();if(!portable){await page.getByRole('button',{name:'Run fresh QA'}).click();await page.waitForTimeout(200);}
 await page.locator('[data-view="Reports"]').click();let d=page.waitForEvent('download');await page.getByRole('button',{name:'Download Agent review handoff'}).click();await d;checked.push('activity/QA/report');
+if(!portable){
+  await page.locator('[data-view="Terminology"]').click();await page.locator('#generalTermsEnabled').waitFor();
+  await page.locator('#generalTermsEnabled').check();await page.waitForFunction(()=>document.querySelector('#generalTermsStatus').textContent.includes('enabled'));
+  d=page.waitForEvent('download');await page.locator('#downloadGlossaryTemplate').click();await d;
+  const memory=page.locator('.summary-card').filter({has:page.getByRole('heading',{name:'Translation memory'})});
+  await memory.getByText('Saved memory entries:').waitFor();
+  d=page.waitForEvent('download');await memory.getByRole('button',{name:'Export translation memory'}).click();await d;
+  if(await memory.getByRole('button',{name:'Edit',exact:true}).count()){
+    await memory.getByRole('button',{name:'Edit',exact:true}).first().click();
+    await memory.getByRole('textbox',{name:'Translation memory target'}).fill('Synthetic edited memory target');
+    await memory.getByRole('button',{name:'Save',exact:true}).click();
+    await memory.getByText('Synthetic edited memory target').waitFor();
+  }
+  checked.push('built-in terminology/memory edit/export/template');
+}
 await page.locator('[data-view="Review"]').click();if(portable){await page.locator('#segmentRows tr').first().click();const before=await page.inputValue('#decisionSelect'),note=await page.inputValue('#reviewerNote');await page.selectOption('#languageSelect','zh-CN');await page.waitForSelector('html[lang="zh-CN"] #segmentRows tr');if(await page.inputValue('#decisionSelect')!==before||await page.inputValue('#reviewerNote')!==note)throw Error('Portable language switch lost decisions or notes');await page.selectOption('#languageSelect','en');await page.waitForSelector('html[lang="en"] #segmentRows tr');checked.push('portable language/decision persistence');d=page.waitForEvent('download');await page.click('#exportButton');await d;checked.push('offline decisions export');}
 }
 await run(process.env.DBABEL_TEST_URL,false);await run(require('url').pathToFileURL(process.env.DBABEL_TEST_PORTABLE).href,true);await browser.close();console.log(JSON.stringify({passed:!errors.length,checked,errors},null,2));if(errors.length)throw Error(errors.join('\n'));console.log('Desktop and portable decision interactions passed');})().catch(e=>{console.error(e);process.exit(1)});

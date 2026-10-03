@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0 — 2026-10-03
+
+- Add complete JSON/SSE decoding for Chat Completions, Responses and Anthropic Messages, configurable streaming/timeouts/model options, and bounded retry/error diagnostics.
+- Adapt interrupted translation/adjudication to smaller batches; preserve checkpoints when changing transport settings; retry semantic contract failures with precise constraints.
+- Reduce prompt duplication and move detailed Skill procedures into a stage guide without changing human approval or evidence gates.
+- Upgrade Portable Review with session/input-bound local recovery, decision backup, current/suggested acceptance, adjacent edit confirmation, resizable inspector and following navigation.
+- Include the pending native Draft export, database terminology, local precheck and SQLite translation-memory improvements. Preserve macOS native material and existing sessions.
+- Add protocol-level gateway regressions; company intranet service compatibility still requires a run on the company network.
+
 ## Unreleased — review workflow refinement
 
 ### Translation review hardening

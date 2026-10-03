@@ -95,8 +95,14 @@ class RuntimeOrchestrator:
                 or manifest.get("target_language") != target_language):
             raise OrchestrationError("resume source or languages differ from the saved run")
         config = ProviderConfig.from_path(Path(provider_config_path))
-        if manifest.get("provider") != config.redacted():
+        saved_provider = manifest.get("provider") or {}
+        if ProviderConfig(**saved_provider).identity() != config.identity():
             raise OrchestrationError("resume API service differs from the saved run")
+        if saved_provider != config.redacted():
+            AuditTrail(run.audit_path, run.run_id).append(
+                stage="PROVIDER_TRANSPORT", status="UPDATED",
+                details={"configuration": config.redacted(), "completed_batches_preserved": True},
+            )
         run.assert_source_unchanged()
         return run, manifest
 
@@ -141,7 +147,7 @@ class RuntimeOrchestrator:
                     source_language=source_language, target_language=target_language,
                     limits=limits, on_progress=on_progress,
                     checkpoint_path=run.root / "translation-checkpoint.json",
-                    checkpoint_context=config.redacted(),
+                    checkpoint_context=manifest["provider"],
                 )
                 translation_path = run.root / "translation-proposals.json"
                 atomic_write_json(translation_path, translation)
@@ -1063,7 +1069,7 @@ class RuntimeOrchestrator:
                         semantic_limits,
                     on_progress=on_progress,
                     checkpoint_path=run.root / "semantic-checkpoint.json",
-                    checkpoint_context=config.redacted(),
+                    checkpoint_context=current["provider"],
                 )
             )
 

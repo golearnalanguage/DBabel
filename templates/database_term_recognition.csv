@@ -1,0 +1,2 @@
+entry_id,source_language,source_term,behavior,approval,target_language,preferred_target,admitted_targets,forbidden_targets,vendor,product,version,domain,text_roles,match_mode,case_sensitive,notes
+DB_EXAMPLE_001,zh-CN,主键,TRANSLATE,USER_REVIEW,en,primary key,,,,,,database,prose,exact,false,示例候选；核对项目语境后再决定是否改为 PROJECT_APPROVED

@@ -102,6 +102,35 @@ class TerminologyBindingTests(unittest.TestCase):
 
 
 class XlsxRoundTripTests(unittest.TestCase):
+    def test_xlsx_renames_only_anchored_tab_and_its_print_area(self):
+        workbook = (
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            '<sheets><sheet name="参数配置" sheetId="1"/><sheet name="保留" sheetId="2"/></sheets>'
+            '<definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">'
+            '参数配置!$A$1:$B$7</definedName></definedNames></workbook>'
+        ).encode('utf-8')
+        with tempfile.TemporaryDirectory() as td:
+            source = Path(td) / 'source.xlsx'
+            output = Path(td) / 'reviewed.xlsx'
+            with zipfile.ZipFile(source, 'w') as zf:
+                zf.writestr('xl/workbook.xml', workbook)
+                zf.writestr('xl/worksheets/sheet1.xml', b'<worksheet>unchanged</worksheet>')
+            unit = {'id': 'TAB1', 'location': 'xl/workbook.xml:sheet:1',
+                    'current_target': '参数配置'}
+            anchors = build_anchors(source, [unit])
+            self.assertEqual(anchors['TAB1']['status'], 'RESOLVED')
+            decisions = {'TAB1': {'status': 'USER_EDITED', 'approved_target': 'Parameter settings'}}
+            self.assertEqual(apply_reviewed_xlsx(source, output, [unit], decisions, anchors), ['TAB1'])
+            round_trip_verify_xlsx(output, [unit], decisions, anchors)
+            verify_package_fidelity_xlsx(source, output, [unit], decisions, anchors)
+            with zipfile.ZipFile(source) as before, zipfile.ZipFile(output) as after:
+                text = after.read('xl/workbook.xml').decode('utf-8')
+                self.assertIn('name="Parameter settings"', text)
+                self.assertIn("'Parameter settings'!$A$1:$B$7", text)
+                self.assertIn('name="保留"', text)
+                self.assertEqual(before.read('xl/worksheets/sheet1.xml'),
+                                 after.read('xl/worksheets/sheet1.xml'))
+
     def test_xlsx_changes_only_anchored_cell(self):
         worksheet = (
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'

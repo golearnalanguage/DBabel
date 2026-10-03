@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 from urllib.parse import urlparse
@@ -22,6 +22,11 @@ class ProviderConfig:
     max_response_bytes: int = 2_000_000
     allow_insecure_http: bool = False
     proxy_mode: str = "system"
+    stream: bool = False
+    api_mode: str = "chat_completions"
+    temperature_mode: str = "auto"
+    max_output_tokens: Optional[int] = None
+    extra_body: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_path(cls, path: Path) -> "ProviderConfig":
@@ -39,6 +44,7 @@ class ProviderConfig:
             "max_response_bytes",
             "allow_insecure_http",
             "proxy_mode",
+            "stream", "api_mode", "temperature_mode", "max_output_tokens", "extra_body",
         }
 
         unknown = sorted(set(data) - allowed)
@@ -105,6 +111,29 @@ class ProviderConfig:
 
         if self.proxy_mode not in {"system", "none", "custom"}:
             raise ValueError("proxy_mode must be system, none, or custom")
+        if type(self.stream) is not bool:
+            raise ValueError("stream must be a boolean")
+        if self.api_mode not in {"chat_completions", "responses", "anthropic_messages"}:
+            raise ValueError("unsupported api_mode")
+        if self.temperature_mode not in {"auto", "omit"}:
+            raise ValueError("temperature_mode must be auto or omit")
+        if self.max_output_tokens is not None and (
+            type(self.max_output_tokens) is not int or not 1 <= self.max_output_tokens <= 128000
+        ):
+            raise ValueError("max_output_tokens must be an integer from 1 to 128000")
+        reserved = {"model", "messages", "input", "instructions", "system", "stream"}
+        if not isinstance(self.extra_body, dict) or reserved.intersection(self.extra_body):
+            raise ValueError("extra_body must be an object without core request fields")
+        def contains_credentials(value):
+            if isinstance(value, dict):
+                return any(str(key).lower() in {"api_key", "apikey", "authorization", "secret", "access_token", "password"}
+                           or contains_credentials(child) for key, child in value.items())
+            if isinstance(value, list):
+                return any(contains_credentials(child) for child in value)
+            return False
+        if contains_credentials(self.extra_body):
+            raise ValueError("credentials belong in the API key field, not extra_body")
+        json.dumps(self.extra_body, allow_nan=False)
 
         if not _ENV_RE.fullmatch(self.api_key_env or ""):
             raise ValueError(
@@ -161,7 +190,18 @@ class ProviderConfig:
             "max_response_bytes": self.max_response_bytes,
             "allow_insecure_http": self.allow_insecure_http,
             "proxy_mode": self.proxy_mode,
+            "stream": self.stream,
+            "api_mode": self.api_mode,
+            "temperature_mode": self.temperature_mode,
+            "max_output_tokens": self.max_output_tokens,
+            "extra_body": self.extra_body,
         }
+
+    def identity(self) -> Dict[str, str]:
+        """Transport tuning may change during resume; service/model must not."""
+        return {"provider": self.provider, "base_url": self.base_url.rstrip("/"),
+                "model": self.model, "api_key_env": self.api_key_env,
+                "api_mode": self.api_mode}
 
 
 @dataclass(frozen=True)

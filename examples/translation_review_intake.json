@@ -332,7 +332,7 @@
   },
   "technique_candidates": {
     "format_version": "1.0",
-    "registry_version": "1.5.0",
+    "registry_version": "1.6.0",
     "mode": "BILINGUAL_REVIEW",
     "policy": {
       "observations_are_evidence": false,

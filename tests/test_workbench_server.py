@@ -1,11 +1,13 @@
 import http.client
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from http.server import ThreadingHTTPServer
 
 ROOT=Path(__file__).resolve().parents[1];SCRIPTS=ROOT/'scripts'
@@ -38,10 +40,13 @@ def make_bundle(root):
 class ServerTests(unittest.TestCase):
     def setUp(self):
         self.td=tempfile.TemporaryDirectory();root=Path(self.td.name);self.bundle=make_bundle(root);self.repo=root/'repo';make_fake_repo(self.repo);self.token='secret-token'
+        self.memory_env=patch.dict(os.environ, {'DBABEL_TRANSLATION_MEMORY': str(root/'memory.sqlite3'),
+                                              'DBABEL_GENERAL_TERMS_SETTINGS': str(root/'terms.json')})
+        self.memory_env.start()
         state=WorkbenchState(self.bundle,self.repo,self.token);self.server=ThreadingHTTPServer(('127.0.0.1',0),Handler);self.server.state=state;host,port=self.server.server_address[:2];state.origin=f'http://{host}:{port}';self.origin=state.origin;self.port=port
         self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
     def tearDown(self):
-        self.server.shutdown();self.server.server_close();self.td.cleanup()
+        self.server.shutdown();self.server.server_close();self.memory_env.stop();self.td.cleanup()
     def req(self,method,path,body=None,headers=None):
         c=http.client.HTTPConnection('127.0.0.1',self.port,timeout=5);payload=None if body is None else json.dumps(body);h=headers or {};h.setdefault('Content-Type','application/json');c.request(method,path,payload,headers=h);r=c.getresponse();raw=r.read();c.close();return r.status,json.loads(raw.decode()) if raw else None
     def test_runtime_is_served_as_one_ordered_dependency_bundle(self):
@@ -53,6 +58,43 @@ class ServerTests(unittest.TestCase):
 
     def test_api_requires_token(self):
         status,_=self.req('GET','/api/bootstrap');self.assertEqual(status,403)
+    def test_local_reference_and_memory_endpoints(self):
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        status,terms=self.req('GET','/api/general-terms',headers=headers)
+        self.assertEqual(status,200)
+        self.assertFalse(terms['enabled'])
+        self.assertGreater(len(terms['entries']),10)
+        status,updated=self.req('POST','/api/general-terms',{'enabled':True},headers)
+        self.assertEqual(status,200)
+        self.assertTrue(updated['enabled'])
+        status,template=self.req('GET','/api/glossary/template',headers=headers)
+        self.assertEqual(status,200)
+        self.assertIn('source_term',template['content'])
+        status,memory=self.req('GET','/api/translation-memory',headers=headers)
+        self.assertEqual(status,200)
+        self.assertEqual(memory['count'],0)
+    def test_translation_memory_can_be_edited_exported_and_deleted(self):
+        unit=json.loads((self.bundle/'units.jsonl').read_text().splitlines()[0])
+        unit.update(source_language='zh-CN',target_language='en')
+        write_jsonl(self.bundle/'units.jsonl',[unit])
+        headers={'X-DBabel-Session':self.token,'Origin':self.origin}
+        status,result=self.req('PUT','/api/decisions/U1',{'status':'KEEP_CURRENT'},headers)
+        self.assertEqual(status,200,result)
+        status,memory=self.req('GET','/api/translation-memory',headers=headers)
+        self.assertEqual(memory['count'],1)
+        entry=memory['entries'][0]
+        self.assertEqual(entry['target'],'t')
+        status,updated=self.req('POST','/api/translation-memory/edit',
+                                {'id':entry['id'],'target':'new target'},headers)
+        self.assertEqual(status,200,updated)
+        self.assertEqual(updated['entries'][0]['target'],'new target')
+        status,exported=self.req('GET','/api/translation-memory/export',headers=headers)
+        self.assertEqual(status,200)
+        self.assertEqual(exported['entries'][0]['target'],'new target')
+        self.assertTrue((Path(self.td.name)/'memory.backup.sqlite3').exists())
+        status,deleted=self.req('POST','/api/translation-memory/delete',{'id':entry['id']},headers)
+        self.assertEqual(status,200)
+        self.assertEqual(deleted['count'],0)
     def test_chat_uses_selected_unit_and_survives_reopening(self):
         class FakeProvider:
             def generate(self, request):
@@ -156,6 +198,10 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(result['decision']['status'],'BLOCKED')
         self.assertEqual(result['rejection_memory']['rejected_target'],'Wrong term')
         self.assertEqual(result['rejection_memory']['scope'],'TERM')
+        status,remembered=self.req('GET','/api/translation-memory',headers=headers)
+        self.assertEqual(status,200)
+        self.assertEqual(remembered['count'],1)
+        self.assertEqual(remembered['entries'][0]['kind'],'REJECTED')
         status,memory=self.req('GET','/api/rejection-memory',headers=headers)
         self.assertEqual(status,200)
         self.assertEqual(memory['records'][0]['source'],'s')
@@ -164,6 +210,8 @@ class ServerTests(unittest.TestCase):
             {'id':memory['records'][0]['id']},headers)
         self.assertEqual(status,200)
         self.assertEqual(removed['records'],[])
+        status,remembered=self.req('GET','/api/translation-memory',headers=headers)
+        self.assertEqual(remembered['count'],0)
 
     def test_bulk_accept_requires_real_suggestions_and_rechecks(self):
         headers={'X-DBabel-Session':self.token,'Origin':self.origin}
@@ -270,6 +318,7 @@ class ServerTests(unittest.TestCase):
         payload={'name':'source.txt','content_base64':base64.b64encode('甲\n乙'.encode()).decode()}
         status,info=self.req('POST','/api/intake/inspect',{'source':payload},headers)
         self.assertEqual(status,200);self.assertEqual(info['segment_count'],2)
+        self.assertEqual(info['local_precheck']['extracted_segments'],2)
         old_bundle=self.server.state.bundle
         status,result=self.req('POST','/api/intake/create',{'source':payload,'source_language':'zh-CN','target_languages':['en','ja']},headers)
         self.assertEqual(status,200)

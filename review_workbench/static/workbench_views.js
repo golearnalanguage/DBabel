@@ -32,6 +32,14 @@ window.installWorkbenchViews = function(ctx) {
     if(isReview)return;
     if(name==='Terminology'){
       start(name,'Terminology findings, candidate bindings and review labels from this session. Candidates are not project-approved glossary entries.');
+      if(window.renderGeneralTerms){
+        const builtIn=card('Built-in database terminology','');
+        window.renderGeneralTerms(builtIn);
+      }
+      if(window.renderTranslationMemory){
+        const memory=card('Translation memory','');
+        window.renderTranslationMemory(memory);
+      }
       if(window.renderGlossaryUpload){
         const c=card('Project glossary','');
         window.renderGlossaryUpload(c);

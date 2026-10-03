@@ -1,8 +1,10 @@
+import base64
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from test_review_end_to_end import make_docx, qa_pass
 from review_model import load_bundle, normalize_decision, save_decisions, evaluate_export_gate, validate_against_schema
@@ -79,6 +81,49 @@ class StagedReviewTests(unittest.TestCase):
         self.assertEqual(handoff['report_type'], 'DRAFT_TRANSLATION_HANDOFF')
         self.assertEqual(handoff['units'][0]['status'], 'UNREVIEWED')
         self.assertEqual(handoff['units'][0]['exported_target'], 'Translated first paragraph.')
+
+    def test_draft_mixes_reviewed_ai_and_existing_bilingual_targets(self):
+        original = self.root/'mixed-target.xlsx'
+        worksheet = ('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+                     '<sheetData><row r="1">'
+                     '<c r="A1" t="inlineStr"><is><t>Existing first.</t></is></c>'
+                     '<c r="B1" t="inlineStr"><is><t>Existing second.</t></is></c>'
+                     '<c r="C1" t="inlineStr"><is><t>Existing third.</t></is></c>'
+                     '</row></sheetData></worksheet>')
+        with zipfile.ZipFile(original,'w') as archive:
+            archive.writestr('[Content_Types].xml','<Types/>')
+            archive.writestr('xl/workbook.xml','<workbook/>')
+            archive.writestr('xl/worksheets/sheet1.xml',worksheet)
+        rows = [
+            {'id':'M1','source':'第一段','target':'Existing first.','location':'xl/worksheets/sheet1.xml:A1',
+             'source_language':'zh-CN','target_language':'en','alignment':'UNALIGNED'},
+            {'id':'M2','source':'第二段','target':'Existing second.','suggested_target':'AI second.',
+             'location':'xl/worksheets/sheet1.xml:B1','source_language':'zh-CN','target_language':'en',
+             'alignment':'UNALIGNED'},
+            {'id':'M3','source':'第三段','target':'Existing third.','location':'xl/worksheets/sheet1.xml:C1',
+             'source_language':'zh-CN','target_language':'en','alignment':'UNALIGNED'},
+        ]
+        path=self.root/'mixed-units.jsonl'
+        path.write_text('\n'.join(json.dumps(row,ensure_ascii=False) for row in rows)+'\n')
+        bundle=self.root/'mixed.dbreview'
+        subprocess.run([sys.executable,str(ROOT/'scripts/create_review_session.py'),str(path),
+                        '--original',str(original),'--mode','BILINGUAL_REVIEW','--output',str(bundle)],
+                       check=True,capture_output=True)
+        data=load_bundle(bundle)
+        self.assertTrue(all(unit['alignment']=='UNALIGNED' for unit in data['units']))
+        self.assertTrue(all(anchor['status']=='RESOLVED' for anchor in data['anchors'].values()))
+        decision=normalize_decision(data['units'][0],{'status':'USER_EDITED',
+                                      'approved_target':'Approved first.'},data['decisions'][0])
+        save_decisions(bundle,[decision,*data['decisions'][1:]])
+        output=self.root/'mixed-draft.xlsx'
+        receipt=export_bundle(bundle,ROOT,original,output,export_mode='DRAFT')
+        self.assertEqual(receipt['status'],'DRAFT_EXPORTED',receipt.get('blockers'))
+        self.assertEqual(receipt['round_trip']['status'],'PASS')
+        with zipfile.ZipFile(output) as archive:
+            xml=archive.read('xl/worksheets/sheet1.xml').decode()
+        for translated in ['Approved first.','AI second.','Existing third.']:
+            self.assertIn(translated,xml)
+        self.assertEqual(load_bundle(bundle)['decisions_by_id']['M2']['status'],'UNREVIEWED')
 
     def test_final_still_blocks_pending(self):
         self.approve_first()
@@ -161,10 +206,14 @@ class StagedReviewTests(unittest.TestCase):
             self.assertEqual(gate['status'],'AUTHORIZED')
             self.assertIn('review_decisions',gate)
             for i in (1,2):
-                code,receipt=request('POST','/api/export',{'export_mode':'CHECKPOINT'})
+                code,receipt=request('POST','/api/export',{'export_mode':'CHECKPOINT','native_only':i==2})
                 self.assertEqual(code,200);self.assertEqual(receipt['status'],'VERIFIED')
                 self.assertTrue((self.root/f'delivery.checkpoint-{i}.docx').is_file())
                 self.assertTrue((self.root/f'delivery.checkpoint-{i}.receipt.json').is_file())
+                self.assertEqual(receipt['delivery_document']['filename'],f'delivery.checkpoint-{i}.docx')
+                self.assertEqual(base64.b64decode(receipt['delivery_document']['content_base64']),
+                                 (self.root/f'delivery.checkpoint-{i}.docx').read_bytes())
+                self.assertEqual('delivery_archive' in receipt,i==1)
             self.assertFalse((self.root/'delivery.docx').exists())
             self.assertEqual(load_bundle(self.bundle)['decisions_by_id']['U2']['status'],'UNREVIEWED')
         finally:

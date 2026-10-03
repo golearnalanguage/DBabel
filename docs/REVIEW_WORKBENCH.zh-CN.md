@@ -2,7 +2,7 @@
 
 [English](REVIEW_WORKBENCH.md) · [文档目录](INDEX.zh-CN.md)
 
-Skill/包和工作台契约版本均为 **1.5.0**。版本字段不自动创建 Git 标签或 GitHub Release。初次使用请从[本地教程](WORKFLOW_GUIDE.zh-CN.md)开始；[格式矩阵](DOCUMENT_FORMATS.zh-CN.md)说明实际依赖和覆盖。
+Skill/包和工作台契约版本均为 **1.6.0**。版本字段不自动创建 Git 标签或 GitHub Release。初次使用请从[本地教程](WORKFLOW_GUIDE.zh-CN.md)开始；[格式矩阵](DOCUMENT_FORMATS.zh-CN.md)说明实际依赖和覆盖。
 
 工作台连接原译文、建议、证据与人工决定。**完整本地 Review Workbench** 指本地服务界面：包含项目术语表上传、范围化术语符合率、证据/问题、重新 QA、六种审核结果以及已配置的原格式导出。**Portable Review** 只作为离线决策交换的降级界面，不能视为完整工作台的等价替代。`TRANSLATE` / `BILINGUAL_REVIEW` 在人工决定前优先展示 `suggested_target`，并明确保持“未批准建议”语义；只有人工决定才能形成 `approved_target`。
 
