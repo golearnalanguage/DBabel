@@ -1,13 +1,14 @@
 """Local, indexed translation memory. Human decisions only; no model calls."""
 from __future__ import annotations
 
+from contextlib import closing, contextmanager
 import hashlib
 import os
 from pathlib import Path
 import sqlite3
 import sys
 import tempfile
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Iterator, Optional, Sequence
 
 
 def database_path() -> Path:
@@ -27,22 +28,27 @@ def _role(unit: Dict[str, Any]) -> str:
     return str(unit.get("text_role") or (unit.get("context") or {}).get("text_role") or "PROSE")
 
 
-def _connect() -> sqlite3.Connection:
+@contextmanager
+def _connect() -> Iterator[sqlite3.Connection]:
     path = database_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path, timeout=10)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA journal_mode=WAL")
-    connection.execute("""CREATE TABLE IF NOT EXISTS memories (
-        source_language TEXT NOT NULL, target_language TEXT NOT NULL,
-        text_role TEXT NOT NULL, source_hash TEXT NOT NULL, source TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK(kind IN ('PREFERRED','REJECTED')),
-        target TEXT NOT NULL, decision TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY(source_language,target_language,text_role,source_hash,kind,target)
-    )""")
-    connection.execute("""CREATE INDEX IF NOT EXISTS memories_lookup ON memories
-        (source_language,target_language,text_role,source_hash,kind)""")
-    return connection
+    try:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("""CREATE TABLE IF NOT EXISTS memories (
+            source_language TEXT NOT NULL, target_language TEXT NOT NULL,
+            text_role TEXT NOT NULL, source_hash TEXT NOT NULL, source TEXT NOT NULL,
+            kind TEXT NOT NULL CHECK(kind IN ('PREFERRED','REJECTED')),
+            target TEXT NOT NULL, decision TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY(source_language,target_language,text_role,source_hash,kind,target)
+        )""")
+        connection.execute("""CREATE INDEX IF NOT EXISTS memories_lookup ON memories
+            (source_language,target_language,text_role,source_hash,kind)""")
+        with connection:
+            yield connection
+    finally:
+        connection.close()
 
 
 def remember(unit: Dict[str, Any], decision: Dict[str, Any]) -> None:
@@ -193,7 +199,7 @@ def backup() -> Path:
                                             dir=source.parent)
     os.close(descriptor)
     try:
-        with sqlite3.connect(source, timeout=10) as origin, sqlite3.connect(temporary) as snapshot:
+        with closing(sqlite3.connect(source, timeout=10)) as origin, closing(sqlite3.connect(temporary)) as snapshot:
             origin.backup(snapshot)
         os.replace(temporary, destination)
     finally:

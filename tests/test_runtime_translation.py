@@ -505,5 +505,29 @@ class TranslationRuntimeTests(
             )
 
 
+
+class TranslationMemoryResourceTests(unittest.TestCase):
+    def test_memory_releases_database_and_backup_handles(self):
+        import sqlite3
+        from runtime import translation_memory as memory
+        connections = []
+        connect = sqlite3.connect
+        def tracked(*args, **kwargs):
+            connection = connect(*args, **kwargs)
+            connections.append(connection)
+            return connection
+        with tempfile.TemporaryDirectory() as td, patch.dict(os.environ, {"DBABEL_TRANSLATION_MEMORY": str(Path(td) / "memory.sqlite3")}), patch("runtime.translation_memory.sqlite3.connect", side_effect=tracked):
+            item = unit("memory-close", "检查数据库。")
+            memory.remember(item, {"status": "USER_EDITED", "approved_target": "Check the database."})
+            self.assertEqual(memory.match(item, "zh-CN", "en"), "Check the database.")
+            self.assertTrue(memory.backup().exists())
+            self.assertTrue(memory.backup().exists())
+            with self.assertRaisesRegex(ValueError, "not found"):
+                memory.edit_entry(999, "Unstored text")
+            for connection in connections:
+                with self.assertRaises(sqlite3.ProgrammingError):
+                    connection.execute("SELECT 1")
+
+
 if __name__ == "__main__":
     unittest.main()
