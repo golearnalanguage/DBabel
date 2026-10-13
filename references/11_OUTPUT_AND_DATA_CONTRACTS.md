@@ -6,12 +6,12 @@ project glossaries, bilingual units, and deterministic QA reports have separate
 schemas and must not be presented as audit-report findings unless the semantic
 workflow actually adjudicated them.
 
-## Audit report 1.6.0
+## Audit report 1.7.0
 
-The 1.5 package keeps the compatible audit-report structure introduced in 1.3
-and retained in 1.4. The `dbabel_version` field records the DBabel package version
-that produced the report. The current validator accepts `1.3.0`, `1.4.0`, and
-`1.5.0` reports; `1.6.0` reports; newly produced v1.6 reports use `1.6.0`.
+The 1.7 package keeps the compatible audit-report structure introduced in 1.3.
+The `dbabel_version` field records the package version that produced the report.
+The current validator accepts `1.3.0`, `1.4.0`, `1.5.0`, `1.6.0` and `1.7.0`;
+newly produced v1.7 reports use `1.7.0`.
 
 - `mode` identifies the primary task; `secondary_modes` records combined tasks.
 - `status` describes completion, independently of individual terminology decisions.
@@ -42,7 +42,7 @@ Search snippets and unread sources remain insufficient for a replacement.
 A report may be structurally valid while containing a FAILED or BLOCKED task.
 Validation checks the consistency of that outcome; it does not turn it into success.
 
-## Related v1.5 machine contracts
+## Related machine contracts
 
 These contracts serve different stages and must remain distinct:
 
@@ -97,12 +97,10 @@ python scripts/check_package.py
 
 ## Compatibility and migration
 
-Version 1.5 deliberately accepts structurally valid 1.3 and 1.4 audit reports
-because the 1.5 release does not require rewriting earlier compatible reports. Do
-not rewrite an old report's `dbabel_version` merely to make it look current; that
-field identifies the producer version.
+Version 1.7 accepts structurally valid audit reports from 1.3 through 1.6.
+Preserve an old report's `dbabel_version`; that field identifies its producer.
 
-Version 1.2 reports still require migration to the 1.3/1.4/1.5-compatible structure
+Version 1.2 reports still require migration to the current compatible structure
 because 1.3 added required completion, coverage, QA, repair, source records, and
 finding IDs.
 Upgrade an older report by recording the work actually performed; do not invent

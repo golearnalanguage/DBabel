@@ -60,102 +60,6 @@ private final class MaterialWebView: WKWebView {
     }
 }
 
-private struct ProviderSettings: Codable {
-    let baseURL: String
-    let model: String
-    let apiKeyEnv: String
-    let proxyURL: String
-    let timeoutSeconds: Int
-    let maxResponseBytes: Int
-    let allowInsecureHTTP: Bool?
-    let proxyMode: String?
-    let apiMode: String?
-    let stream: Bool?
-    let temperatureMode: String?
-    let maxOutputTokens: Int?
-    let requestOptionsJSON: String?
-
-    var effectiveAPIMode: String { apiMode ?? "chat_completions" }
-
-    var effectiveProxyMode: String { proxyMode ?? (proxyURL.isEmpty ? "system" : "custom") }
-
-    var isLocal: Bool {
-        guard let host = URLComponents(string: baseURL)?.host?.lowercased() else { return false }
-        return ["localhost", "127.0.0.1", "::1"].contains(host)
-    }
-
-    func validationError() -> String? {
-        guard let url = URLComponents(string: baseURL),
-              let scheme = url.scheme?.lowercased(),
-              ["http", "https"].contains(scheme),
-              url.host != nil, url.user == nil, url.password == nil,
-              url.query == nil, url.fragment == nil else {
-            return "Enter a complete http(s) API base URL without a key or query string. / 请填写完整的 http(s) 服务地址，不要把密钥放入地址。"
-        }
-        if scheme == "http" && !isLocal && allowInsecureHTTP != true {
-            return "Enable trusted HTTP for this internal API service. / 如为可信的内部服务，请明确启用 HTTP 连接。"
-        }
-        if model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "Enter the exact model ID supplied by your API service. / 请填写 API 服务提供的准确模型 ID。"
-        }
-        if apiKeyEnv.range(of: "^[A-Za-z_][A-Za-z0-9_]*$", options: .regularExpression) == nil {
-            return "The imported API key variable name is invalid. / 导入配置中的密钥变量名无效。"
-        }
-        if !(1...600).contains(timeoutSeconds) || !(1_024...20_000_000).contains(maxResponseBytes) {
-            return "The imported timeout or response limit is out of range. / 导入配置中的超时或响应大小超出允许范围。"
-        }
-        if !["system", "none", "custom"].contains(effectiveProxyMode) {
-            return "Choose a valid network route. / 请选择有效的网络连接方式。"
-        }
-        if effectiveProxyMode == "custom" {
-            guard let proxy = URLComponents(string: proxyURL),
-                  let proxyScheme = proxy.scheme?.lowercased(),
-                  ["http", "https"].contains(proxyScheme),
-                  proxy.host != nil, proxy.user == nil, proxy.password == nil,
-                  proxy.query == nil, proxy.fragment == nil else {
-                return "Enter an http(s) proxy URL such as http://127.0.0.1:1082. / 请填写 http(s) 代理地址，例如 http://127.0.0.1:1082。"
-            }
-        }
-        if !["chat_completions", "responses", "anthropic_messages"].contains(effectiveAPIMode) {
-            return "Choose a supported API protocol. / 请选择支持的 API 协议。"
-        }
-        if let options = requestOptionsJSON, !options.isEmpty {
-            guard let data = options.data(using: .utf8),
-                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  Set(object.keys).isDisjoint(with: ["model", "messages", "input", "instructions", "system", "stream"]) else {
-                return "Additional parameters must be a JSON object without core request fields. / 附加参数须为 JSON 对象，不能覆盖模型、消息或流式开关。"
-            }
-        }
-        return nil
-    }
-
-    func temporaryFile() throws -> URL {
-        let path = FileManager.default.temporaryDirectory
-            .appendingPathComponent("dbabel-provider-\(UUID().uuidString).json")
-        var configuration: [String: Any] = [
-            "provider": "openai-compatible",
-            "base_url": baseURL,
-            "model": model,
-            "api_key_env": apiKeyEnv,
-            "timeout_seconds": timeoutSeconds,
-            "max_response_bytes": maxResponseBytes,
-            "allow_insecure_http": allowInsecureHTTP == true,
-            "proxy_mode": effectiveProxyMode,
-            "api_mode": effectiveAPIMode,
-            "stream": stream ?? true,
-            "temperature_mode": temperatureMode ?? "auto"
-        ]
-        if let maxOutputTokens { configuration["max_output_tokens"] = maxOutputTokens }
-        if let options = requestOptionsJSON, !options.isEmpty,
-           let bytes = options.data(using: .utf8) {
-            configuration["extra_body"] = try JSONSerialization.jsonObject(with: bytes)
-        }
-        let data = try JSONSerialization.data(withJSONObject: configuration, options: [.prettyPrinted, .sortedKeys])
-        try data.write(to: path, options: [.atomic])
-        return path
-    }
-}
-
 private enum ProviderCredentialStore {
     private static let service = "org.dbabel.desktop.api-key"
 
@@ -266,6 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
     private let apiProviderPreset = NSPopUpButton()
     private let apiModelPreset = NSPopUpButton()
     private let apiProtocol = NSPopUpButton()
+    private let apiTransport = NSPopUpButton()
     private let apiStream = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let apiOmitTemperature = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let apiTimeout = NSTextField(string: "300")
@@ -1442,6 +1347,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         apiProtocol.removeAllItems()
         apiProtocol.addItems(withTitles: ["Chat Completions / NewAPI", "Responses", "Anthropic Messages"])
         apiProtocol.selectItem(at: ["chat_completions", "responses", "anthropic_messages"].firstIndex(of: providerSettings?.effectiveAPIMode ?? "chat_completions") ?? 0)
+        apiTransport.removeAllItems()
+        apiTransport.addItems(withTitles: [local("自动（推荐）", "Automatic (recommended)"),
+                                          local("内置兼容客户端", "Built-in compatible client"),
+                                          local("官方 SDK", "Official SDK")])
+        apiTransport.selectItem(at: ["auto", "stdlib", "sdk"].firstIndex(of: providerSettings?.effectiveTransportBackend ?? "auto") ?? 0)
         apiStream.title = local("流式返回（建议用于内网网关和推理模型）", "Stream responses (recommended for gateways and reasoning models)")
         apiStream.state = providerSettings?.stream == false ? .off : .on
         apiOmitTemperature.title = local("使用模型默认温度", "Use the model's default temperature")
@@ -1494,7 +1404,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         let saveButton = NSButton(title: local("保存设置", "Save settings"),
                                   target: self, action: #selector(saveProviderAction))
         saveButton.keyEquivalent = "\r"
-        let testButton = NSButton(title: local("测试模型连接", "Test model connection"),
+        let testButton = NSButton(title: local("测试翻译能力", "Test translation capability"),
                                   target: self, action: #selector(testProviderAction))
         apiTestButton = testButton
         let buttons = row(importButton, testButton, NSView(), cancelButton, saveButton)
@@ -1503,6 +1413,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             label(local("连接 API 服务", "Connect an API service"), size: 24),
             explanation,
             label(local("接口协议", "API protocol")), apiProtocol,
+            label(local("请求客户端", "Request client")), apiTransport,
             label(local("服务商预设（也可自填）", "Service preset (optional)")), apiProviderPreset,
             label(local("服务地址（Base URL）", "API base URL")), apiBaseURL,
             examples,
@@ -1516,8 +1427,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             label(local("读取超时（秒，1–600；流式期间按无数据时长计算）", "Read idle timeout (seconds, 1–600)")), apiTimeout,
             label(local("模型附加参数 JSON（可选，以服务文档为准）", "Additional model parameters JSON (optional; follow service docs)")), apiOptions,
             jsonHelp,
-            label(local("测试会发送一条简短请求，可能产生少量 API 用量。",
-                        "Testing sends one short request and may incur a small amount of API usage.")),
+            label(local("测试会翻译一条样本并检查格式和技术字面量，可能产生少量 API 用量。",
+                        "Testing translates one sample and checks its format and technical literals; it may incur a small amount of API usage.")),
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -1594,6 +1505,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
                                           "This is not a valid OpenAI-compatible Provider JSON.")
             return
         }
+        let importedTransport = object["transport_backend"] as? String ?? "auto"
+        guard let transportIndex = ["auto", "stdlib", "sdk"].firstIndex(of: importedTransport) else {
+            apiStatus.stringValue = local("配置中的请求客户端须为 auto、stdlib 或 sdk。",
+                                          "The request client must be auto, stdlib or sdk.")
+            return
+        }
+        apiTransport.selectItem(at: transportIndex)
         apiBaseURL.stringValue = baseURL
         apiModel.stringValue = model
         apiProviderPreset.selectItem(at: 0)
@@ -1634,6 +1552,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             allowInsecureHTTP: apiTrustedHTTP.state == .on,
             proxyMode: ["system", "none", "custom"][max(0, min(2, apiProxyMode.indexOfSelectedItem))],
             apiMode: ["chat_completions", "responses", "anthropic_messages"][max(0, min(2, apiProtocol.indexOfSelectedItem))],
+            transportBackend: ["auto", "stdlib", "sdk"][max(0, min(2, apiTransport.indexOfSelectedItem))],
             stream: apiStream.state == .on,
             temperatureMode: apiOmitTemperature.state == .on ? "omit" : "auto",
             maxOutputTokens: pendingMaxTokens,
@@ -1743,7 +1662,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             let provider = try settings.temporaryFile()
             apiTestButton?.isEnabled = false
             apiStatus.textColor = .secondaryLabelColor
-            apiStatus.stringValue = local("正在发送测试请求…", "Sending a test request…")
+            apiStatus.stringValue = local("正在检查样本翻译…", "Checking a sample translation…")
             desktop.checkProvider(provider: provider,
                                   apiKey: key.isEmpty ? "local" : key,
                                   proxyURL: settings.proxyURL) { [weak self] success, detail in
@@ -1751,7 +1670,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
                 self.apiTestButton?.isEnabled = true
                 self.apiStatus.textColor = success ? .systemGreen : .systemRed
                 self.apiStatus.stringValue = success
-                    ? self.local("模型连接成功。", "Model connection succeeded.")
+                    ? self.local("样本翻译检查通过。", "Sample translation check passed.")
                     : String(detail.trimmingCharacters(in: .whitespacesAndNewlines).prefix(350))
             }
         } catch {

@@ -47,11 +47,29 @@ python scripts/validate_ingest.py ingest-report.json
 
 See [runtime preflight and ingest validation](../references/17_RUNTIME_PREFLIGHT_AND_INGEST_VALIDATION.md).
 
+## Translation runtime, scope and recovery
+
+Preserve `context.project_id`, vendor, product, version, domain and each unit's concrete text role when preparing aligned data. An explicit stable project ID enables deliberate reuse across its documents; when no project ID is supplied, an available original/source SHA-256 defines a document scope. Missing metadata is unknown. Exact memory, rejection constraints, similar-memory candidates and linked same-source human decisions use the same scope. Older unscoped memory stays available for management/export without automatic enforcement. See [local memory](LOCAL_PRECHECK_AND_MEMORY.md).
+
+For the provider-backed runtime, install the optional dependencies described in [local tooling](LOCAL_TOOLING.md#optional-integrations), then run:
+
+```bash
+python scripts/check_provider_connection.py --provider-config provider.json --task-check
+python scripts/run_project.py manual.docx --source-language zh-CN --target-language en --text-role PROSE --provider-config provider.json --project-id my-manual --workspace-root output/runtime
+python scripts/list_resumable_runs.py --workspace-root output/runtime
+```
+
+`--task-check` verifies one synthetic translation contract and protected-literal preservation. `TASK_READY` reports that sample passed; evaluate the actual document through ingest, QA and review. Provider configuration may select `transport_backend` as `auto`, `stdlib` or `sdk`; DBabel retains one bounded retry owner with either client.
+
+Resume with the original command plus `--resume-run output/runtime/RUN_<id>`. Preserve source, languages, provider identity and memory context. Discovery includes failed/interrupted runs and inactive unfinished stages, with an OS-held lock preventing concurrent writers. Resume rechecks identities and saved artifacts, reusing completed batches rather than inventing completion states.
+
 ## Evidence and outputs
 
 Text-only lookup can run from supplied references. Public-source verification needs
 search plus opening the original source. Native document repair additionally needs
 a format-aware writer and applicable round-trip QA.
+
+Optional [TMX interchange and evidence-cache commands](INTEROPERABILITY_AND_EVIDENCE.md) retain scope and provenance. Imports produce unapproved candidates; cache checks identify expired or changed sources and affected units while preserving human decisions. Reopen sources and repeat applicable review/QA before relying on stale evidence.
 
 Check the [capability matrix](AGENT_CAPABILITY_MATRIX.md) and the
 [format backend registry](../plugins/FORMAT_BACKENDS.md) before promising a native
@@ -98,7 +116,7 @@ For approval-required changes, create a `.dbreview` session and use the [Workben
 Name a single-language session `manual.en.dbreview` and a multilingual session `manual.multilingual.dbreview`. Use a stable unit ID per source/target-language pair. Input to `create_review_session.py` uses `target` for the current text and optional `suggested_target` plus `suggestion_reason` for the proposal:
 
 ```json
-{"id":"U00001_en","location":"line:1","source_language":"zh-CN","target_language":"en","source":"主库发送归档日志。","target":"","suggested_target":"The primary database sends archived logs.","suggestion_reason":"Preserve the primary database as the actor; use the project-approved designation."}
+{"id":"U00001_en","location":"line:1","source_language":"zh-CN","target_language":"en","text_role":"PROSE","context":{"project_id":"my-manual","product":"MyDatabase","version":"1.0"},"source":"主库发送归档日志。","target":"","suggested_target":"The primary database sends archived logs.","suggestion_reason":"Preserve the primary database as the actor; use the project-approved designation."}
 ```
 
 Provide substantive guidance for every unit. Preserve current decisions when returning to a session: create a new proposal session or give revision-bound suggestions to the reviewer. Do not replace the session's decision file with Agent-authored acceptance states.

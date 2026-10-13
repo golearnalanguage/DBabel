@@ -99,6 +99,8 @@ concepts, including concept/designation-oriented terminology work and TBX-style
 terminology resources. DBabel does not claim full TBX compatibility and does
 not import or export arbitrary TBX dialects.
 
-Future TBX/TMX/XLIFF adapters must preserve scope, approval state, text role,
-protected literals, and provenance rather than flattening them into an unscoped
-two-column term list.
+The plain-segment TMX 1.4 CLI preserves available scope, decision metadata and
+provenance; imports produce unapproved candidates. See
+`docs/INTEROPERABILITY_AND_EVIDENCE.md` for its inline-code limits. Further TMX,
+TBX and XLIFF adapters must preserve scope, approval state, text role, protected
+literals and provenance throughout exchange and review.

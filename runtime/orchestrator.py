@@ -36,6 +36,7 @@ from runtime.project import (
     sha256_file,
 )
 from runtime.run_lease import RunLease, RunBusyError, RESUMABLE_STATES, probe_run_liveness
+from runtime.memory_scope import known_context
 
 
 REPO_ROOT = Path(
@@ -271,8 +272,10 @@ class RuntimeOrchestrator:
         declared_backends: Optional[
             Iterable[str]
         ] = None,
+        context: Optional[dict] = None,
     ) -> dict:
         source = Path(source).resolve()
+        declared_context = known_context(context)
 
         if not source_language.strip():
             raise ValueError(
@@ -313,6 +316,8 @@ class RuntimeOrchestrator:
         )
 
         try:
+            if declared_context:
+                run.update(status="CREATED", current_stage="INTAKE", memory_context=declared_context)
             source_hash_before = (
                 run.assert_source_unchanged()
             )
@@ -331,6 +336,7 @@ class RuntimeOrchestrator:
                 file_path=source,
                 source_language=source_language,
                 target_language=target_language,
+                scope=declared_context,
                 declared_backends=list(
                     declared_backends or []
                 ),
@@ -557,7 +563,13 @@ class RuntimeOrchestrator:
                 saved_root = Path(resume_run)
                 saved_path = saved_root if saved_root.name == "run.json" else saved_root / "run.json"
                 saved = json.loads(saved_path.read_text(encoding="utf-8"))
-                if saved.get("memory_context", {}) != context:
+                expected_context = known_context(saved.get("memory_context"))
+                supplied_context = known_context(context)
+                # Older runs saved only explicit scope fields; their ingest
+                # artifact already carries the default role and stays intact.
+                if "text_role" in expected_context:
+                    supplied_context.setdefault("text_role", default_text_role.strip())
+                if expected_context != supplied_context:
                     raise OrchestrationError("resume translation scope differs from the saved run")
             return self._resume_translation_to_qa(
                 resume_run=resume_run, source=source,
@@ -567,6 +579,12 @@ class RuntimeOrchestrator:
                 limits=limits, on_progress=on_progress,
             )
 
+        context = known_context(context)
+        role = default_text_role.strip()
+        if context.get("text_role") and context["text_role"] != role:
+            raise OrchestrationError("translation scope text role differs from the requested text role")
+        if role:
+            context["text_role"] = role
         if on_progress:
             on_progress({"stage": "FORMAT_PROBE", "state": "STARTED"})
         manifest = self.prepare_translation(
@@ -577,6 +595,7 @@ class RuntimeOrchestrator:
                 provider_config_path,
             declared_backends=
                 declared_backends,
+            context=context,
         )
 
         if manifest["status"] == "BLOCKED":
@@ -585,13 +604,6 @@ class RuntimeOrchestrator:
             return manifest
         if on_progress:
             on_progress({"stage": "FORMAT_PROBE", "state": "COMPLETED"})
-        if context:
-            run_path = Path(manifest["artifacts"]["runtime_plan"]["path"]).parent
-            scoped_run = ProjectRun(manifest["run_id"], run_path, run_path / "run.json",
-                                    run_path / "audit.jsonl", run_path / "runtime-plan.json")
-            manifest = scoped_run.update(status=manifest["status"], current_stage=manifest["current_stage"],
-                                         memory_context=context)
-
         if (
             manifest["status"]
             != "READY_FOR_INGEST"

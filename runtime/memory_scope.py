@@ -14,6 +14,27 @@ SCOPE_FIELDS = ("project_id", "vendor", "product", "version", "domain", "text_ro
 _DIGEST = re.compile(r"^[0-9a-f]{64}$")
 
 
+def known_context(value: Any, *, include_document_scope: bool = True) -> Dict[str, str]:
+    """Keep declared applicability fields, omitting unknown or empty metadata."""
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise ValueError("translation context must be an object")
+    result = {}
+    for name in SCOPE_FIELDS:
+        item = value.get(name)
+        if item is None:
+            continue
+        if not isinstance(item, str):
+            raise ValueError("translation context {} must be text".format(name))
+        if (name == "project_id" and not include_document_scope
+                and item.strip().startswith("document:") and _DIGEST.fullmatch(item.strip()[9:])):
+            continue
+        if item.strip():
+            result[name] = item.strip()
+    return result
+
+
 def _context(value: Any) -> Dict[str, str]:
     if value is None:
         return {}

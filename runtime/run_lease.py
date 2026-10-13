@@ -91,7 +91,7 @@ class RunLease:
 
 RESUMABLE_STATES = {"FAILED", "INTERRUPTED", "READY_FOR_TRANSLATION",
                     "TRANSLATION_PROPOSED", "READY_FOR_SEMANTIC_ADJUDICATION",
-                    "SEMANTIC_ADJUDICATED"}
+                    "SEMANTIC_ADJUDICATION_READY"}
 
 
 def resumable_runs(workspace: Path):

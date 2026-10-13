@@ -17,6 +17,108 @@ func chooseFile(extensions: [String], directory: Bool = false) -> URL? {
     return panel.runModal() == .OK ? panel.url : nil
 }
 
+struct ProviderSettings: Codable {
+    let baseURL: String
+    let model: String
+    let apiKeyEnv: String
+    let proxyURL: String
+    let timeoutSeconds: Int
+    let maxResponseBytes: Int
+    let allowInsecureHTTP: Bool?
+    let proxyMode: String?
+    let apiMode: String?
+    let transportBackend: String?
+    let stream: Bool?
+    let temperatureMode: String?
+    let maxOutputTokens: Int?
+    let requestOptionsJSON: String?
+
+    var effectiveAPIMode: String { apiMode ?? "chat_completions" }
+    var effectiveTransportBackend: String { transportBackend ?? "auto" }
+
+    var effectiveProxyMode: String { proxyMode ?? (proxyURL.isEmpty ? "system" : "custom") }
+
+    var isLocal: Bool {
+        guard let host = URLComponents(string: baseURL)?.host?.lowercased() else { return false }
+        return ["localhost", "127.0.0.1", "::1"].contains(host)
+    }
+
+    func validationError() -> String? {
+        guard let url = URLComponents(string: baseURL),
+              let scheme = url.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
+              url.host != nil, url.user == nil, url.password == nil,
+              url.query == nil, url.fragment == nil else {
+            return "Enter a complete http(s) API base URL without a key or query string. / 请填写完整的 http(s) 服务地址，不要把密钥放入地址。"
+        }
+        if scheme == "http" && !isLocal && allowInsecureHTTP != true {
+            return "Enable trusted HTTP for this internal API service. / 如为可信的内部服务，请明确启用 HTTP 连接。"
+        }
+        if model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Enter the exact model ID supplied by your API service. / 请填写 API 服务提供的准确模型 ID。"
+        }
+        if apiKeyEnv.range(of: "^[A-Za-z_][A-Za-z0-9_]*$", options: .regularExpression) == nil {
+            return "The imported API key variable name is invalid. / 导入配置中的密钥变量名无效。"
+        }
+        if !(1...600).contains(timeoutSeconds) || !(1_024...20_000_000).contains(maxResponseBytes) {
+            return "The imported timeout or response limit is out of range. / 导入配置中的超时或响应大小超出允许范围。"
+        }
+        if !["system", "none", "custom"].contains(effectiveProxyMode) {
+            return "Choose a valid network route. / 请选择有效的网络连接方式。"
+        }
+        if effectiveProxyMode == "custom" {
+            guard let proxy = URLComponents(string: proxyURL),
+                  let proxyScheme = proxy.scheme?.lowercased(),
+                  ["http", "https"].contains(proxyScheme),
+                  proxy.host != nil, proxy.user == nil, proxy.password == nil,
+                  proxy.query == nil, proxy.fragment == nil else {
+                return "Enter an http(s) proxy URL such as http://127.0.0.1:1082. / 请填写 http(s) 代理地址，例如 http://127.0.0.1:1082。"
+            }
+        }
+        if !["chat_completions", "responses", "anthropic_messages"].contains(effectiveAPIMode) {
+            return "Choose a supported API protocol. / 请选择支持的 API 协议。"
+        }
+        if !["auto", "stdlib", "sdk"].contains(effectiveTransportBackend) {
+            return "Choose a supported request client. / 请选择支持的请求客户端。"
+        }
+        if let options = requestOptionsJSON, !options.isEmpty {
+            guard let data = options.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  Set(object.keys).isDisjoint(with: ["model", "messages", "input", "instructions", "system", "stream"]) else {
+                return "Additional parameters must be a JSON object without core request fields. / 附加参数须为 JSON 对象，不能覆盖模型、消息或流式开关。"
+            }
+        }
+        return nil
+    }
+
+    func temporaryFile() throws -> URL {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dbabel-provider-\(UUID().uuidString).json")
+        var configuration: [String: Any] = [
+            "provider": "openai-compatible",
+            "base_url": baseURL,
+            "model": model,
+            "api_key_env": apiKeyEnv,
+            "timeout_seconds": timeoutSeconds,
+            "max_response_bytes": maxResponseBytes,
+            "allow_insecure_http": allowInsecureHTTP == true,
+            "proxy_mode": effectiveProxyMode,
+            "api_mode": effectiveAPIMode,
+            "transport_backend": effectiveTransportBackend,
+            "stream": stream ?? true,
+            "temperature_mode": temperatureMode ?? "auto"
+        ]
+        if let maxOutputTokens { configuration["max_output_tokens"] = maxOutputTokens }
+        if let options = requestOptionsJSON, !options.isEmpty,
+           let bytes = options.data(using: .utf8) {
+            configuration["extra_body"] = try JSONSerialization.jsonObject(with: bytes)
+        }
+        let data = try JSONSerialization.data(withJSONObject: configuration, options: [.prettyPrinted, .sortedKeys])
+        try data.write(to: path, options: [.atomic])
+        return path
+    }
+}
+
 final class DesktopController {
     struct SavedSession {
         let bundle: URL
@@ -543,17 +645,35 @@ final class DesktopController {
                 DispatchQueue.main.async {
                     try? FileManager.default.removeItem(at: provider)
                     guard let self = self else { return }
-                    if finished.terminationStatus == 0 {
-                        onResult(true, self.contents(output))
-                    } else {
-                        onResult(false, self.contents(error))
-                    }
+                    let result = Self.providerCheckResult(exitStatus: finished.terminationStatus,
+                                                          output: self.contents(output),
+                                                          error: self.contents(error))
+                    onResult(result.success, result.detail)
                 }
             }
         } catch {
             try? FileManager.default.removeItem(at: provider)
             onResult(false, error.localizedDescription)
         }
+    }
+
+    static func providerCheckResult(exitStatus: Int32, output: String,
+                                    error: String) -> (success: Bool, detail: String) {
+        if let bytes = output.data(using: .utf8),
+           let report = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any] {
+            if exitStatus == 0, report["status"] as? String == "TASK_READY",
+               report["contract_verified"] as? Bool == true {
+                return (true, "Sample translation check passed. / 样本翻译检查通过。")
+            }
+            if report["status"] as? String == "CONTRACT_FAILED" {
+                let findings = (report["findings"] as? [String] ?? []).joined(separator: "; ")
+                return (false, "API connected, but the sample translation check failed. / API 已连接，样本翻译检查未通过。\n" + findings)
+            }
+        }
+        let detail = error.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (false, detail.isEmpty
+            ? "The API test returned no valid task result. / API 测试未返回有效的任务结果。"
+            : detail)
     }
 
     func close() {

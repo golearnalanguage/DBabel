@@ -6,7 +6,7 @@
 
 公司接口必须先接入公司内网或 VPN。建议先启用流式响应和 300 秒空闲超时；代理遵循公司实际网络路径，可用系统代理或直连。可信 HTTP 内网地址沿用显式授权开关，HTTPS 仍校验证书；不限制厂商或模型名单，安装包不含公司地址和密钥。
 
-桌面配置可选择协议、流式响应、是否省略 temperature、超时（1–600 秒），并填写可选模型参数 JSON。导入的配置也支持 `max_output_tokens`。例如 `{"thinking":{"type":"disabled"}}` 仅在用户填写时发送，是否支持由网关与模型决定；此处不得填写密钥。推理系列模型默认省略 temperature；400 错误明确拒绝 temperature 或 stream 时，各做一次兼容回退，其他错误正常显示。
+桌面配置可选择协议、**请求客户端**（自动、内置兼容客户端、官方 SDK）、流式响应、是否省略 temperature、超时（1–600 秒），并填写可选模型参数 JSON。导入的配置也支持 `max_output_tokens` 和 `transport_backend`。例如 `{"thinking":{"type":"disabled"}}` 仅在用户填写时发送，是否支持由网关与模型决定；此处不得填写密钥。推理系列模型默认省略 temperature；400 错误明确拒绝 temperature 或 stream 时，各做一次兼容回退，其他错误正常显示。
 
 支持 JSON 与 SSE 的完整译文解析，包括心跳、多行 data、不同换行、用量与结束标记。思考文本、工具调用不会充当译文；响应截断、乱码、输出 token 耗尽、空闲超时、空答案不会记为完成。缓存大小有上限，流式总时限为 `max(600, timeout_seconds * 6)` 秒。
 
@@ -16,11 +16,19 @@
 
 [requirements-integration.txt](../requirements-integration.txt) 锁定 OpenAI/Anthropic 官方 SDK。配置 `transport_backend` 可选 `auto`（已安装且端点兼容时使用 SDK，否则用标准库）、`stdlib` 或 `sdk`（不可用时明确报错）。SDK 需要 Python 3.10+，核心标准库路径保留 Python 3.9 支持。响应完成、重试上限、检查点与人审规则仍由 DBabel 控制；采用项目和原始许可见[第三方声明](../THIRD_PARTY_NOTICE.md)。
 
+**请求客户端**默认“自动”（`auto`）。测试网关与既有标准库适配时可选“内置兼容”（`stdlib`）；选“官方 SDK”（`sdk`）则要求使用已安装的 SDK。该选择会保存，在配置导入时保留，并传给翻译任务；切换客户端保留同一服务身份，可继续使用匹配的检查点。
+
+Anthropic SDK 适配要求端点以 `/v1/messages` 结尾，其他 Messages 路径在 `auto` 模式下使用标准库传输。SDK 自身重试关闭，由 DBabel 控制重试上限。扩展模型参数保持在 JSON 请求正文内，无法覆盖 SDK 的传输请求头或超时设置。
+
+SDK 请求发送 `Accept-Encoding: identity`，遇到压缩响应会在解码前拒绝，响应大小上限也约束 SDK 的错误正文。网关需要遵循 identity 编码；当前 SDK 适配不解压 gzip、Brotli 等编码响应。传输诊断记录 SDK/版本、请求 ID、耗时和接收字节数，并遮蔽配置中的密钥。
+
 ```bash
 python scripts/check_provider_connection.py --provider-config provider.json --task-check
 ```
 
 命令发送一个小型合成中英翻译，检查 JSON 单元及受保护标记，返回 `TASK_READY` 或 `CONTRACT_FAILED`，附用量与传输诊断。它会使用服务 token，验证范围是一次小型合同；整份文档的质量与吞吐还需实际运行。连接可用、格式预检、提取成功、实际覆盖和最终导出分别检查。
+
+桌面**测试翻译能力**按钮执行同一任务预检。结果区分可用的翻译合同与已经连通但返回格式不符的端点，并显示具体校验问题供修正。
 
 ## 上游代码审核
 

@@ -4,6 +4,30 @@
 
 本地脚本提供路由、格式预检、术语、确定性 QA、覆盖和报告契约，结构化结果供 Agent 阅读来源与判断语义。先按[本地教程](WORKFLOW_GUIDE.zh-CN.md)进入项目并安装 Python 3.9+ 和 `requirements-dev.txt`。以下命令在项目根目录且虚拟环境已激活时运行。可选解析器不会自动安装。
 
+## 可选集成
+
+```bash
+python -m pip install -r requirements-integration.txt
+```
+
+Python 3.10+ 可安装官方 OpenAI/Anthropic SDK 传输，Python 3.11+ 可安装 RapidFuzz 相似建议；lxml 用于 TMX 交换。核心仍支持 Python 3.9。SDK 可用时自动选择，也可在 Provider JSON 中用 `transport_backend: "stdlib"` 或 `"sdk"` 指定。[服务兼容说明](PROVIDER_COMPATIBILITY.zh-CN.md)列出协议和流式响应限制。macOS 安装版已包含这些集成。
+
+## 服务任务预检与翻译续跑
+
+```bash
+python scripts/check_provider_connection.py --provider-config provider.json --task-check
+python scripts/run_project.py manual.docx --source-language zh-CN --target-language en --text-role PROSE --provider-config provider.json --project-id my-manual --product MyDatabase --product-version 1.0 --workspace-root output/runtime
+python scripts/list_resumable_runs.py --workspace-root output/runtime
+```
+
+任务预检用一条小型合成请求检查翻译 JSON 契约、单元 ID 与技术字面量。`TASK_READY` 表示该探针通过；`CONTRACT_FAILED` 表示 API 已响应但契约检查失败。测试会产生少量服务用量。省略 `--task-check` 时，CLI 继续提供原有的普通连通测试。
+
+在原翻译命令中加入 `--resume-run output/runtime/RUN_<id>` 可复用验证通过的产物和已完成批次。保留原文、语言组合、服务身份和声明的记忆上下文。发现列表包括可恢复的失败、中断及未完成阶段；运行中的进程持有系统锁，阻止同时续跑。项目 ID 与文档哈希回退规则见[范围化记忆](LOCAL_PRECHECK_AND_MEMORY.zh-CN.md)。
+
+## TMX 交换与证据缓存
+
+`scripts/tmx_exchange.py` 将普通 TMX 1.4 导入为待批准候选，或导出审核/记忆数据。`scripts/evidence_cache.py` 记录来源哈希、范围、到期时间及依赖单元，并在证据变化或过期时列出受影响单元。命令及来源保留规则见[互操作与证据](INTEROPERABILITY_AND_EVIDENCE.zh-CN.md)。
+
 ## 启动与导入
 
 ```bash
@@ -69,10 +93,12 @@ CLI 导出使用新文件名。默认 FINAL 要求完整审核，CHECKPOINT 保�
 
 ```bash
 python -m py_compile scripts/*.py
-python -m unittest discover -s tests -v
+python scripts/run_tests.py
 python scripts/check_documentation.py
 python scripts/check_package.py
 git diff --check
 ```
 
 有意修改包文件后执行 `python scripts/check_package.py --write-manifest` 再重验。不要将用户本地 demo 决策写入发布清单；先用干净发布副本校验。工作台上传只送到经令牌验证的本地服务；输入和提取报告保存在会话中。Agent 或外部解析服务按任务实际授权访问资料。
+
+测试入口自动建立临时记忆、术语设置和拒绝路径，保护用户实际状态。可选浏览器与属性测试见[贡献说明](../CONTRIBUTING.md)。

@@ -25,7 +25,7 @@ from runtime.checkpoint import checkpoint_digest, load_checkpoint, save_checkpoi
 from runtime.general_terms import candidates as general_term_candidates
 from runtime.translation_memory import matches as translation_memory_matches
 from runtime.translation_memory import rejections as translation_memory_rejections
-from runtime.memory_scope import record_applies
+from runtime.memory_scope import known_context, record_applies
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -316,6 +316,7 @@ def _request_payload(
                     unit.get("context")
                     or {}
                 )["text_role"],
+                "context": known_context(unit.get("context"), include_document_scope=False),
                 "protected_literal_counts": {
                     literal: unit["source"].count(literal)
                     for literal in protected_literals(unit["source"])
@@ -351,6 +352,7 @@ Use REPLACE for translated prose, PROTECT only for unchanged technical literals,
 Preserve each protected_literal_counts key byte-for-byte and its exact occurrence count.
 Never repeat rejected_targets; rejected_phrases must not occur in matching-source translations.
 General database terms are unapproved hints; document context and approved project terms take precedence.
+Use the declared product, version and domain context to interpret wording; context is task metadata, not verified evidence.
 Translate ordinary words inside quotations and around slashes or arrows; keep the structural separators.
 Do not leave source-language prose in an English translation.
 Apply the unit's text role: headings and labels stay concise; procedural prose keeps each action and condition explicit.
@@ -375,6 +377,8 @@ def build_generation_request(
     if not retry_constraint:
         payload.pop("retry_constraint")
     for item in payload["units"]:
+        if not item["context"]:
+            item.pop("context")
         for key in ("rejected_targets", "rejected_phrases", "general_database_terms", "source_warning"):
             if not item[key]:
                 item.pop(key)

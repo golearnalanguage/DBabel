@@ -100,3 +100,61 @@ RuntimeOrchestrator(workspace_root=root/'runs').run_translation_to_review(
                 if child.poll() is None:
                     child.kill()
                 child.communicate(timeout=5)
+
+    def test_killed_owner_after_semantic_save_reuses_all_provider_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source.txt"
+            source.write_text("配置主库\n", encoding="utf-8")
+            config = root / "provider.json"
+            config.write_text(json.dumps({"provider": "openai-compatible", "base_url": "https://example.com/v1",
+                "api_key_env": "DBABEL_TEST_KEY", "model": "fake-model"}))
+            script = root / "child.py"
+            script.write_text('''import sys,time
+from pathlib import Path
+import runtime.orchestrator as orchestration
+from tests.test_runtime_resume import InterruptingProvider
+root=Path(sys.argv[1])
+def block_review_binding(**kwargs):
+ (root/'waiting').write_text('ready')
+ time.sleep(120)
+ raise AssertionError('parent should kill the owner before this point')
+orchestration.bind_review_session=block_review_binding
+orchestration.RuntimeOrchestrator(workspace_root=root/'runs').run_translation_to_review(
+ source=root/'source.txt',source_language='zh-CN',target_language='en',
+ provider_config_path=root/'provider.json',default_text_role='PROSE',
+ provider=InterruptingProvider())
+''')
+            env = dict(os.environ, PYTHONPATH=str(ROOT))
+            child = subprocess.Popen([sys.executable, str(script), str(root)], env=env,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            try:
+                deadline = time.monotonic() + 20
+                while not (root / "waiting").exists() and child.poll() is None and time.monotonic() < deadline:
+                    time.sleep(.05)
+                if not (root / "waiting").exists() and child.poll() is not None:
+                    stdout, stderr = child.communicate()
+                    self.fail("child failed before review binding: " + stderr.decode(errors='replace'))
+                self.assertTrue((root / "waiting").exists(), "child did not reach review binding")
+                run = next((root / "runs").glob("RUN_*"))
+                saved = json.loads((run / "run.json").read_text())
+                self.assertEqual(saved["status"], "SEMANTIC_ADJUDICATION_READY")
+                self.assertIn("semantic_adjudication", saved["artifacts"])
+                self.assertEqual(resumable_runs(root / "runs"), [])
+                child.kill()
+                child.communicate(timeout=5)
+                candidates = resumable_runs(root / "runs")
+                self.assertEqual(len(candidates), 1)
+                self.assertEqual(candidates[0]["status"], "SEMANTIC_ADJUDICATION_READY")
+                provider = InterruptingProvider()
+                result = RuntimeOrchestrator(workspace_root=root / "runs").run_translation_to_review(
+                    source=source, source_language="zh-CN", target_language="en",
+                    provider_config_path=config, default_text_role="PROSE", resume_run=run,
+                    provider=provider)
+                self.assertEqual(result["status"], "READY_FOR_HUMAN_REVIEW")
+                self.assertEqual(provider.calls, {"TRANSLATION": [], "ADJUDICATION": []})
+                self.assertEqual(probe_run_liveness(run), "INACTIVE")
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                child.communicate(timeout=5)

@@ -40,11 +40,13 @@ Use **Upload documents** to inspect and import TXT, Markdown, CSV/TSV, JSON/JSON
 
 All local sessions, including the demo and review-only sessions, export **JSON, CSV, TSV, Markdown, HTML and TXT** review results. Original-format delivery supports **DOCX, TXT, Markdown and anchored XLSX**, with a receipt, bilingual HTML and Markdown/JSON Agent handoff. See [format dependencies and fidelity](docs/DOCUMENT_FORMATS.md).
 
-## The Babel App Now is available on GitHub
+## Download the DBabel macOS App
+
+The current source and local build are **1.7.0, unreleased**. This build adds scoped translation memory, process-lock recovery after interrupted runs, task-level API checks, optional official SDK transports, similarity suggestions, plain-text TMX exchange and evidence snapshots. See [Changes](CHANGELOG.md) for the complete list. The GitHub download below remains the published **v1.6.0** build.
 
 The [DBabel macOS App release](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0) provides a self-contained Apple Silicon disk image. Drag **DBabel.app** into Applications, then choose **AI translation** to configure an OpenAI-compatible service and translate a document, or **Local bilingual review** to upload documents, open the demo, and resume a saved session. The Workbench saves review decisions and in-progress translation or note drafts locally; its right-hand chat can use the same configured API service. Downloaded review results include the source filename. See the [desktop guide](docs/DESKTOP_APP.md) for installation, format support, and export steps.
 
-New in **1.6.0**: streaming and protocol selection for Chat Completions (including NewAPI gateways), Responses and Claude Messages; smaller-batch recovery for interrupted requests; configurable timeouts and model options; local translation memory and opt-in database terms. Portable Review adds cached draft recovery, explicit current/suggested acceptance, edit confirmation, resizable details and navigation that follows the selected segment. The Skill routes detailed procedures by stage instead of loading the full workflow into every call. Read [API compatibility](docs/PROVIDER_COMPATIBILITY.md) and [local memory](docs/LOCAL_PRECHECK_AND_MEMORY.md).
+Published in **1.6.0**: streaming and protocol selection for Chat Completions (including NewAPI gateways), Responses and Claude Messages; smaller-batch recovery for interrupted requests; configurable timeouts and model options; local translation memory and opt-in database terms. Portable Review adds cached draft recovery, explicit current/suggested acceptance, edit confirmation, resizable details and navigation that follows the selected segment. The Skill routes detailed procedures by stage instead of loading the full workflow into every call. Read [API compatibility](docs/PROVIDER_COMPATIBILITY.md) and [local memory](docs/LOCAL_PRECHECK_AND_MEMORY.md).
 
 ## Workflow
 
@@ -69,6 +71,8 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python scripts/start_local.py
 ```
+
+For the optional official SDKs, memory similarity and TMX commands, also run `.venv/bin/python -m pip install -r requirements-integration.txt`. The SDKs require Python 3.10+ and RapidFuzz requires Python 3.11+; version markers keep the core usable on Python 3.9. The self-contained 1.7.0 macOS package includes these runtime integrations.
 
 The launcher creates a separate demo copy once, then resumes it. For a real document, open **Upload documents**, inspect the scope and create a session. On macOS, the [native desktop app](docs/DESKTOP_APP.md) opens the same local Workbench in a continuous system-material window; its demo and saved sessions use the same appearance. The [local walkthrough](docs/WORKFLOW_GUIDE.md) covers offline use, starting from any directory, translation proposals, terminology, QA and delivery. The [documentation index](docs/INDEX.md) links separate English and Chinese manuals.
 
@@ -145,7 +149,7 @@ references.
 - Deterministic QA checks placeholders, paths, URLs, numbers, units and other literal content. A `POTENTIAL_ISSUE` requires interpretation; a passing check is not semantic approval.
 - Preserve product/version distinctions and uncertainty. Evidence must support the actual claim and scope.
 - Native export checks the original hash, changed text anchors and round-trip text integrity. It writes a new copy and preserves non-target text. Visual layout review remains a separate check.
-- Agent reports disclose inspected scope, unresolved items and unavailable checks. Use the DBabel JSON/CSV contracts for interchange; TBX, TMX and XLIFF require separate adapters.
+- Agent reports disclose inspected scope, unresolved items and unavailable checks. Use the DBabel JSON/CSV contracts or the [plain-segment TMX 1.4 CLI](docs/INTEROPERABILITY_AND_EVIDENCE.md) for interchange. TMX imports produce unapproved JSON candidates; TBX, XLIFF and inline-code reconstruction remain future adapters.
 
 ## Development and reference
 
@@ -153,11 +157,11 @@ Repository version: **1.7.0**. Review Workbench version: **1.7.0**. This build i
 
 ```bash
 python -m py_compile scripts/*.py
-python -m unittest discover -s tests -v
+python scripts/run_tests.py
 python scripts/check_package.py
 ```
 
-After intentional package edits, regenerate `MANIFEST.sha256` with `python scripts/check_package.py --write-manifest`, rerun validation and check `git diff --check`.
+The test runner forces disposable memory, settings and rejection paths. Use it for focused tests as well; see [Contributing](CONTRIBUTING.md) for browser, integration and property checks. After intentional package edits, stage new package files, regenerate `MANIFEST.sha256` with `python scripts/check_package.py --write-manifest`, rerun validation and check `git diff --check`.
 
 [Architecture](docs/ARCHITECTURE.md) · [Local tools](docs/LOCAL_TOOLING.md) · [Capabilities](docs/AGENT_CAPABILITY_MATRIX.md) · [Post-review QA](docs/POST_REVIEW_QA.md) · [Interoperability and evidence cache](docs/INTEROPERABILITY_AND_EVIDENCE.md) · [Package index](PACKAGE_INDEX.md) · [License](LICENSE)
 

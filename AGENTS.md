@@ -63,7 +63,7 @@ Supported single-target upload sessions configure these paths automatically.
 For a review in progress, `DRAFT` exports every aligned approved or suggested
 translation into a new native-format copy and identifies unreviewed units in
 its receipt. `FINAL` still requires human decisions and fresh QA. The desktop
-app saves translation checkpoints after provider batches; resume a failed run
+app saves translation checkpoints after provider batches; resume a failed or interrupted run
 with the same source, language pair and provider settings instead of repeating
 successful batches. Review decisions, notes, chat history and the active view
 are stored in the local session; do not treat AI chat as a human decision.
@@ -74,6 +74,15 @@ HTML and Markdown/JSON Agent handoff; inspect rendered layout separately.
 
 Portable decisions must be imported into the matching `.dbreview` session and
 rechecked before export.
+
+Local memory is isolated by project, vendor/product/version, domain and text role.
+Set `--project-id` on `scripts/run_project.py` for deliberate cross-document reuse;
+otherwise the original document SHA-256 defines the boundary. Missing metadata is
+unknown. Legacy unscoped entries remain available for management, with a
+pre-migration backup, and do not automatically supply translations or rejections.
+Use `scripts/list_resumable_runs.py` for lock-aware discovery and
+`scripts/check_provider_connection.py --task-check` for a bounded translation
+probe. See `docs/INTEROPERABILITY_AND_EVIDENCE.md` for TMX candidates and cache checks.
 
 ## Repository maintenance
 

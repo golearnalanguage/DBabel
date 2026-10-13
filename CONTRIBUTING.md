@@ -28,10 +28,27 @@ Keep methodology changes separate from any optional dataset work. DBabel core mu
 
 Install `requirements-dev.txt` in a virtual environment. Run
 `python scripts/check_package.py` and `python scripts/run_tests.py`.
-After intentional edits, regenerate checksums with
+The test runner forces disposable translation-memory, general-term settings and
+rejection-memory paths, including when the caller has existing environment overrides.
+Pass normal unittest arguments through this runner for focused checks, for example
+`python scripts/run_tests.py discover -s tests -p 'test_tmx_exchange.py' -v`.
+After intentional edits, stage new package files, regenerate checksums with
 `python scripts/check_package.py --write-manifest` and re-run validation.
 For workflow changes, also exercise a relevant case from
 [behavioral evaluation](tests/BEHAVIORAL_EVAL.md) and record the observed result.
+
+Install `requirements-integration.txt` alongside the core requirements on Python
+3.11+ to exercise all adopted runtime integrations; the CI integration job uses
+Python 3.12. Install `requirements-property.txt` on Python 3.11+ and run
+`python scripts/run_tests.py discover -s tests/property -p 'test_*.py' -v`
+for generated native-document invariants. Core Python 3.9 validation remains a
+separate supported path with unavailable optional integrations skipped.
+
+The macOS release packager retains first-party notices, the matching CPython/OpenSSL
+runtime inventory and installed package licenses under `Contents/Resources/licenses`.
+Check `scripts/check_third_party.py` before packaging and inspect the resulting
+inventory when changing runtime dependencies. See
+[third-party notices](THIRD_PARTY_NOTICE.md) for attribution requirements.
 
 ## Documentation changes
 
@@ -41,6 +58,15 @@ Keep each diagnostic case in its own category file and update the example router
 
 ## Browser interaction regression
 
-`tests/workbench_browser_smoke.cjs` exercises desktop and portable decisions, themes, filters, notes, QA and downloads using Playwright. Use a temporary copy of the synthetic demo bundle: the test changes its decisions. Build a portable HTML from that copy, start a local workbench for the copy, then supply `DBABEL_TEST_URL` (including its session token) and `DBABEL_TEST_PORTABLE` (absolute file path). Run `node tests/workbench_browser_smoke.cjs` in an environment with Playwright available. `DBABEL_CHROME` optionally selects an installed browser executable. Playwright is not a core runtime dependency.
+Install the core Python dependencies and run `npm ci --ignore-scripts`, followed by
+`npx playwright install chromium` when an installed browser is unavailable. Run
+`python tests/run_browser_smoke.py --output output/browser-checks` with a new output
+directory. `DBABEL_CHROME` optionally selects an installed browser executable.
+Playwright and axe-core are development dependencies.
 
-The additional `tests/workbench_exchange_smoke.cjs` covers interface language, theme, responsive layouts at four widths, six result downloads, glossary upload, preflight and multilingual intake. It creates a new session and rotates the server token; run it after the existing desktop/portable smoke test. Set `DBABEL_TEST_OUTPUT` to a scratch directory for downloads and screenshots. Never point these tests at a user's active review session.
+This runner creates disposable synthetic sessions, isolated memory/settings/rejections
+and portable HTML, starts its own servers, and checks that the tracked demo and default
+user storage remain unchanged. Its five groups cover decisions, result exchange,
+native delivery, accessibility and draft recovery. Screenshots, diagnostics and
+synthetic review artifacts remain in the selected output directory. Use the runner
+instead of pointing individual browser scripts at a user's active session.

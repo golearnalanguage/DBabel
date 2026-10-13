@@ -17,6 +17,30 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 ```
 
+## Optional integrations
+
+```bash
+python -m pip install -r requirements-integration.txt
+```
+
+This installs official OpenAI/Anthropic SDK transports on Python 3.10+, RapidFuzz similarity suggestions on Python 3.11+, and lxml for TMX exchange. The core remains usable on Python 3.9; SDK transport is selected automatically when available, and provider JSON can select `transport_backend: "stdlib"` or `"sdk"` explicitly. See [provider compatibility](PROVIDER_COMPATIBILITY.md) for protocol and streaming limits. The packaged macOS app includes these integrations.
+
+## Check the provider and run a resumable translation
+
+```bash
+python scripts/check_provider_connection.py --provider-config provider.json --task-check
+python scripts/run_project.py manual.docx --source-language zh-CN --target-language en --text-role PROSE --provider-config provider.json --project-id my-manual --product MyDatabase --product-version 1.0 --workspace-root output/runtime
+python scripts/list_resumable_runs.py --workspace-root output/runtime
+```
+
+The task check uses one bounded synthetic request to verify the translation JSON contract, unit identity and protected literals. `TASK_READY` means that probe passed; `CONTRACT_FAILED` means the API responded but the contract failed. This may consume provider tokens. Without `--task-check`, the CLI performs the earlier connection-only probe.
+
+Add `--resume-run output/runtime/RUN_<id>` to the same translation command to reuse verified artifacts and completed batches. Keep the source, language pair, provider identity and declared memory context unchanged. Discovery includes recoverable failed, interrupted and unfinished stage states; an active process owns an OS lock and excludes concurrent resume. See [scoped memory](LOCAL_PRECHECK_AND_MEMORY.md) for project IDs and document-hash fallback.
+
+## TMX interchange and evidence cache
+
+`scripts/tmx_exchange.py` imports plain TMX 1.4 as unapproved candidates or exports review/memory data. `scripts/evidence_cache.py` records source hashes, scope, expiry and dependent unit IDs, then reports affected units when evidence drifts or expires. Commands and provenance rules are in [interoperability and evidence](INTEROPERABILITY_AND_EVIDENCE.md).
+
 ## Build a runtime plan
 
 For an inline/text-only task:
@@ -119,7 +143,7 @@ The validator checks recorded contract consistency and evidence/repair gating. R
 
 ```bash
 python -m py_compile scripts/*.py
-python -m unittest discover -s tests -v
+python scripts/run_tests.py
 python scripts/check_package.py
 ```
 
@@ -128,9 +152,11 @@ After intentional package edits:
 ```bash
 python scripts/check_package.py --write-manifest
 python scripts/check_package.py
-python -m unittest discover -s tests -v
+python scripts/run_tests.py
 git diff --check
 ```
+
+The test runner creates disposable memory, terminology-settings and rejection paths, protecting the user's live state. Optional browser and property jobs are described in [contributing](../CONTRIBUTING.md).
 
 ## Local files and services
 

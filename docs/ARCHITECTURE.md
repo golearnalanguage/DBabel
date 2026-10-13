@@ -68,3 +68,5 @@ The Accuracy Core checks literal integrity and approved terminology conditions. 
 Format probing is bounded and non-executing. Optional parser/detector backends are
 capabilities, not mandatory dependencies. A selected parser must still be followed
 by ingest validation before full coverage can be claimed.
+
+The provider-backed runtime saves verified batches and artifacts under a process-held run lock, enabling recovery of inactive unfinished stages. Official SDKs and the built-in client share DBabel's bounded retries, response validation and task-level synthetic preflight. Translation memory and rejection constraints use one exact project/document scope; RapidFuzz supplies suggestions within it. Optional TMX and evidence-cache CLIs preserve provenance and report stale dependencies. [Local tooling](LOCAL_TOOLING.md) provides the entry points.

@@ -10,6 +10,9 @@
 - Add lxml-backed, plain-segment TMX 1.4 CLI interchange. Preserve language tags, scope and metadata; retain unsupported inline XML in unapproved candidate receipts. Exclude rejected memory records from export by default.
 - Add a local evidence cache with retained source SHA-256 snapshots, exact scope, explicit expiry and affected-unit reports. Source/scope changes require review without changing human decisions.
 - Credit adopted OpenAI/Anthropic SDKs, RapidFuzz and lxml separately from architecture references; list Playwright, Hypothesis and axe-core as development verification tools.
+- Preserve request-client selection across desktop configuration import, saved settings and translation; surface connected-but-invalid task probe failures with their findings.
+- Carry known project/product/version context through runtime routing and translation/semantic requests; align operational guides and package entry points with the current contracts.
+- Recover the saved semantic-adjudication stage after process death without repeating translation or adjudication requests.
 
 ## 1.6.0 — 2026-10-03
 

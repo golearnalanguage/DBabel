@@ -6,13 +6,15 @@ Read only the section for the current stage. The [Skill kernel](../SKILL.md) def
 
 ### 1. Establish context and preflight
 
-Record task mode, source/target languages, product/version, user resources, research permission and repair authorization. Leave unsupported facts unknown. For reproducible context and routing:
+Record task mode, source/target languages, project ID, vendor/product/version, domain, concrete text roles, user resources, research permission and repair authorization. Leave unsupported facts unknown. Preserve these fields in review-unit `context`; `context.project_id` is a stable project identity for deliberate cross-document reuse. Without it, an available original/source SHA-256 provides a document scope. Exact memory, rejected renderings, similar candidates and linked human decisions require matching scope. See [local memory](../docs/LOCAL_PRECHECK_AND_MEMORY.md). For reproducible context and routing:
 
 ```bash
 python scripts/prepare_runtime.py --mode AUDIT --file manual.docx --declare-backend native_agent --output runtime-plan.json
 ```
 
 Probe file content and available capabilities before parsing. A `READY` or `READY_FOR_INGEST` result identifies a usable parser; extraction still needs to run. For upload extraction and result-format choices, read [document formats](../docs/DOCUMENT_FORMATS.md). Use `scripts/intake_document.py --inspect` to obtain located text and declared omissions from the built-in intake path.
+
+For a provider-backed translation, run `python scripts/check_provider_connection.py --provider-config provider.json --task-check` before document generation. `TASK_READY` verifies one bounded synthetic JSON translation and its protected literals; `CONTRACT_FAILED` identifies a response that fails that contract. Document-wide quality remains subject to ingest, QA and human review. Official SDK or built-in transport is selected with provider `transport_backend`; see [provider compatibility](../docs/PROVIDER_COMPATIBILITY.md).
 
 ### 2. Route and ingest
 
@@ -35,6 +37,8 @@ Each review unit must give the reviewer something actionable:
 - For deterministic mismatches, name the literal, number, condition or terminology rule to inspect. A generic “review required” alone is insufficient.
 
 `scripts/create_review_session.py` preserves `suggested_target` and `suggestion_reason` from aligned units. Findings in an audit report can also produce located proposals. The UI supplies per-unit revision guidance for older sessions without suggestions.
+
+The provider runtime saves completed batches and holds an OS run lock. Discover failed, interrupted or inactive unfinished runs with `scripts/list_resumable_runs.py --workspace-root <workspace>`, then add `--resume-run <run-directory>` to the original `scripts/run_project.py` command. Keep source, languages, provider identity and declared memory context unchanged. Recovery verifies saved artifacts and resumes pending work; an active owner blocks concurrent resume. RapidFuzz similarity candidates remain `SUGGESTION_ONLY` and require manual review.
 
 ### 4. Validate glossary and QA
 
@@ -99,14 +103,18 @@ pixel-identical pagination from text or XML checks alone.
 The reviewer checks proposals, edits text, records decisions and reruns QA. Preserve existing decisions and notes during further Agent work. Import Portable Review decisions into the matching session and run fresh local QA.
 
 A human rejection may record the rejected wording and its reason in the session.
-For future proposals in the same language direction, never repeat that wording
-for the same source segment. Short source/target term pairs also apply inside
-longer segments containing the source phrase. This memory prohibits one
+For future proposals in the same language direction and applicability scope,
+never repeat that wording for the same source segment. Short source/target term
+pairs also apply inside longer segments containing the source phrase in that
+scope. Older `LEGACY_UNSCOPED` records remain manageable and exportable, without
+automatic constraints. This memory prohibits one
 rendering; it does not approve an alternative or create a project glossary
 entry. Keep the record with the session and allow explicit removal. If the
 provider repeats it after bounded retries, route the unit to human revision.
 
 The macOS Workbench keeps a session-scoped chat beside the selected unit. The reviewer may quote source and target, ask for the translation rationale, add a document or image, and continue the same conversation. Keep the selected unit ID and source/target context in each answer; distinguish a rule or located reference from an inference. A model's chat answer is not a human decision, cited authority, or QA result. Retain chat history with the session and return to the actual review decision controls for acceptance or editing. The browser-search shortcut opens the system default browser; inspect original sources before citing them as evidence.
+
+Optional [TMX interchange and evidence-cache commands](../docs/INTEROPERABILITY_AND_EVIDENCE.md) retain provenance and scope. TMX imports create unapproved candidates. Evidence-cache checks list stale sources and dependent units while preserving human decisions; reopen changed/expired evidence and repeat applicable review/QA before using it.
 
 ### 6. Deliver results and verify native copies
 

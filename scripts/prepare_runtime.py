@@ -2,6 +2,7 @@
 """Prepare a validated DBabel runtime plan with progressive resource loading."""
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Iterable, List, Optional
 
@@ -12,6 +13,10 @@ from preflight_document import PreflightError, preflight_document
 from route_resources import RoutingError, build_plan, validate_task_context
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from runtime.memory_scope import known_context
+
 SCHEMA_DIR = ROOT / "schemas"
 SCHEMA_BASE = "https://dbabel.invalid/schemas/"
 
@@ -162,8 +167,9 @@ def prepare_runtime(
         context["source_language"] = source_language
     if target_language:
         context["target_language"] = target_language
-    if scope:
-        context["scope"] = scope
+    known_scope = known_context(scope)
+    if known_scope:
+        context["scope"] = known_scope
 
     context_errors = validate_task_context(context)
     if context_errors:
@@ -197,7 +203,7 @@ def prepare_runtime(
 
 def _scope_from_args(args: argparse.Namespace) -> Optional[dict]:
     scope = {}
-    for key in ("vendor", "product", "version", "domain", "text_role"):
+    for key in ("project_id", "vendor", "product", "version", "domain", "text_role"):
         value = getattr(args, key)
         if value:
             scope[key] = value
@@ -223,6 +229,7 @@ def main() -> None:
     )
     parser.add_argument("--source-language")
     parser.add_argument("--target-language")
+    parser.add_argument("--project-id")
     parser.add_argument("--vendor")
     parser.add_argument("--product")
     parser.add_argument("--version")

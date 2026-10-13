@@ -9,7 +9,7 @@
 在选定的 Python 环境安装可选集成依赖：
 
 ```bash
-python -m pip install -r requirements-integration.txt
+python -m pip install -r requirements-dev.txt -r requirements-integration.txt
 ```
 
 将现有本地记忆导出到新 TMX 文件：
@@ -58,13 +58,13 @@ python scripts/check_third_party.py
 python scripts/check_third_party.py --installed --distribution-path /absolute/site-packages --output output/license-inventory
 ```
 
-清单保留许可原文字节、wheel 原生库声明及 SHA-256 回执。退出码 `2` 表示元数据、安装版本差异或缺失声明需复核，工具会记录缺口。选定目录之外的独立 Python/OpenSSL 运行时与浏览器二进制仍需单独盘点；输出目录必须为新路径。
+清单保留许可原文字节、wheel 原生库声明及 SHA-256 回执。退出码 `2` 表示元数据、安装版本差异或缺失声明需复核，工具会记录缺口。macOS 打包器还会将 CPython 构建与[保留的 Python/OpenSSL 清单](../third_party/python-runtime/20260924/README.md)核对，并将声明放入 `Contents/Resources/licenses/python-runtime`。选定目录之外的其他独立运行时与浏览器二进制仍需单独盘点；输出目录必须为新路径。
 
 定向验证命令：
 
 ```bash
-python -m unittest discover -s tests -p 'test_tmx_exchange.py' -v
-python -m unittest discover -s tests -p 'test_evidence_cache.py' -v
+python scripts/run_tests.py discover -s tests -p 'test_tmx_exchange.py' -v
+python scripts/run_tests.py discover -s tests -p 'test_evidence_cache.py' -v
 ```
 
-TMX 测试需要 lxml，仅核心依赖环境会跳过；集成环境应实际运行全部 TMX 测试。证据缓存测试沿用核心校验依赖。
+测试入口强制使用临时记忆、设置和拒绝记录路径。TMX 测试需要 lxml，仅核心依赖环境会跳过；集成环境应实际运行全部 TMX 测试。证据缓存测试沿用核心校验依赖。

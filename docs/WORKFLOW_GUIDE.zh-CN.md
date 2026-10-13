@@ -80,6 +80,8 @@ python scripts/start_review_workbench.py output/agent-proposals.dbreview
 
 `target` 表示当前译文，`suggested_target` 表示待接受的建议。来源或目标为空时，请保留真实状态；工作台会显示对应的翻译或修改指引。
 
+需要 API 翻译时，可使用[桌面翻译流程](DESKTOP_APP.zh-CN.md#翻译文档)或[可续跑 CLI](LOCAL_TOOLING.zh-CN.md#服务任务预检与翻译续跑)。先用小型合成探针测试翻译能力，再处理实际文件。每个完成批次立即保存；中断后保留原文、语言、服务身份和记忆上下文继续运行。系统锁阻止第二个进程同时写入该运行。
+
 ## 4. 上传术语表并查看评分
 
 左侧 **术语 → 上传项目术语表**，选择 CSV 或 JSON，再点击 **验证并使用术语表**。格式参考 `templates/project_glossary.csv` 和 `templates/project_glossary.json`。Word/PDF 术语文档先由 Agent 整理为此结构，确认语言、产品范围及批准状态后上传。
@@ -91,6 +93,8 @@ python scripts/start_review_workbench.py output/agent-proposals.dbreview \
 ```
 
 评分为“通过的适用术语与单元检查数 / 全部适用检查数 × 100”。仅使用适用范围内的 `PROJECT_APPROVED` 条目；没有适用条目时显示暂无评分。它反映术语符合率，语义、拼写和表达另行复核。上传成功后术语表保存在当前会话中，后续编辑及 QA 使用同一文件。
+
+翻译记忆还按项目、厂商/产品/版本、领域和文本角色隔离。需要跨文档复用时，在 Agent 准备的单元中填写稳定的 `context.project_id`；否则原件或原文哈希将复用限定在该文档。安装 RapidFuzz 后，所选单元会显示「相似的已批准译文」、分数和原文差异，供编辑参考，修改结果仍需审核。旧的无范围记录继续提供管理和导出。详见[记忆说明](LOCAL_PRECHECK_AND_MEMORY.zh-CN.md)及可选 [TMX/证据命令](INTEROPERABILITY_AND_EVIDENCE.zh-CN.md)。
 
 ## 5. 审核与 QA
 

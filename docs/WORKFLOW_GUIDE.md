@@ -66,6 +66,8 @@ decisions and notes. Create a separate proposal session; do not approve it.
 
 Create a proposal session from aligned data with `python scripts/create_review_session.py aligned-units.json --original target.docx --output output/proposals.en.dbreview`. The original must be the same file whose current text and locations the units describe. `target` is current text; `suggested_target` is a proposal. For manual review, continue in the uploaded session instead.
 
+For an API-backed translation, use [the desktop translation flow](DESKTOP_APP.md#translate-a-document) or [the resumable CLI](LOCAL_TOOLING.md#check-the-provider-and-run-a-resumable-translation). Test translation capability with the small synthetic probe, then process the actual file. A run saves each completed batch; after interruption, resume with the same source, languages, provider identity and memory context. The run lock prevents a second process from writing the same run.
+
 ## 4. Add terminology
 
 Open **Terminology → Upload project glossary**, select canonical CSV/JSON, then **Validate and use glossary**. Templates are under `templates/project_glossary.*`. Have an Agent convert a Word/PDF terminology document into that structure, retaining language, product scope, provenance and actual approval status.
@@ -75,6 +77,8 @@ python scripts/validate_glossary.py templates/project_glossary.csv
 ```
 
 The score is passed applicable term/unit checks divided by all applicable checks, multiplied by 100. Only scoped `PROJECT_APPROVED` entries count; no applicable entries means no score. It measures terminology compliance, not complete translation quality.
+
+Translation memory uses project, vendor/product/version, domain and text-role scope in addition to the language pair. Supply a stable `context.project_id` in Agent-prepared units for deliberate reuse across documents; otherwise an available original/source hash limits reuse to that document. The selected unit shows **Similar approved translations** with scores and source differences when RapidFuzz is installed. Use them as editing references and review the resulting text. Old unscoped records stay available for management/export. See [memory details](LOCAL_PRECHECK_AND_MEMORY.md) and optional [TMX/evidence commands](INTEROPERABILITY_AND_EVIDENCE.md).
 
 ## 5. Review and run QA
 

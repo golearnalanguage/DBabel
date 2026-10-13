@@ -9,7 +9,7 @@ The commands below add local artifacts to the existing review workflow. TMX impo
 Install the optional integrations into your selected Python environment:
 
 ```bash
-python -m pip install -r requirements-integration.txt
+python -m pip install -r requirements-dev.txt -r requirements-integration.txt
 ```
 
 Export existing local memory to a new TMX file:
@@ -58,13 +58,13 @@ python scripts/check_third_party.py
 python scripts/check_third_party.py --installed --distribution-path /absolute/site-packages --output output/license-inventory
 ```
 
-The inventory preserves original license bytes, wheel native-library notices and SHA-256 receipts. Exit `2` means metadata, installed-version drift or missing notice material needs review; no license is inferred. Standalone Python/OpenSSL runtimes and browser binaries outside the selected trees require separate inventory. The output directory must be new.
+The inventory preserves original license bytes, wheel native-library notices and SHA-256 receipts. Exit `2` means metadata, installed-version drift or missing notice material needs review; no license is inferred. The macOS packager additionally verifies its CPython build against the [retained Python/OpenSSL inventory](../third_party/python-runtime/20260924/README.md) and bundles those notices under `Contents/Resources/licenses/python-runtime`. Other standalone runtimes and browser binaries outside the selected trees require separate inventory. The output directory must be new.
 
 Focused checks:
 
 ```bash
-python -m unittest discover -s tests -p 'test_tmx_exchange.py' -v
-python -m unittest discover -s tests -p 'test_evidence_cache.py' -v
+python scripts/run_tests.py discover -s tests -p 'test_tmx_exchange.py' -v
+python scripts/run_tests.py discover -s tests -p 'test_evidence_cache.py' -v
 ```
 
-TMX tests require lxml and are skipped in a core-only environment. An integration environment must run them without skips. Evidence-cache tests use the existing core validation dependencies.
+The runner forces disposable memory, settings and rejection paths. TMX tests require lxml and are skipped in a core-only environment. An integration environment must run them without skips. Evidence-cache tests use the existing core validation dependencies.

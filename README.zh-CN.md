@@ -29,9 +29,11 @@ DBabel 提供审核流程、本地工具和格式适配器。用户提供文档�
 
 ## 在 GitHub 下载 Mac 应用
 
+当前源码与本地构建为 **1.7.0，尚未发布**。本轮加入带作用域的翻译记忆、带进程锁的异常续跑、API 任务预检、可选官方 SDK、相似译文建议、纯文本 TMX 交换和证据快照，完整改动见[变更记录](CHANGELOG.md)。下面的 GitHub 下载仍对应已发布的 **v1.6.0**。
+
 [DBabel macOS App 发布页](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0)提供自带运行环境的 Apple Silicon 安装镜像。打开 DMG，将 **DBabel.app** 拖入“应用程序”。选择**AI 翻译全流程**可配置兼容的 API 服务并翻译文档；选择**本地双语审核**可上传文档、打开演示或继续之前的会话。工作台会在本地保存审核决定、正在修改的译文和备注草稿；右侧聊天可使用已配置的 API。下载的审核结果会带上原文件名。安装、格式支持和导出步骤见[桌面应用手册](docs/DESKTOP_APP.zh-CN.md)。
 
-**1.6.0 更新：**支持 NewAPI 等 Chat Completions 网关的流式响应，以及 Responses、Claude Messages 协议；支持超时和模型参数配置，遇到响应截断会拆小批次并保留已完成进度。新增本地翻译记忆、可选通用术语参考；便携审核支持编辑草稿缓存、恢复、明确区分接受现有译文和接受建议译文、编辑确认、可调详情栏与跟随定位。Skill 改为按阶段加载详细流程。详见[API 兼容配置](docs/PROVIDER_COMPATIBILITY.zh-CN.md)和[本地记忆库](docs/LOCAL_PRECHECK_AND_MEMORY.zh-CN.md)。
+**已发布的 1.6.0：**支持 NewAPI 等 Chat Completions 网关的流式响应，以及 Responses、Claude Messages 协议；支持超时和模型参数配置，遇到响应截断会拆小批次并保留已完成进度。新增本地翻译记忆、可选通用术语参考；便携审核支持编辑草稿缓存、恢复、明确区分接受现有译文和接受建议译文、编辑确认、可调详情栏与跟随定位。Skill 改为按阶段加载详细流程。详见[API 兼容配置](docs/PROVIDER_COMPATIBILITY.zh-CN.md)和[本地记忆库](docs/LOCAL_PRECHECK_AND_MEMORY.zh-CN.md)。
 
 ## 工作流程
 
@@ -56,6 +58,8 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python scripts/start_local.py
 ```
+
+使用可选官方 SDK、记忆相似候选或 TMX 命令时，再运行 `.venv/bin/python -m pip install -r requirements-integration.txt`。SDK 需要 Python 3.10+，RapidFuzz 需要 Python 3.11+；版本条件让核心环境继续支持 Python 3.9。自带运行环境的 1.7.0 macOS 安装包包含这些运行集成。
 
 启动器首次建立独立演示副本，以后继续保存的进度。macOS 用户可使用[原生桌面应用](docs/DESKTOP_APP.zh-CN.md)，在统一的系统材质窗口中翻译、上传文档或打开演示和已有会话。真实文档从“上传文档”开始；[完整中文流程](docs/WORKFLOW_GUIDE.zh-CN.md)包含离线使用、任意目录启动、译文建议、术语检查、QA 和导出。[文档目录](docs/INDEX.zh-CN.md)提供分开的中英文手册入口。
 
@@ -108,7 +112,7 @@ git clone https://github.com/golearnalanguage/DBabel.git \
 - 确定性 QA 检查占位符、路径、URL、数字、单位等完整性。`POTENTIAL_ISSUE` 需要判断；检查通过不等于语义正确。
 - 保留产品、版本和文本角色的区别；证据不足时保留不确定性，不靠猜测修改。
 - 原格式导出检查原文件哈希、目标锚点和回读文本，写入新副本并验证非目标文本不变；视觉版式检查仍需单独进行。
-- 报告必须说明已检查范围、未决项与未执行检查。交换数据使用 DBabel JSON/CSV 合同；TBX、TMX 和 XLIFF 需要另行实现适配器。
+- 报告必须说明已检查范围、未决项与未执行检查。交换数据使用 DBabel JSON/CSV 合同或[纯文本片段 TMX 1.4 CLI](docs/INTEROPERABILITY_AND_EVIDENCE.zh-CN.md)。TMX 导入生成待审 JSON 候选；TBX、XLIFF 和行内代码重建仍需后续适配。
 
 ## 开发与参考
 
@@ -116,11 +120,11 @@ git clone https://github.com/golearnalanguage/DBabel.git \
 
 ```bash
 python -m py_compile scripts/*.py
-python -m unittest discover -s tests -v
+python scripts/run_tests.py
 python scripts/check_package.py
 ```
 
-有意修改包文件后，运行 `python scripts/check_package.py --write-manifest` 更新清单，再重新验证并执行 `git diff --check`。
+测试入口强制使用临时记忆、设置和拒绝记录路径，定向测试也通过这个入口运行；浏览器、集成及属性检查见[贡献指南](CONTRIBUTING.md)。有意修改包文件后，先暂存新增包文件，再运行 `python scripts/check_package.py --write-manifest` 更新清单，重新验证并执行 `git diff --check`。
 
 [架构](docs/ARCHITECTURE.md) · [本地工具](docs/LOCAL_TOOLING.md) · [能力说明](docs/AGENT_CAPABILITY_MATRIX.md) · [人工修改后复核](docs/POST_REVIEW_QA.md) · [格式交换与证据缓存](docs/INTEROPERABILITY_AND_EVIDENCE.zh-CN.md) · [包索引](PACKAGE_INDEX.md) · [许可证](LICENSE)
 

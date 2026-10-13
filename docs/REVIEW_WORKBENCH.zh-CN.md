@@ -18,6 +18,12 @@ Skill/包和工作台契约版本均为 **1.7.0**，当前尚未发布。版本�
 
 `.dbreview` 目录包含 `session.json`、`units.jsonl`、`issues.json`、`evidence.json`、`decisions.json`、`events.jsonl`、`anchors.json` 和 `original.sha256`。上传会话还保存 `inputs/` 副本和 `intake.json` 提取报告。术语表保存为 `project-glossary.csv` 或 `.json`。普通对齐会话记录原件名及哈希；仅 `--include-path-hint` 额外记录本地路径。
 
+## 范围化记忆与相似译文
+
+审核单元的 `context` 保留 `project_id`、厂商、产品、版本和领域，并指定具体 `text_role`。未提供项目 ID 时，原件或原文 SHA-256 定义文档范围。精确首选记忆、拒绝约束和重复原文的人工决定联动均要求范围匹配；缺失字段按未知处理。旧的 `LEGACY_UNSCOPED` 记忆保留管理和导出，暂停自动复用。详见[本地记忆](LOCAL_PRECHECK_AND_MEMORY.zh-CN.md)。
+
+安装 RapidFuzz 后，所选单元的「相似的已批准译文」会列出同范围候选、相似度和原文差异，权限仍为 `SUGGESTION_ONLY`。编辑并由人确认后才形成审核译文。可选 [TMX 交换与证据缓存](INTEROPERABILITY_AND_EVIDENCE.zh-CN.md)保留来源，导入待批准候选，列出失效证据依赖，同时保留人工决定。
+
 ## DOCX 双语对齐
 
 提取器按非空段落顺序配对并检查覆盖；数量不同不会猜测对应关系。拆分或合并应提供 `format_version: "1.0"` 的显式对齐映射，其 `alignments` 条目包含稳定 ID、从 1 开始的 `source`/`target` 段落索引和状态：

@@ -87,6 +87,10 @@
     "scope": {
       "type": "object",
       "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
         "vendor": {
           "type": "string",
           "minLength": 1

@@ -54,6 +54,12 @@ Manual.dbreview/
 
 Aligned-unit sessions record the original filename and hash; `--include-path-hint` also records its local path. Upload-created sessions additionally store input copies in `inputs/` and extraction coverage in `intake.json`. Uploaded glossaries are saved as `project-glossary.csv` or `project-glossary.json`.
 
+## Scoped memory and similar translations
+
+Review-unit `context` carries `project_id`, vendor, product, version and domain, with a concrete `text_role`. An available original/source SHA-256 supplies document scope when no project ID is given. Exact preferred memory, rejection constraints and linked decisions for repeated source text use matching scope; missing fields are unknown. Older `LEGACY_UNSCOPED` memory is retained for management/export without automatic reuse. See [local memory](LOCAL_PRECHECK_AND_MEMORY.md).
+
+When RapidFuzz is installed, **Similar approved translations** in the selected unit lists scoped candidates with similarity scores and source differences. Candidates remain `SUGGESTION_ONLY`; editing and a human decision establish the reviewed target. Optional [TMX interchange and evidence-cache commands](INTEROPERABILITY_AND_EVIDENCE.md) retain provenance, create unapproved imports and report stale evidence dependencies without rewriting human decisions.
+
 ## Bilingual DOCX alignment
 
 The DOCX alignment extractor pairs non-empty paragraphs by position and validates coverage. If source and target

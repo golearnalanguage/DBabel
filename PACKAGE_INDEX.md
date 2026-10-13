@@ -23,6 +23,23 @@
 - [Ingest validator](scripts/validate_ingest.py)
 - [Optional format backends](plugins/FORMAT_BACKENDS.md)
 
+## Provider translation, memory and recovery
+
+- [Runtime orchestrator](runtime/orchestrator.py) · [Project CLI](scripts/run_project.py)
+- [Provider compatibility](docs/PROVIDER_COMPATIBILITY.md)
+- [Task capability probe](scripts/check_provider_connection.py)
+- [Official SDK transport](providers/sdk_transport.py)
+- [Local precheck and memory](docs/LOCAL_PRECHECK_AND_MEMORY.md)
+- [Applicability identity](runtime/memory_scope.py) · [Translation memory](runtime/translation_memory.py)
+- [Process-held run lock](runtime/run_lease.py) · [Resumable-run discovery](scripts/list_resumable_runs.py)
+- [Runtime integration dependencies](requirements-integration.txt)
+
+## Interoperability and evidence
+
+- [TMX and evidence guide](docs/INTEROPERABILITY_AND_EVIDENCE.md) · [中文指南](docs/INTEROPERABILITY_AND_EVIDENCE.zh-CN.md)
+- [TMX 1.4 candidate exchange](scripts/tmx_exchange.py)
+- [Source snapshot and dependency cache](scripts/evidence_cache.py)
+
 ## Translation Playbook
 
 - [Translation and MT policy](references/07_TRANSLATION_AND_MT_POLICY.md)
@@ -89,6 +106,10 @@
 - [Regression tests](tests/)
 - [Behavioral evaluation](tests/BEHAVIORAL_EVAL.md)
 - [Validation dependencies](requirements-dev.txt)
+- [Isolated unit-test runner](scripts/run_tests.py)
+- [Isolated browser/accessibility runner](tests/run_browser_smoke.py)
+- [Native document property checks](tests/property/test_native_properties.py)
+- [Third-party declaration checker](scripts/check_third_party.py)
 - [Checksums](MANIFEST.sha256)
 
 ## Project information
@@ -96,6 +117,7 @@
 - [Research basis](docs/RESEARCH_BASIS.md) · [Roadmap](docs/ROADMAP.md)
 - [Contributing](CONTRIBUTING.md) · [Changes](CHANGELOG.md)
 - [License](LICENSE) · [Notice](NOTICE) · [Third-party notice](THIRD_PARTY_NOTICE.md)
+- [Adopted component declarations](config/third_party_components.json) · [Original runtime licenses](third_party/python-runtime/20260924/README.md)
 - [Security](SECURITY.md) · [Scope notice](DISCLAIMER.md)
 
 ## Focused review resources
