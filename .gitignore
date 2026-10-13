@@ -17,3 +17,7 @@ private/
 customer_data/
 project_glossary_private/
 translation_memory_private/
+node_modules/
+.hypothesis/
+playwright-report/
+test-results/

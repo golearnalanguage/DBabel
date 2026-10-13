@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
+from contextlib import ExitStack
+from functools import wraps
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 
@@ -32,6 +35,7 @@ from runtime.project import (
     atomic_write_json,
     sha256_file,
 )
+from runtime.run_lease import RunLease, RunBusyError, RESUMABLE_STATES, probe_run_liveness
 
 
 REPO_ROOT = Path(
@@ -55,6 +59,34 @@ class OrchestrationError(RuntimeError):
     pass
 
 
+def _leased_operation(method):
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        if getattr(self._lease_state, "stack", None) is not None:
+            return method(self, *args, **kwargs)
+        with ExitStack() as stack:
+            self._lease_state.stack = stack
+            self._lease_state.roots = set()
+            try:
+                return method(self, *args, **kwargs)
+            except (KeyboardInterrupt, SystemExit):
+                for root in self._lease_state.roots:
+                    path = Path(root) / "run.json"
+                    try:
+                        manifest = json.loads(path.read_text(encoding="utf-8"))
+                        if manifest.get("status") in RESUMABLE_STATES:
+                            manifest["status"] = "INTERRUPTED"
+                            manifest["failure"] = {"type": "CancelledRun", "reason": "Run interrupted by user or process termination."}
+                            atomic_write_json(path, manifest)
+                    except (OSError, ValueError):
+                        pass
+                raise
+            finally:
+                self._lease_state.stack = None
+                self._lease_state.roots = set()
+    return wrapped
+
+
 class RuntimeOrchestrator:
     def __init__(
         self,
@@ -62,6 +94,7 @@ class RuntimeOrchestrator:
         repo_root: Path = REPO_ROOT,
         workspace_root: Optional[Path] = None,
     ):
+        self._lease_state = threading.local()
         self.repo_root = Path(
             repo_root
         ).resolve()
@@ -74,6 +107,15 @@ class RuntimeOrchestrator:
                 / "runtime"
             )
         ).resolve()
+
+    def _hold_run(self, root):
+        key = str(Path(root).resolve())
+        if key not in self._lease_state.roots:
+            try:
+                self._lease_state.stack.enter_context(RunLease(Path(root)))
+            except (RunBusyError, OSError) as exc:
+                raise OrchestrationError(str(exc)) from exc
+            self._lease_state.roots.add(key)
 
     def _resume_run(
         self, *, resume_run: Path, source: Path,
@@ -88,8 +130,18 @@ class RuntimeOrchestrator:
         run = ProjectRun(root.name, root, root / "run.json",
                          root / "audit.jsonl", root / "runtime-plan.json")
         manifest = run.load_manifest()
-        if manifest.get("status") != "FAILED" or manifest.get("mode") != "TRANSLATE":
-            raise OrchestrationError("only a failed translation run can be resumed")
+        status = manifest.get("status")
+        if status not in RESUMABLE_STATES or manifest.get("mode") != "TRANSLATE":
+            raise OrchestrationError("only a failed or interrupted translation run can be resumed")
+        liveness = probe_run_liveness(root)
+        if liveness == "ACTIVE":
+            raise OrchestrationError("run is still active; another process owns it")
+        if status not in {"FAILED", "INTERRUPTED"} and liveness != "INACTIVE":
+            raise OrchestrationError("run ownership is unknown; cannot recover an unfinished legacy run")
+        self._hold_run(root)
+        manifest = run.load_manifest()
+        if manifest.get("status") not in RESUMABLE_STATES:
+            raise OrchestrationError("run state changed before recovery")
         if (manifest.get("source", {}).get("path") != str(Path(source).resolve())
                 or manifest.get("source_language") != source_language
                 or manifest.get("target_language") != target_language):
@@ -104,6 +156,13 @@ class RuntimeOrchestrator:
                 details={"configuration": config.redacted(), "completed_batches_preserved": True},
             )
         run.assert_source_unchanged()
+        if manifest.get("status") != "FAILED":
+            manifest = run.update(status="INTERRUPTED", current_stage=manifest["current_stage"], failure={
+                "stage": manifest.get("current_stage"), "type": "InterruptedRun",
+                "reason": "Previous owner exited; validated recovery acquired the run lock."})
+            AuditTrail(run.audit_path, run.run_id).append(
+                stage="RECOVERY", status="INTERRUPTED",
+                details={"previous_status": status, "liveness": liveness})
         return run, manifest
 
     @staticmethod
@@ -201,6 +260,7 @@ class RuntimeOrchestrator:
                 pass
             raise OrchestrationError("{} failed: {}".format(stage, exc)) from exc
 
+    @_leased_operation
     def prepare_translation(
         self,
         *,
@@ -245,6 +305,7 @@ class RuntimeOrchestrator:
             target_language=target_language,
             provider=config.redacted(),
         )
+        self._hold_run(run.root)
 
         audit = AuditTrail(
             run.audit_path,
@@ -465,6 +526,7 @@ class RuntimeOrchestrator:
             raise OrchestrationError(
                 str(exc)
             ) from exc
+    @_leased_operation
     def run_translation_to_qa(
         self,
         *,
@@ -482,6 +544,7 @@ class RuntimeOrchestrator:
         limits: TranslationLimits = TranslationLimits(),
         on_progress: Optional[Callable[[dict], None]] = None,
         resume_run: Optional[Path] = None,
+        context: Optional[dict] = None,
     ) -> dict:
         """Run TRANSLATE through deterministic post-translation QA.
 
@@ -490,6 +553,12 @@ class RuntimeOrchestrator:
         """
 
         if resume_run is not None:
+            if context is not None:
+                saved_root = Path(resume_run)
+                saved_path = saved_root if saved_root.name == "run.json" else saved_root / "run.json"
+                saved = json.loads(saved_path.read_text(encoding="utf-8"))
+                if saved.get("memory_context", {}) != context:
+                    raise OrchestrationError("resume translation scope differs from the saved run")
             return self._resume_translation_to_qa(
                 resume_run=resume_run, source=source,
                 source_language=source_language, target_language=target_language,
@@ -516,6 +585,12 @@ class RuntimeOrchestrator:
             return manifest
         if on_progress:
             on_progress({"stage": "FORMAT_PROBE", "state": "COMPLETED"})
+        if context:
+            run_path = Path(manifest["artifacts"]["runtime_plan"]["path"]).parent
+            scoped_run = ProjectRun(manifest["run_id"], run_path, run_path / "run.json",
+                                    run_path / "audit.jsonl", run_path / "runtime-plan.json")
+            manifest = scoped_run.update(status=manifest["status"], current_stage=manifest["current_stage"],
+                                         memory_context=context)
 
         if (
             manifest["status"]
@@ -601,6 +676,7 @@ class RuntimeOrchestrator:
                 backend=backend,
                 default_text_role=
                     default_text_role,
+                context=context,
             )
             if on_progress:
                 on_progress({"stage": "INGEST", "state": "COMPLETED",
@@ -676,7 +752,7 @@ class RuntimeOrchestrator:
                 provider
                 if provider is not None
                 else OpenAICompatibleProvider(
-                    config
+                    config, on_progress=on_progress
                 )
             )
 
@@ -875,6 +951,7 @@ class RuntimeOrchestrator:
                     exc,
                 )
             ) from exc
+    @_leased_operation
     def run_translation_to_review(
         self,
         *,
@@ -895,6 +972,7 @@ class RuntimeOrchestrator:
             SemanticLimits = SemanticLimits(),
         on_progress: Optional[Callable[[dict], None]] = None,
         resume_run: Optional[Path] = None,
+        context: Optional[dict] = None,
     ) -> dict:
         """Run TRANSLATE through the Full Local Workbench delivery gate.
 
@@ -924,6 +1002,7 @@ class RuntimeOrchestrator:
                     translation_limits,
                 on_progress=on_progress,
                 resume_run=resume_run,
+                context=context,
             )
         )
 

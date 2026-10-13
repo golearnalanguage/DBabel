@@ -1,0 +1,5 @@
+# Optional maintained integrations; the core CLI remains usable on Python 3.9.
+openai==3.29.0; python_version >= '3.10'
+anthropic==1.13.0; python_version >= '3.10'
+rapidfuzz==3.14.6; python_version >= '3.11'
+lxml==6.1.3

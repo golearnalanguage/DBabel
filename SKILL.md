@@ -1,8 +1,9 @@
 ---
 name: dbabel-database-terminology-audit
 description: Review database terminology and technical translations, translate with scoped project terminology, and prepare located suggestions, human review sessions, QA and document exports. Use for terminology lookup, document audits, bilingual or multilingual review, translation and evidenced wording repair.
+license: Apache-2.0
 metadata:
-  version: "1.6.0"
+  version: "1.7.0"
 ---
 
 # DBabel — terminology and translation review
@@ -68,6 +69,8 @@ For TRANSLATE/BILINGUAL_REVIEW: run `scripts/prepare_review_qa.py`, `scripts/che
 DRAFT replaces every aligned unit using approved text, otherwise the AI proposal/existing translation; it never requires every unit to be approved. Its receipt records pending review and checks actually run, while the document contains no review annotations. CHECKPOINT applies completed decisions and leaves pending text unchanged. FINAL requires necessary human decisions and fresh QA. Preserve native DOCX/TXT/MD/XLSX structures and export to a new path. XLSX includes anchored cells and worksheet tab labels, keeps formulas/macros unchanged, and rejects unsafe formula-linked tab renames. Deliver native output, receipt, bilingual comparison and Markdown/JSON handoff. Text/XML checks alone do not establish pixel-identical pagination; inspect layout when fidelity matters.
 
 Session chat retains the selected unit, source/target context and conversation. It does not change human decisions, establish cited authority or count as QA. Open browser evidence before citing it.
+
+Optional [TMX interchange and evidence-cache commands](docs/INTEROPERABILITY_AND_EVIDENCE.md) preserve source provenance and scope. TMX imports create unapproved candidates; unsupported inline XML stays in the receipt. Cache checks report stale dependencies and affected units without editing existing human decisions. Reopen sources and rerun applicable review/QA before relying on changed or expired evidence.
 
 ## Completion report
 

@@ -239,6 +239,8 @@ class OpenAICompatibleProvider(
         config: ProviderConfig,
         environ: Optional[Mapping[str, str]] = None,
         transport: Optional[Transport] = None,
+        on_progress=None,
+        cancel_event=None,
     ):
         config.validate()
 
@@ -246,6 +248,9 @@ class OpenAICompatibleProvider(
         self._api_key = config.resolve_api_key(
             environ
         )
+        self._on_progress = on_progress
+        self._cancel_event = cancel_event
+        self._explicit_transport = transport is not None
         self._transport = (
             transport or (lambda url, headers, body, timeout, max_bytes:
                 _default_transport(url, headers, body, timeout, max_bytes,
@@ -301,16 +306,35 @@ class OpenAICompatibleProvider(
         headers = {"Authorization": "Bearer " + self._api_key,
                    "Content-Type": "application/json",
                    "Accept": "text/event-stream, application/json",
-                   "User-Agent": "DBabel-Runtime/1.6"}
+                   "User-Agent": "DBabel-Runtime/1.7"}
         if self._config.api_mode == "anthropic_messages":
             headers.pop("Authorization")
             headers.update({"x-api-key": self._api_key, "anthropic-version": "2023-06-01"})
         attempts = 0
+        started = time.monotonic()
+        attempt_records = []
         while True:
             body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             try:
-                status, raw = self._transport(endpoint, headers, body,
-                    self._config.timeout_seconds, self._config.max_response_bytes)
+                if self._cancel_event is not None and self._cancel_event.is_set():
+                    raise ProviderError("provider request cancelled")
+                from providers import sdk_transport
+                selected = self._config.transport_backend
+                use_sdk = (not self._explicit_transport and selected != "stdlib"
+                           and sdk_transport.available(self._config.api_mode)
+                           and sdk_transport.compatible(endpoint, self._config.api_mode))
+                if not self._explicit_transport and selected == "sdk" and not use_sdk:
+                    raise ProviderError("official SDK unavailable or endpoint unsupported; install requirements-integration.txt or select stdlib")
+                if self._on_progress:
+                    self._on_progress({"stage": "PROVIDER", "state": "REQUEST_STARTED", "attempt": attempts + 1})
+                diagnostics = {"backend": "stdlib"}
+                if use_sdk:
+                    status, raw, diagnostics = sdk_transport.request(endpoint, headers, body,
+                        self._config.timeout_seconds, self._config.max_response_bytes,
+                        config=self._config, on_progress=self._on_progress, cancel_event=self._cancel_event)
+                else:
+                    status, raw = self._transport(endpoint, headers, body,
+                        self._config.timeout_seconds, self._config.max_response_bytes)
                 if not 200 <= int(status) < 300:
                     error_type = ProviderResponseInterrupted if status in {408, 504} else ProviderTransientError if status in {409, 425, 429} or status >= 500 else ProviderError
                     raise error_type("provider returned HTTP status: " + str(status), status=status)
@@ -334,7 +358,10 @@ class OpenAICompatibleProvider(
                     raise ProviderResponseInterrupted("provider returned no final answer; reasoning text is not a translation")
                 return GenerationResponse(text=text, model=data.get("model") or self._config.model,
                     provider=self._config.provider, response_id=data.get("id"),
-                    usage=data.get("usage") if isinstance(data.get("usage"), dict) else {})
+                    usage=data.get("usage") if isinstance(data.get("usage"), dict) else {},
+                    diagnostics={**diagnostics, "attempts": attempts + 1,
+                                 "total_ms": round((time.monotonic() - started) * 1000),
+                                 "retry_reasons": attempt_records})
             except (IncompleteRead, RemoteDisconnected, TimeoutError, socket.timeout) as exc:
                 transient = ProviderResponseInterrupted("provider response disconnected or timed out")
                 transient.__cause__ = exc
@@ -358,5 +385,9 @@ class OpenAICompatibleProvider(
                     str(transient).replace(self._api_key, "[redacted]"),
                     status=transient.status, retry_after=transient.retry_after) from transient
             delay = transient.retry_after or (0.5 * (2 ** attempts))
+            attempt_records.append({"attempt": attempts + 1, "status": transient.status,
+                                    "reason": type(transient).__name__})
+            if self._on_progress:
+                self._on_progress({"stage": "PROVIDER", "state": "RETRYING", "attempt": attempts + 1})
             time.sleep(min(60, delay))
             attempts += 1

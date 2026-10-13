@@ -20,10 +20,18 @@ from runtime.models import GenerationRequest, ProviderConfig
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--provider-config", type=Path, required=True)
+    parser.add_argument("--task-check", action="store_true",
+                        help="Also verify one small synthetic translation contract (uses provider tokens).")
     args = parser.parse_args()
     try:
         config = ProviderConfig.from_path(args.provider_config)
-        response = OpenAICompatibleProvider(config).generate(
+        provider = OpenAICompatibleProvider(config)
+        if args.task_check:
+            from providers.preflight import task_preflight
+            report = task_preflight(provider)
+            print(json.dumps(report, ensure_ascii=False))
+            return 0 if report["contract_verified"] else 1
+        response = provider.generate(
             GenerationRequest(
                 system="Reply with exactly OK.",
                 user="OK",

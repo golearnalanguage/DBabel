@@ -27,6 +27,7 @@ class ProviderConfig:
     temperature_mode: str = "auto"
     max_output_tokens: Optional[int] = None
     extra_body: Dict[str, Any] = field(default_factory=dict)
+    transport_backend: str = "auto"
 
     @classmethod
     def from_path(cls, path: Path) -> "ProviderConfig":
@@ -45,6 +46,7 @@ class ProviderConfig:
             "allow_insecure_http",
             "proxy_mode",
             "stream", "api_mode", "temperature_mode", "max_output_tokens", "extra_body",
+            "transport_backend",
         }
 
         unknown = sorted(set(data) - allowed)
@@ -111,6 +113,8 @@ class ProviderConfig:
 
         if self.proxy_mode not in {"system", "none", "custom"}:
             raise ValueError("proxy_mode must be system, none, or custom")
+        if self.transport_backend not in {"auto", "stdlib", "sdk"}:
+            raise ValueError("transport_backend must be auto, stdlib, or sdk")
         if type(self.stream) is not bool:
             raise ValueError("stream must be a boolean")
         if self.api_mode not in {"chat_completions", "responses", "anthropic_messages"}:
@@ -195,6 +199,7 @@ class ProviderConfig:
             "temperature_mode": self.temperature_mode,
             "max_output_tokens": self.max_output_tokens,
             "extra_body": self.extra_body,
+            "transport_backend": self.transport_backend,
         }
 
     def identity(self) -> Dict[str, str]:
@@ -248,3 +253,4 @@ class GenerationResponse:
     provider: str
     response_id: Optional[str]
     usage: Dict[str, Any]
+    diagnostics: Dict[str, Any] = field(default_factory=dict)

@@ -35,7 +35,7 @@ These references explain the design of DBabel's concepts, scope, evidence and pr
   the context of its source publication rather than treated as context-free truth.
   https://csrc.nist.gov/glossary
 
-DBabel uses its JSON/CSV project-glossary and bilingual-unit contracts. TBX, TMX and XLIFF adapters remain planned work, with provenance, scope and protected-content preservation as implementation requirements.
+DBabel uses its JSON/CSV project-glossary and bilingual-unit contracts. A narrow [TMX 1.4 plain-segment CLI](INTEROPERABILITY_AND_EVIDENCE.md) is implemented using lxml; imports remain unapproved candidates and retain unsupported inline XML. TBX and XLIFF adapters remain planned work, with provenance, scope and protected-content preservation as implementation requirements.
 
 ## Document and runtime implementation references
 

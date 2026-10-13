@@ -16,7 +16,7 @@ def check(root=ROOT):
             errors.append(str(path.relative_to(root))+': missing language counterpart '+peer.name)
         if peer.name not in text:
             errors.append(str(path.relative_to(root))+': missing language link')
-    ignored = {'output', 'cache', 'source_cache', 'private', 'customer_data', '__pycache__'}
+    ignored = {'output', 'cache', 'source_cache', 'private', 'customer_data', '__pycache__', 'node_modules'}
     for path in sorted(root.rglob('*.md')):
         parts = path.relative_to(root).parts
         if any(part.startswith('.') or part in ignored for part in parts):

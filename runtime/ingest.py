@@ -12,6 +12,8 @@ import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
+from runtime.memory_scope import with_scope
+from runtime.project import sha256_file
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO_ROOT / "scripts"
@@ -116,6 +118,8 @@ def build_translation_units(
     source_language: str,
     target_language: str,
     default_text_role: str,
+    context=None,
+    document_sha256=None,
 ) -> List[Dict[str, Any]]:
     _validate_languages(
         source_language,
@@ -195,6 +199,9 @@ def build_translation_units(
             },
         })
 
+    if context is not None or document_sha256 is not None:
+        units = [with_scope(unit, context=context, document_sha256=document_sha256)
+                 for unit in units]
     errors = validate_units(units)
 
     if errors:
@@ -317,6 +324,7 @@ def ingest_for_translation(
     target_language: str,
     backend: str,
     default_text_role: str = "",
+    context=None,
 ) -> Dict[str, Any]:
     source = Path(source).resolve()
 
@@ -345,6 +353,8 @@ def ingest_for_translation(
         source_language,
         target_language,
         text_role,
+        context=context,
+        document_sha256=sha256_file(source),
     )
 
     ingest_report = build_ingest_report(

@@ -1,0 +1,3 @@
+-r requirements-dev.txt
+# Optional property-test job uses Python 3.11+; core validation supports 3.9.
+hypothesis==6.169.0

@@ -53,7 +53,7 @@ class CIContractTests(unittest.TestCase):
             'python scripts/validate_glossary.py tests/fixtures/project_glossary.csv',
             'python scripts/check_bilingual_integrity.py',
             'python scripts/prepare_runtime.py',
-            'python -m unittest discover -s tests -v',
+            'python scripts/run_tests.py',
             'python scripts/validate_report.py examples/audit_report.json',
             'python scripts/check_package.py --write-manifest',
             'git diff --check',

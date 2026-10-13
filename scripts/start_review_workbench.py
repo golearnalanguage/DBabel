@@ -25,7 +25,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, Optional
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urlparse, parse_qs
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -66,6 +66,8 @@ from runtime.translation_memory import edit_entry as edit_memory_entry
 from runtime.translation_memory import delete_entry as delete_memory_entry
 from runtime.translation_memory import export_entries as export_translation_memory
 from runtime.local_precheck import inspect_segments as local_inspect_segments
+from runtime.memory_scope import with_scope, canonical_scope, scopes_equal
+from runtime.translation_memory import similar_candidates
 
 MAX_BODY = 48 * 1024 * 1024
 
@@ -118,7 +120,11 @@ class WorkbenchState:
                 self.receipt = Path(str(self.output) + '.receipt.json')
 
     def data(self):
-        return load_bundle(self.bundle)
+        data = load_bundle(self.bundle)
+        digest = (data["session"].get("original") or {}).get("sha256")
+        data["units"] = [with_scope(unit, document_sha256=digest) for unit in data["units"]]
+        data["units_by_id"] = {unit["id"]: unit for unit in data["units"]}
+        return data
 
     def rejections(self):
         path = self.bundle / "rejected-translations.json"
@@ -139,7 +145,8 @@ class WorkbenchState:
         target = str(unit.get("suggested_target") or "")
         if not target.strip():
             return None
-        key = "\0".join((str(unit.get("source_language") or ""),
+        scope = canonical_scope(unit)
+        key = "\0".join((scope["key"], str(unit.get("source_language") or ""),
                           str(unit.get("target_language") or ""),
                           str(unit.get("source") or ""), target))
         record_id = hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
@@ -147,6 +154,7 @@ class WorkbenchState:
                   "source_language": unit.get("source_language", ""),
                   "target_language": unit.get("target_language", ""),
                   "source": unit.get("source", ""), "rejected_target": target,
+                  "memory_scope": scope,
                   "scope": ("TERM" if len(str(unit.get("source") or "").strip()) <= 32
                             and len(target.strip()) <= 100
                             and "\n" not in str(unit.get("source") or "")
@@ -284,6 +292,19 @@ class Handler(BaseHTTPRequestHandler):
             except (OSError, ValueError) as exc:
                 self._error(500, str(exc))
             return
+        if parsed.path == "/api/translation-memory/candidates":
+            try:
+                unit_id = parse_qs(parsed.query).get("unit_id", [""])[0]
+                with self.state.lock:
+                    unit = self.state.data()["units_by_id"].get(unit_id)
+                    if unit is None:
+                        self._error(404, "unit not found")
+                        return
+                    self._json(200, similar_candidates(unit, unit.get("source_language", ""),
+                                                     unit.get("target_language", "")))
+            except (ValueError, OSError, sqlite3.Error) as exc:
+                self._error(400, str(exc))
+            return
         if parsed.path == "/api/translation-memory":
             try:
                 self._json(200, translation_memory_summary())
@@ -400,6 +421,8 @@ class Handler(BaseHTTPRequestHandler):
                             continue
                         prior = data["decisions_by_id"][candidate["id"]]
                         if prior["status"] != "UNREVIEWED":
+                            continue
+                        if not scopes_equal(candidate, unit):
                             continue
                         if any(candidate.get(field) != unit.get(field) for field in (
                             "source", "current_target", "suggested_target",
@@ -594,7 +617,8 @@ class Handler(BaseHTTPRequestHandler):
                         targets = body.get("target_languages") or []
                         target_language = targets[0] if isinstance(targets, list) and targets else ""
                         info["local_precheck"] = local_inspect_segments(
-                            segments, str(body.get("source_language") or ""), str(target_language))
+                            segments, str(body.get("source_language") or ""), str(target_language),
+                            document_sha256=hashlib.sha256(source.read_bytes()).hexdigest())
                         info["segment_count"] = len(info.pop("segments"))
                         self._json(200, info)
                         return

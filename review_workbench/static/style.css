@@ -4,7 +4,7 @@
   --bg:#f4f7fb;--surface:#ffffff;--surface-2:#f8fbff;--surface-3:#eef5fd;--surface-4:#e6f1ff;
   --text:#13213b;--text-soft:#40516c;--muted:#74839a;--line:#dce5ef;--line-strong:#c9d5e3;
   --blue:#086cf0;--blue-strong:#075fd5;--blue-soft:#e7f2ff;--green:#1eae79;--green-soft:#d9f5e9;
-  --orange:#f18a43;--orange-soft:#fff0e5;--purple:#8b4de7;--purple-soft:#efe8ff;--red:#e63d4d;--red-soft:#fff0f2;
+  --orange:#f18a43;--orange-soft:#fff0e5;--purple:#7840cc;--purple-soft:#efe8ff;--red:#c92c3d;--red-soft:#fff0f2;
   --yellow:#f1b51e;--yellow-soft:#fff5cf;--sidebar:240px;--inspector:clamp(460px,30vw,520px);--radius:10px;
   --shadow:0 1px 2px rgba(15,36,68,.05),0 8px 30px rgba(15,36,68,.035);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,sans-serif;
@@ -818,3 +818,11 @@ html.portable-review .segment-table th{font-size:13px}
 html.portable-review .table-toolbar :is(select,button){font-size:14px}
 html.portable-review .nav-item,html.portable-review .filter-row{font-size:14px}
 html.portable-review #restoreProgress{border:1px solid var(--line);border-radius:8px;padding:8px 14px;background:var(--surface-2);color:var(--text)}
+
+/* Keep enabled export controls readable in the dark browser theme. */
+html[data-theme="dark"] .export-summary button{color:#161225}
+html[data-theme="dark"] #exportButton.authorized{color:#ffffff}
+/* Keyboard review needs a visible location after rows are rebuilt. */
+.segment-table tbody tr:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+html:not([data-theme="dark"]) #chatContext{color:#625e78}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--blue);outline-offset:2px}

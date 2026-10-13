@@ -22,7 +22,7 @@ DBabel 将这一应用命名为 `SCANNABLE_SPECIFICATION_PRESENTATION`：使用�
 | [OASIS XLIFF 2.1](https://docs.oasis-open.org/xliff/xliff-core/v2.1/xliff-core-v2.1.html) | 文本与行内代码等非语言内容分离 |
 | [NIST CSRC Glossary](https://csrc.nist.gov/glossary) | 根据来源出版物的上下文理解定义 |
 
-当前实现使用 DBabel 自身的 JSON/CSV 项目术语表和双语单元契约。TBX、TMX、XLIFF 仍为后续适配工作，不能把参考某标准写成已经兼容该格式。
+当前实现使用 DBabel 自身的 JSON/CSV 项目术语表和双语单元契约。已有使用 lxml 的[纯文本 TMX 1.4 CLI](INTEROPERABILITY_AND_EVIDENCE.zh-CN.md)，导入产生待审核候选，未知行内 XML 保留在回执；TBX 和 XLIFF 仍待后续适配，需继续保持来源、范围与保护内容。
 
 ## 文档与运行时依据
 

@@ -44,11 +44,11 @@ semantic review integrations. The current handoff does not invoke an LLM.
 ## Next optional adapters
 
 - TBX terminology interchange adapter;
-- TMX translation-memory adapter;
+- Extend the implemented plain-segment TMX 1.4 CLI to reviewed candidate ingestion and explicitly verified inline-code interoperability;
 - XLIFF bilingual interchange adapter with inline-code preservation;
 - format-specific parser/repair adapters with round-trip fidelity tests;
 - richer table, diagram, UI, and embedded-object alignment helpers;
-- local evidence cache with provenance and invalidation rules.
+- Extend the implemented source-hash/scope/expiry evidence-cache CLI to Workbench dependency review and verified retrieval freshness.
 
 ## Longer-term workflow tooling
 

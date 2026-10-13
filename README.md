@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/golearnalanguage/DBabel/actions/workflows/validate.yml"><img alt="Validate DBabel" src="https://img.shields.io/github/actions/workflow/status/golearnalanguage/DBabel/validate.yml?branch=main&amp;label=Validate%20DBabel&amp;logo=github"></a>
   <a href="https://github.com/golearnalanguage/DBabel/releases"><img alt="Release" src="https://img.shields.io/github/v/release/golearnalanguage/DBabel?display_name=tag&sort=semver"></a>
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache%202.0-blue"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.9%20%7C%203.11-3776AB?logo=python&logoColor=white">
 </p>
 
@@ -149,7 +149,7 @@ references.
 
 ## Development and reference
 
-Repository version: **1.6.0**. Review Workbench version: **1.6.0**. Repository changes are recorded in [Changes](CHANGELOG.md); the macOS App has a separate [download release](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0).
+Repository version: **1.7.0**. Review Workbench version: **1.7.0**. This build is unreleased; locally validated improvements are recorded in [Changes](CHANGELOG.md). The existing macOS App [download release](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0) remains v1.6.0.
 
 ```bash
 python -m py_compile scripts/*.py
@@ -159,4 +159,6 @@ python scripts/check_package.py
 
 After intentional package edits, regenerate `MANIFEST.sha256` with `python scripts/check_package.py --write-manifest`, rerun validation and check `git diff --check`.
 
-[Architecture](docs/ARCHITECTURE.md) · [Local tools](docs/LOCAL_TOOLING.md) · [Capabilities](docs/AGENT_CAPABILITY_MATRIX.md) · [Post-review QA](docs/POST_REVIEW_QA.md) · [Package index](PACKAGE_INDEX.md) · [License](LICENSE)
+[Architecture](docs/ARCHITECTURE.md) · [Local tools](docs/LOCAL_TOOLING.md) · [Capabilities](docs/AGENT_CAPABILITY_MATRIX.md) · [Post-review QA](docs/POST_REVIEW_QA.md) · [Interoperability and evidence cache](docs/INTEROPERABILITY_AND_EVIDENCE.md) · [Package index](PACKAGE_INDEX.md) · [License](LICENSE)
+
+First-party source and documentation are open source under [Apache-2.0](LICENSE). Adopted projects and their original licenses are credited in [third-party notices](THIRD_PARTY_NOTICE.md). Earlier tagged releases retain their recorded release terms.

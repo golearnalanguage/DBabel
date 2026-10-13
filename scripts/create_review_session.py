@@ -170,7 +170,7 @@ def _load_units(path: Path) -> List[Dict[str, Any]]:
                 review["proposal_decision"] = proposal_decision
         context = unit.get("context")
         if isinstance(context, dict):
-            clean_context = {k: str(v) for k, v in context.items() if k in {"vendor", "product", "version", "domain", "text_role"} and v is not None}
+            clean_context = {k: str(v) for k, v in context.items() if k in {"project_id", "vendor", "product", "version", "domain", "text_role"} and v is not None}
             if clean_context:
                 review["context"] = clean_context
                 if clean_context.get("text_role"):

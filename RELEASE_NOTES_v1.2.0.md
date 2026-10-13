@@ -1,5 +1,7 @@
 # DBabel v1.2.0 — Public Skill baseline
 
+These notes preserve the terms of the historical v1.2.0 release. Current first-party source uses [Apache-2.0](LICENSE); see [the changelog](CHANGELOG.md) for the migration.
+
 ## Positioning
 
 DBabel is an evidence-driven Agent Skill and methodology for database terminology review and localization workflows. It ships the method, not a vendor terminology database.

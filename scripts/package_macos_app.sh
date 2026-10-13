@@ -8,6 +8,7 @@ TOOLS="$OUTPUT/build-tools"
 UV="$TOOLS/bin/uv"
 PYTHONS="$OUTPUT/build-python"
 PYTHON="$PYTHONS/cpython-3.12.14-macos-aarch64-none"
+RUNTIME_NOTICES="$ROOT/third_party/python-runtime/20260924"
 VENDOR="$OUTPUT/build-vendor"
 RELEASE="${DBABEL_RELEASE_DIR:-$OUTPUT/release}"
 APP="$RELEASE/DBabel.app"
@@ -24,8 +25,14 @@ fi
 if [ ! -x "$PYTHON/bin/python3" ]; then
   "$UV" python install 3.12.14 --install-dir "$PYTHONS" --no-bin
 fi
+if [ "$(cat "$PYTHON/BUILD")" != '20260924' ]; then
+  echo 'Bundled runtime build differs from retained upstream license inventory.' >&2
+  exit 1
+fi
 "$UV" pip install --target "$VENDOR" --python "$PYTHON/bin/python3" \
   -r "$ROOT/requirements-dev.txt"
+"$UV" pip install --target "$VENDOR" --python "$PYTHON/bin/python3" \
+  -r "$ROOT/requirements-integration.txt"
 
 mkdir -p "$RELEASE"
 rm -rf "$APP"
@@ -34,14 +41,21 @@ mkdir -p "$APP/Contents/Resources/DBabel" "$STAGE"
 ditto "$PYTHON" "$APP/Contents/Resources/Python"
 ditto "$VENDOR" "$APP/Contents/Resources/vendor"
 rsync -a \
-  --exclude='.git/' --exclude='.venv*/' --exclude='output/' \
+  --exclude='.git/' --exclude='.venv*/' --exclude='output/' --exclude='node_modules/' \
   --exclude='__pycache__/' --exclude='.pytest_cache/' --exclude='tests/' \
+  --exclude='.hypothesis/' --exclude='playwright-report/' --exclude='test-results/' \
   --exclude='cache/' --exclude='source_cache/' --exclude='private/' \
   --exclude='customer_data/' --exclude='project_glossary_private/' \
   --exclude='translation_memory_private/' --exclude='.env' \
   --exclude='.env.*' --exclude='*.key' --exclude='*.pem' \
   --exclude='*.p12' --exclude='*.pfx' --exclude='.DS_Store' \
   "$ROOT/" "$APP/Contents/Resources/DBabel/"
+
+ditto "$RUNTIME_NOTICES" "$APP/Contents/Resources/licenses/python-runtime"
+"$PYTHON/bin/python3" "$ROOT/scripts/check_third_party.py" --installed --no-node \
+  --distribution-path "$APP/Contents/Resources/vendor" \
+  --distribution-path "$APP/Contents/Resources/Python/lib/python3.12/site-packages" \
+  --output "$APP/Contents/Resources/licenses/packages"
 
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier org.dbabel.desktop' \
   "$APP/Contents/Info.plist"

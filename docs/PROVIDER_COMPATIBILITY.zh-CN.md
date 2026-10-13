@@ -12,9 +12,19 @@
 
 请求最多尝试三次，退避等待或 Retry-After 最长 60 秒。401、403、402 立即停止。翻译或语义批次中断后拆半，后续沿用较小批次；格式校验失败只针对具体问题重试。成功批次实时保存；续跑可调整超时、流式、代理、temperature 和模型参数，不重做已完成内容。原文、语言、端点、模型和协议身份必须一致；新参数不会重新生成已完成的译文。
 
+## 可选官方 SDK 与任务预检
+
+[requirements-integration.txt](../requirements-integration.txt) 锁定 OpenAI/Anthropic 官方 SDK。配置 `transport_backend` 可选 `auto`（已安装且端点兼容时使用 SDK，否则用标准库）、`stdlib` 或 `sdk`（不可用时明确报错）。SDK 需要 Python 3.10+，核心标准库路径保留 Python 3.9 支持。响应完成、重试上限、检查点与人审规则仍由 DBabel 控制；采用项目和原始许可见[第三方声明](../THIRD_PARTY_NOTICE.md)。
+
+```bash
+python scripts/check_provider_connection.py --provider-config provider.json --task-check
+```
+
+命令发送一个小型合成中英翻译，检查 JSON 单元及受保护标记，返回 `TASK_READY` 或 `CONTRACT_FAILED`，附用量与传输诊断。它会使用服务 token，验证范围是一次小型合同；整份文档的质量与吞吐还需实际运行。连接可用、格式预检、提取成功、实际覆盖和最终导出分别检查。
+
 ## 上游代码审核
 
-2026-10-03 参考并审核 [OpenAI SSE 解码](https://github.com/openai/openai-python/blob/main/src/openai/_streaming.py)、[OpenAI 重试处理](https://github.com/openai/openai-python/blob/main/src/openai/_base_client.py)、[NewAPI OpenAI 适配器](https://github.com/QuantumNous/new-api/blob/main/relay/channel/openai/adaptor.go)。重点是事件边界、结束标记、错误分类和渠道参数转换。DBabel 独立实现协议适配，没有复制上游代码，没有捆绑 NewAPI 服务、插件或新增网络依赖；成熟代码也不能证明所有公司渠道均兼容。
+2026-10-03 参考并审核 [OpenAI SSE 解码](https://github.com/openai/openai-python/blob/main/src/openai/_streaming.py)、[OpenAI 重试处理](https://github.com/openai/openai-python/blob/main/src/openai/_base_client.py)、[NewAPI OpenAI 适配器](https://github.com/QuantumNous/new-api/blob/main/relay/channel/openai/adaptor.go)。重点是事件边界、结束标记、错误分类和渠道参数转换。标准库协议适配保持独立实现，未复制上游实现文件或捆绑 NewAPI 服务；可选 SDK 适配通过公共接口调用已安装库。公司渠道的具体兼容性仍以实际测试为准。
 
 本地模拟网关测试覆盖流式响应、限流、终止错误、原生协议、拆批和参数调整后的续跑。公司 token 策略、内网超时、模型名称、扩展参数仍需在公司网络实测。
 

@@ -205,6 +205,7 @@ class ProjectRun:
         current_stage: str,
         artifacts: Optional[Dict[str, Any]] = None,
         failure: Optional[Dict[str, Any]] = None,
+        memory_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         manifest = self.load_manifest()
 
@@ -222,6 +223,8 @@ class ProjectRun:
             manifest["artifacts"] = existing
 
         manifest["failure"] = failure
+        if memory_context is not None:
+            manifest["memory_context"] = memory_context
 
         atomic_write_json(
             self.manifest_path,

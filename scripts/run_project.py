@@ -7,6 +7,7 @@ import json
 import shlex
 import subprocess
 import sys
+import signal
 from pathlib import Path
 
 ROOT = Path(
@@ -107,13 +108,18 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument(
         "--resume-run", type=Path,
-        help="Continue a failed run from its saved batches and artifacts.",
+        help="Continue a failed or interrupted run from verified batches and artifacts.",
     )
+    for field in ("project-id", "vendor", "product", "product-version", "domain"):
+        value.add_argument("--" + field, help="Optional translation-memory scope.")
 
     return value
 
 
 def main() -> int:
+    def interrupted(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupted)
     args = parser().parse_args()
 
     if not 0 <= args.workbench_port <= 65535:
@@ -156,8 +162,15 @@ def main() -> int:
                 args.declare_backend,
             on_progress=report_progress,
             resume_run=args.resume_run,
+            **({"context": {key: val for key, val in {
+                "project_id": args.project_id, "vendor": args.vendor, "product": args.product,
+                "version": args.product_version, "domain": args.domain}.items() if val}}
+               if any((args.project_id, args.vendor, args.product, args.product_version, args.domain)) else {}),
         )
 
+    except KeyboardInterrupt:
+        print("Translation interrupted; saved batches can be resumed.", file=sys.stderr)
+        return 130
     except (
         OSError,
         ValueError,

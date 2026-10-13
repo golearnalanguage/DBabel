@@ -22,6 +22,7 @@ from runtime.translation import (
 from runtime.general_terms import enabled as general_terms_enabled, set_enabled as set_general_terms_enabled
 from runtime.translation_memory import remember as remember_translation, match as memory_match, summary as memory_summary
 from runtime.local_precheck import inspect_segments
+from runtime.memory_scope import canonical_scope
 
 
 def unit(
@@ -38,7 +39,7 @@ def unit(
         "target_language": "en",
         "alignment": "ALIGNED",
         "context": {
-            "text_role": role,
+            "text_role": role, "project_id": "test-project",
         },
     }
 
@@ -101,7 +102,7 @@ class TranslationRuntimeTests(
             rows = [{"location": "A1", "text": "配置主库"},
                     {"location": "A2", "text": "配置主库"},
                     {"location": "A3", "text": "操用户 ${DB_HOME}"}]
-            result = inspect_segments(rows, "zh-CN", "en")
+            result = inspect_segments(rows, "zh-CN", "en", context={"project_id":"test-project"})
             self.assertEqual(result["repeated_source_segments"], 1)
             self.assertEqual(result["exact_translation_memory_matches"], 2)
             self.assertGreaterEqual(result["protected_literal_occurrences"], 1)
@@ -165,7 +166,7 @@ class TranslationRuntimeTests(
             memory = Path(directory) / "rejected.json"
             memory.write_text(json.dumps([{
                 "source": "配置主库", "source_language": "zh-CN",
-                "target_language": "en", "rejected_target": "Configure the primary database."
+                "target_language": "en", "memory_scope": canonical_scope(unit("scope", "ignored")), "rejected_target": "Configure the primary database."
             }]), encoding="utf-8")
             def answer(target):
                 return json.dumps({"units": [{"id": "U1", "suggested_target": target,
@@ -184,7 +185,7 @@ class TranslationRuntimeTests(
             memory = Path(directory) / "rejected.json"
             memory.write_text(json.dumps([{
                 "source": "配置主库", "source_language": "zh-CN",
-                "target_language": "en", "rejected_target": "Configure the primary database."
+                "target_language": "en", "memory_scope": canonical_scope(unit("scope", "ignored")), "rejected_target": "Configure the primary database."
             }]), encoding="utf-8")
             answer = json.dumps({"units": [{"id": "U1", "suggested_target": "Configure the primary database.",
                 "proposal_decision": "REPLACE", "reason": "technical wording"}]})
@@ -198,7 +199,7 @@ class TranslationRuntimeTests(
             memory = Path(directory) / "rejected.json"
             memory.write_text(json.dumps([{
                 "source": "主库", "source_language": "zh-CN", "target_language": "en",
-                "rejected_target": "primary database", "scope": "TERM"
+                "rejected_target": "primary database", "scope": "TERM", "memory_scope": canonical_scope(unit("scope", "ignored"))
             }]), encoding="utf-8")
             def answer(target):
                 return json.dumps({"units": [{"id": "U1", "suggested_target": target,

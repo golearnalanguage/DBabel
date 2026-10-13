@@ -75,8 +75,10 @@ final class DesktopController {
             guard let bytes = try? Data(contentsOf: file),
                   let entries = try? JSONSerialization.jsonObject(with: bytes) as? [[String: Any]] else { continue }
             for entry in entries {
-                guard let id = entry["id"] as? String, !seen.contains(id) else { continue }
-                seen.insert(id)
+                guard let id = entry["id"] as? String else { continue }
+                let scope = (entry["memory_scope"] as? [String: Any])?["key"] as? String
+                let identity = (scope ?? session.bundle.path) + ":" + id
+                guard seen.insert(identity).inserted else { continue }
                 records.append(entry)
             }
         }
@@ -100,33 +102,37 @@ final class DesktopController {
         var found: [ResumableRun] = []
         var seen = Set<String>()
         for directory in previousWorkspaces.map({ $0.appendingPathComponent("runtime") }) {
-        guard let runs = try? FileManager.default.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: [.contentModificationDateKey],
-            options: [.skipsHiddenFiles]) else { continue }
-        for root in runs.sorted(by: {
-            let left = (try? $0.appendingPathComponent("run.json").resourceValues(
-                forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
-            let right = (try? $1.appendingPathComponent("run.json").resourceValues(
-                forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
-            return left > right
-        }) where root.lastPathComponent.hasPrefix("RUN_") {
-            let manifest = root.appendingPathComponent("run.json")
-            guard let bytes = try? Data(contentsOf: manifest),
-                  let value = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any],
-                  value["mode"] as? String == "TRANSLATE",
-                  value["status"] as? String == "FAILED",
-                  let source = value["source"] as? [String: Any],
-                  let path = source["path"] as? String,
-                  FileManager.default.fileExists(atPath: path),
-                  let from = value["source_language"] as? String,
-                  let to = value["target_language"] as? String,
-                  let provider = value["provider"] as? [String: Any],
-                  let artifacts = value["artifacts"] as? [String: Any],
-                  artifacts["ingest"] != nil else { continue }
-            guard seen.insert(root.lastPathComponent).inserted else { continue }
-            found.append(ResumableRun(root: root, source: URL(fileURLWithPath: path),
-                                      sourceLanguage: from, targetLanguage: to, provider: provider))
-        }
+            let process = Process()
+            let pipe = Pipe()
+            process.executableURL = python
+            process.arguments = [repository.appendingPathComponent("scripts/list_resumable_runs.py").path,
+                                 "--workspace-root", directory.path]
+            process.standardOutput = pipe
+            process.standardError = FileHandle.nullDevice
+            var env = ProcessInfo.processInfo.environment
+            let vendor = bundledRepository != nil
+                ? Bundle.main.resourceURL!.appendingPathComponent("vendor")
+                : repository.appendingPathComponent("output/build-vendor")
+            env["PYTHONPATH"] = [vendor.path, repository.path].joined(separator: ":")
+            env["PYTHONNOUSERSITE"] = "1"
+            process.environment = env
+            do {
+                try process.run()
+                let bytes = pipe.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                guard process.terminationStatus == 0,
+                      let rows = try JSONSerialization.jsonObject(with: bytes) as? [[String: Any]] else { continue }
+                for value in rows {
+                    guard let root = value["root"] as? String, seen.insert(root).inserted,
+                          let path = value["source"] as? String,
+                          let from = value["source_language"] as? String,
+                          let to = value["target_language"] as? String,
+                          let provider = value["provider"] as? [String: Any] else { continue }
+                    found.append(ResumableRun(root: URL(fileURLWithPath: root),
+                        source: URL(fileURLWithPath: path), sourceLanguage: from,
+                        targetLanguage: to, provider: provider))
+                }
+            } catch { continue }
         }
         return found
     }
@@ -140,6 +146,7 @@ final class DesktopController {
     var busy = false { didSet { onBusy(busy) } }
     var lastBundle: URL?
 
+    private var translationProcess: Process?
     private var server: Process?
     private var serverTimer: Timer?
     private var progressTimer: Timer?
@@ -460,6 +467,7 @@ final class DesktopController {
             }
             let process = try launch(arguments, stdout: output, stderr: error,
                                      environment: environment)
+            translationProcess = process
             progressTimer?.invalidate()
             progressTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
                 self?.readProgress(progress)
@@ -468,6 +476,7 @@ final class DesktopController {
                 DispatchQueue.main.async {
                     if temporaryProvider { try? FileManager.default.removeItem(at: provider) }
                     guard let self = self else { return }
+                    self.translationProcess = nil
                     self.progressTimer?.invalidate()
                     self.progressTimer = nil
                     self.readProgress(progress)
@@ -527,7 +536,7 @@ final class DesktopController {
                 environment["https_proxy"] = proxyURL
             }
             let script = repository.appendingPathComponent("scripts/check_provider_connection.py")
-            let process = try launch([script.path, "--provider-config", provider.path],
+            let process = try launch([script.path, "--provider-config", provider.path, "--task-check"],
                                      stdout: output, stderr: error,
                                      environment: environment)
             process.terminationHandler = { [weak self] finished in
@@ -549,6 +558,7 @@ final class DesktopController {
 
     func close() {
         serverTimer?.invalidate()
+        translationProcess?.terminate()
         server?.terminate()
     }
 }

@@ -6,13 +6,15 @@ from typing import Any, Dict, Sequence
 
 from runtime.translation import protected_literals
 from runtime.translation_memory import matches
+from runtime.memory_scope import with_scope
 
 
 def inspect_segments(segments: Sequence[Dict[str, Any]], source_language: str,
-                     target_language: str) -> Dict[str, Any]:
+                     target_language: str, context=None, document_sha256=None) -> Dict[str, Any]:
     counts = Counter(str(row.get("text") or "") for row in segments)
     duplicate_count = sum(n - 1 for source, n in counts.items() if source and n > 1)
-    indexed = matches([{"id": str(index), "source": row.get("text", ""), "text_role": "PROSE"}
+    indexed = matches([with_scope({"id": str(index), "source": row.get("text", ""), "text_role": "PROSE"},
+                                  context=context, document_sha256=document_sha256)
                        for index, row in enumerate(segments)], source_language, target_language)
     protected_count = 0
     typo_locations = []

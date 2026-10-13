@@ -81,7 +81,7 @@ For changes to the Skill, schemas, routing, format preflight, or validation tool
 
 ```bash
 python -m py_compile scripts/*.py
-python -m unittest discover -s tests -v
+python scripts/run_tests.py
 python scripts/check_package.py
 ```
 

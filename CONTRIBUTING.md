@@ -2,6 +2,12 @@
 
 DBabel accepts improvements to workflow logic, source/research policy, schemas, file handling, QA, examples, and regression tests.
 
+## Contribution license and attribution
+
+DBabel's first-party source and documentation use [Apache-2.0](LICENSE). Unless explicitly stated otherwise, contributions intentionally submitted for inclusion use those same terms, as described in section 5 of the license. Submit material you have the right to contribute and retain its copyright notices.
+
+For third-party dependencies or adapted code, record the upstream project, exact version or commit, original license and notices, affected DBabel module, and modifications in [THIRD_PARTY_NOTICE.md](THIRD_PARTY_NOTICE.md). Preserve each upstream license when packaging. An architectural reference belongs in the reference section; a project named there is not a DBabel contributor or an installed capability.
+
 ## Terminology corrections
 Do not submit vendor terminology dumps or scraped glossaries.
 
@@ -21,7 +27,7 @@ Keep methodology changes separate from any optional dataset work. DBabel core mu
 ## Validate changes
 
 Install `requirements-dev.txt` in a virtual environment. Run
-`python scripts/check_package.py` and `python -m unittest discover -s tests -v`.
+`python scripts/check_package.py` and `python scripts/run_tests.py`.
 After intentional edits, regenerate checksums with
 `python scripts/check_package.py --write-manifest` and re-run validation.
 For workflow changes, also exercise a relevant case from

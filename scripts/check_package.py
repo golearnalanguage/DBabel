@@ -24,8 +24,9 @@ from build_translation_review_intake import (
     validate_translation_review_intake,
 )
 from version_info import PACKAGE_VERSION, REVIEW_WORKBENCH_VERSION
+from check_third_party import check as check_third_party
 
-LEGACY_REPORT_VERSIONS = {'1.3.0', '1.4.0', '1.5.0'}
+LEGACY_REPORT_VERSIONS = {'1.3.0', '1.4.0', '1.5.0', '1.6.0'}
 SUPPORTED_REPORT_VERSIONS = LEGACY_REPORT_VERSIONS | {PACKAGE_VERSION}
 
 GLOSSARY_CSV_HEADER = [
@@ -74,7 +75,7 @@ def package_paths(root=ROOT):
                        and (root / name).is_file()})
     ignored = {'.git', '.venv', '__pycache__', '.pytest_cache', 'output', 'cache',
                'source_cache', 'private', 'customer_data', 'project_glossary_private',
-               'translation_memory_private'}
+               'translation_memory_private', 'node_modules', '.hypothesis', 'playwright-report', 'test-results'}
     return sorted(p.relative_to(root).as_posix() for p in root.rglob('*')
                   if p.is_file() and not (set(p.relative_to(root).parts) & ignored)
                   and not any(part.startswith('.venv') for part in p.relative_to(root).parts)
@@ -736,6 +737,7 @@ def check_package(write_manifest=False):
 
     try:
         errors.extend(cross_contract_errors(ROOT))
+        errors.extend(check_third_party(ROOT))
     except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as exc:
         errors.append(f'cross-contract validation failed: {exc}')
 

@@ -112,7 +112,7 @@ git clone https://github.com/golearnalanguage/DBabel.git \
 
 ## 开发与参考
 
-当前仓库包版本为 **1.6.0**。Review Workbench 当前版本为 **1.6.0**。仓库改动记录在[变更记录](CHANGELOG.md)中；macOS App 有独立的[下载发布页](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0)。
+当前仓库包版本为 **1.7.0**。Review Workbench 当前版本为 **1.7.0**。这个构建尚未发布，本地验证过的改进列在[变更记录](CHANGELOG.md)中；既有 macOS App [下载发布页](https://github.com/golearnalanguage/DBabel/releases/tag/v1.6.0)仍为 v1.6.0。
 
 ```bash
 python -m py_compile scripts/*.py
@@ -122,4 +122,6 @@ python scripts/check_package.py
 
 有意修改包文件后，运行 `python scripts/check_package.py --write-manifest` 更新清单，再重新验证并执行 `git diff --check`。
 
-[架构](docs/ARCHITECTURE.md) · [本地工具](docs/LOCAL_TOOLING.md) · [能力说明](docs/AGENT_CAPABILITY_MATRIX.md) · [人工修改后复核](docs/POST_REVIEW_QA.md) · [包索引](PACKAGE_INDEX.md) · [许可证](LICENSE)
+[架构](docs/ARCHITECTURE.md) · [本地工具](docs/LOCAL_TOOLING.md) · [能力说明](docs/AGENT_CAPABILITY_MATRIX.md) · [人工修改后复核](docs/POST_REVIEW_QA.md) · [格式交换与证据缓存](docs/INTEROPERABILITY_AND_EVIDENCE.zh-CN.md) · [包索引](PACKAGE_INDEX.md) · [许可证](LICENSE)
+
+自有源码与文档采用 [Apache-2.0](LICENSE) 开源许可。已采用项目及其原始许可列在[第三方声明](THIRD_PARTY_NOTICE.md)，既有发布版本保留当时记录的许可条款。

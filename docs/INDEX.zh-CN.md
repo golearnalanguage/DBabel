@@ -12,6 +12,7 @@
 | Agent 安装、命名和建议 | [Agent 接入](AGENT_INTEGRATION.zh-CN.md) | [Integration](AGENT_INTEGRATION.md) |
 | 各项功能的能力和前提 | [能力矩阵](AGENT_CAPABILITY_MATRIX.zh-CN.md) | [Capabilities](AGENT_CAPABILITY_MATRIX.md) |
 | 人工修改后的复核 | [复核说明](POST_REVIEW_QA.zh-CN.md) | [Post-review QA](POST_REVIEW_QA.md) |
+| TMX 候选与证据依赖失效 | [格式交换与证据缓存](INTEROPERABILITY_AND_EVIDENCE.zh-CN.md) | [Interoperability and evidence](INTEROPERABILITY_AND_EVIDENCE.md) |
 | 命令行工具 | [本地工具](LOCAL_TOOLING.zh-CN.md) | [Local tools](LOCAL_TOOLING.md) |
 | 设计和数据流 | [架构](ARCHITECTURE.zh-CN.md) | [Architecture](ARCHITECTURE.md) |
 | 出版书籍和官方资料 | [研究依据](RESEARCH_BASIS.zh-CN.md) | [Research](RESEARCH_BASIS.md) |

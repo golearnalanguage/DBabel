@@ -26,7 +26,7 @@ if(!process.env.DBABEL_TEST_PORTABLE)throw Error('Set DBABEL_TEST_PORTABLE to a 
  await page.locator('.table-wrap').evaluate(e=>{e.scrollTop+=80;});await page.waitForTimeout(50);
  if(!await page.locator('#segmentRows tr').evaluateAll(rows=>rows.some(r=>r.style.clipPath.startsWith('inset'))))throw Error('Rows overlap sticky header');
  const before=await page.locator('#inspector').boundingBox();await page.focus('#inspectorResizeHandle');await page.keyboard.press('ArrowLeft');const after=await page.locator('#inspector').boundingBox();if(after.width<=before.width)throw Error('Resize failed');
- const download=page.waitForEvent('download');await page.click('#saveProgress');const backup=await download;const file='/tmp/dbabel-test-recovery.json';await backup.saveAs(file);
+ const download=page.waitForEvent('download');await page.click('#saveProgress');const backup=await download;const file=require('path').join(process.env.DBABEL_TEST_OUTPUT||require('os').tmpdir(),'dbabel-test-recovery.json');await backup.saveAs(file);
  await page.click('#editAction');await page.fill('#targetText','Replacement after backup');await page.click('#confirmEdit');await page.locator('#restoreProgressInput').setInputFiles(file);await page.waitForFunction(()=>!document.querySelector('#targetText').value.includes('Replacement after backup'));
  const fs=require('fs'),saved=JSON.parse(fs.readFileSync(file));saved.session_id='OTHER_SESSION';await page.locator('#restoreProgressInput').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(saved))});await page.getByText('Recovery file does not match this session.',{exact:true}).waitFor();
  for(const theme of ['dark','light','system'])await page.selectOption('#themeSelect',theme);

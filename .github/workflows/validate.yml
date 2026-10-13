@@ -74,7 +74,7 @@ jobs:
           --output "${{ runner.temp }}/dbabel-runtime-plan.json"
 
       - name: Run full regression suite
-        run: python -m unittest discover -s tests -v
+        run: python scripts/run_tests.py
 
       - name: Validate audit report contract
         run: python scripts/validate_report.py examples/audit_report.json
@@ -86,3 +86,72 @@ jobs:
 
       - name: Check whitespace errors
         run: git diff --check
+
+  browser:
+    name: Chromium / synthetic review sessions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install optional test dependencies
+        run: |
+          python -m pip install -r requirements-dev.txt
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Run isolated browser and accessibility checks
+        run: python tests/run_browser_smoke.py --output "${{ runner.temp }}/dbabel-browser"
+      - name: Preserve browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dbabel-browser-diagnostics
+          path: ${{ runner.temp }}/dbabel-browser
+          if-no-files-found: ignore
+          retention-days: 7
+
+  property:
+    name: Python 3.11 / native document properties
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            requirements-dev.txt
+            requirements-property.txt
+      - name: Install property-test dependencies
+        run: python -m pip install -r requirements-property.txt
+      - name: Check generated native document invariants
+        run: python scripts/run_tests.py discover -s tests/property -p 'test_*.py' -v
+
+  integration:
+    name: Python 3.12 / adopted runtime components
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements-dev.txt
+            requirements-integration.txt
+      - name: Install adopted runtime components
+        run: python -m pip install -r requirements-dev.txt -r requirements-integration.txt
+      - name: Verify transport, memory, interoperability and recovery
+        run: >-
+          python scripts/run_tests.py discover -s tests -p 'test_*.py' -v

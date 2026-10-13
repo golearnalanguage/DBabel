@@ -8,6 +8,6 @@ The local Workbench processes uploads on the user's machine. When using an exter
 
 本地工作台在用户机器上处理上传文件。使用外部 Agent、翻译服务或检索服务时，遵循该文档和项目已经确定的处理授权。
 
-The [PolyForm Noncommercial License 1.0.0](LICENSE) governs use of this repository, including its warranty and liability terms. Third-party documents, software, names and trademarks retain their own licenses and rights. This note does not amend those terms.
+The [Apache License, Version 2.0](LICENSE) governs DBabel's first-party source and documentation, including its warranty and liability terms. Third-party documents, software, names and trademarks retain their own licenses and rights. See [third-party notices](THIRD_PARTY_NOTICE.md). This note does not amend those terms.
 
-本仓库适用 [PolyForm Noncommercial License 1.0.0](LICENSE)，包括其中的保证与责任条款。第三方文档、软件、名称及商标适用各自许可与权利。本说明不修改上述条款。
+DBabel 自有源码与文档适用 [Apache License 2.0](LICENSE)，包括其中的保证与责任条款。第三方文档、软件、名称及商标保留各自许可与权利，详见[第三方声明](THIRD_PARTY_NOTICE.md)。本说明不修改上述条款。

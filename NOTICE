@@ -1,9 +1,22 @@
 DBabel
 
-Required Notice: Copyright 2026 golearnalanguage
+Copyright 2026 golearnalanguage
 
-DBabel is licensed under the PolyForm Noncommercial License 1.0.0.
-Official terms: https://polyformproject.org/licenses/noncommercial/1.0.0
+DBabel first-party source and documentation are licensed under the Apache
+License, Version 2.0. See LICENSE. Third-party components retain their own
+copyright, licenses, and notices; see THIRD_PARTY_NOTICE.md.
+
+DBabel uses the OpenAI Python SDK (OpenAI, Apache-2.0), Anthropic Python SDK
+(Anthropic, PBC., MIT), RapidFuzz (Max Bachmann and contributors, MIT), and
+lxml (Infrae and lxml contributors, BSD with additional bundled-component
+licenses) through their public APIs. Upstream source has not been copied into
+DBabel's first-party modules. Preserve the installed distributions' license
+and attribution files when redistributing them.
+
+Development verification uses Playwright (Microsoft and contributors,
+Apache-2.0), Hypothesis (Hypothesis contributors, MPL-2.0), and axe-core
+(Deque Systems and contributors, MPL-2.0). These tools are development
+dependencies and do not run in the ordinary review product.
 
 DBabel is an independent project. References to database vendors, products,
 standards bodies, documentation, or trademarks are for identification,

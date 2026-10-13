@@ -25,6 +25,7 @@ from runtime.checkpoint import checkpoint_digest, load_checkpoint, save_checkpoi
 from runtime.general_terms import candidates as general_term_candidates
 from runtime.translation_memory import matches as translation_memory_matches
 from runtime.translation_memory import rejections as translation_memory_rejections
+from runtime.memory_scope import record_applies
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -100,6 +101,7 @@ def rejected_for_unit(unit: Dict[str, Any], source_language: str,
             (item.get("scope") == "TERM" and item["source"] in unit["source"]))
         and item["source_language"] == source_language
         and item["target_language"] == target_language
+        and record_applies(item, unit)
         and item["rejected_target"].strip()))[:20]
 
 
@@ -111,6 +113,7 @@ def rejected_phrases_for_unit(unit: Dict[str, Any], source_language: str,
         and item["source"] and item["source"] in unit["source"]
         and item["source_language"] == source_language
         and item["target_language"] == target_language
+        and record_applies(item, unit)
         and item["rejected_target"].strip()))[:20]
 
 
@@ -810,6 +813,7 @@ def translate_units(
                 response.response_id,
             "usage":
                 dict(response.usage),
+            "diagnostics": dict(response.diagnostics),
         })
         completed += len(batch)
         if checkpoint_path is not None:

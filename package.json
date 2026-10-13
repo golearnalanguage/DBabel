@@ -1,0 +1,15 @@
+{
+  "name": "dbabel-development-checks",
+  "private": true,
+  "description": "Optional browser quality checks; no production JavaScript dependencies.",
+  "scripts": {
+    "test:browser": "python3 tests/run_browser_smoke.py"
+  },
+  "devDependencies": {
+    "axe-core": "4.11.0",
+    "playwright": "1.64.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — 1.7.0
+
+- Isolate exact and similar translation memory and rejected renderings by project, product, version and text role. Preserve unscoped legacy records with a pre-migration backup.
+- Recover interrupted runs under a process-held exclusive lock; verify source, artifacts and checkpoints before continuing completed batches.
+- Use optional official SDK transports with one retry owner, bounded replies and request diagnostics; add a real translation-contract preflight.
+- Run browser, keyboard, accessibility and property checks in isolated synthetic sessions and dedicated CI jobs.
+- License first-party source and documentation under Apache-2.0; preserve historical release terms and upstream copyright/license notices.
+- Add lxml-backed, plain-segment TMX 1.4 CLI interchange. Preserve language tags, scope and metadata; retain unsupported inline XML in unapproved candidate receipts. Exclude rejected memory records from export by default.
+- Add a local evidence cache with retained source SHA-256 snapshots, exact scope, explicit expiry and affected-unit reports. Source/scope changes require review without changing human decisions.
+- Credit adopted OpenAI/Anthropic SDKs, RapidFuzz and lxml separately from architecture references; list Playwright, Hypothesis and axe-core as development verification tools.
+
 ## 1.6.0 — 2026-10-03
 
 - Add complete JSON/SSE decoding for Chat Completions, Responses and Anthropic Messages, configurable streaming/timeouts/model options, and bounded retry/error diagnostics.

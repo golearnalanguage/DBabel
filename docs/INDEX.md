@@ -12,6 +12,7 @@
 | Agent setup, naming and proposals | [Integration](AGENT_INTEGRATION.md) | [Agent 接入](AGENT_INTEGRATION.zh-CN.md) |
 | What each capability can do | [Capabilities](AGENT_CAPABILITY_MATRIX.md) | [能力矩阵](AGENT_CAPABILITY_MATRIX.zh-CN.md) |
 | Review human edits | [Post-review QA](POST_REVIEW_QA.md) | [人工修改后复核](POST_REVIEW_QA.zh-CN.md) |
+| TMX candidates and stale evidence dependencies | [Interoperability and evidence](INTEROPERABILITY_AND_EVIDENCE.md) | [格式交换与证据缓存](INTEROPERABILITY_AND_EVIDENCE.zh-CN.md) |
 | Command-line tools | [Local tools](LOCAL_TOOLING.md) | [本地工具](LOCAL_TOOLING.zh-CN.md) |
 | Design and data flow | [Architecture](ARCHITECTURE.md) | [架构](ARCHITECTURE.zh-CN.md) |
 | Published/official sources | [Research](RESEARCH_BASIS.md) | [研究依据](RESEARCH_BASIS.zh-CN.md) |
