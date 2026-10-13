@@ -1,5 +1,6 @@
 import json
 import os
+from contextlib import closing
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -34,10 +35,11 @@ class MemoryScopeTests(unittest.TestCase):
         self.assertEqual(rejected_for_unit(unit,'zh-CN','en',[record]),['bad'])
         self.assertEqual(rejected_for_unit(self.unit('B'),'zh-CN','en',[record]),[])
     def test_legacy_migration_preserves_data_without_automatic_reuse(self):
-        with sqlite3.connect(self.path) as db:
-            db.execute('CREATE TABLE memories(source_language TEXT,target_language TEXT,text_role TEXT,source_hash TEXT,source TEXT,kind TEXT,target TEXT,decision TEXT,updated_at TEXT)')
-            import hashlib
-            db.execute('INSERT INTO memories VALUES (?,?,?,?,?,?,?,?,?)',('zh-CN','en','PROSE',hashlib.sha256('配置主库'.encode()).hexdigest(),'配置主库','PREFERRED','old target','USER_EDITED','2026-01-01'))
+        with closing(sqlite3.connect(self.path)) as db:
+            with db:
+                db.execute('CREATE TABLE memories(source_language TEXT,target_language TEXT,text_role TEXT,source_hash TEXT,source TEXT,kind TEXT,target TEXT,decision TEXT,updated_at TEXT)')
+                import hashlib
+                db.execute('INSERT INTO memories VALUES (?,?,?,?,?,?,?,?,?)',('zh-CN','en','PROSE',hashlib.sha256('配置主库'.encode()).hexdigest(),'配置主库','PREFERRED','old target','USER_EDITED','2026-01-01'))
         self.assertIsNone(match(self.unit(),'zh-CN','en'))
         rows=export_entries()
         self.assertEqual(rows[0]['target'],'old target')
