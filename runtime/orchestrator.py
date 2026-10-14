@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable, Iterable, Optional
 
 from providers.base import TextGenerationProvider
+from providers.errors import exception_chain, is_provider_failure, provider_error_report, safe_text
 from providers.openai_compatible import (
     OpenAICompatibleProvider,
 )
@@ -57,7 +58,25 @@ from prepare_runtime import (  # noqa: E402
 
 
 class OrchestrationError(RuntimeError):
-    pass
+    def __init__(self, message, *, manifest=None):
+        super().__init__(message)
+        self.manifest = manifest
+
+
+def _failure_details(stage, exc):
+    secrets = tuple(value for item in exception_chain(exc) for value in getattr(item, "_secrets", ()))
+    failure = {"stage": stage, "type": type(exc).__name__, "reason": safe_text(exc, secrets, 2000)}
+    if is_provider_failure(exc):
+        failure["provider_error"] = provider_error_report(exc, secrets=secrets)
+    return failure
+
+
+def _execution_error(run, stage, exc, failure):
+    try:
+        manifest = run.load_manifest()
+    except (OSError, ValueError):
+        manifest = {"status": "FAILED", "current_stage": stage, "failure": failure}
+    return OrchestrationError("{} failed: {}".format(stage, failure["reason"]), manifest=manifest)
 
 
 def _leased_operation(method):
@@ -253,13 +272,13 @@ class RuntimeOrchestrator:
                 on_progress({"stage": stage, "state": "COMPLETED"})
             return manifest
         except Exception as exc:
-            failure = {"stage": stage, "type": type(exc).__name__, "reason": str(exc)}
+            failure = _failure_details(stage, exc)
             try:
                 run.update(status="FAILED", current_stage=stage, failure=failure)
                 audit.append(stage=stage, status="FAILED", details=failure)
             except Exception:
                 pass
-            raise OrchestrationError("{} failed: {}".format(stage, exc)) from exc
+            raise _execution_error(run, stage, exc, failure) from exc
 
     @_leased_operation
     def prepare_translation(
@@ -506,11 +525,7 @@ class RuntimeOrchestrator:
             return manifest
 
         except Exception as exc:
-            failure = {
-                "stage": "RUNTIME_PREPARATION",
-                "type": type(exc).__name__,
-                "reason": str(exc),
-            }
+            failure = _failure_details("RUNTIME_PREPARATION", exc)
 
             try:
                 run.update(
@@ -529,9 +544,7 @@ class RuntimeOrchestrator:
             finally:
                 pass
 
-            raise OrchestrationError(
-                str(exc)
-            ) from exc
+            raise _execution_error(run, "RUNTIME_PREPARATION", exc, failure) from exc
     @_leased_operation
     def run_translation_to_qa(
         self,
@@ -933,12 +946,7 @@ class RuntimeOrchestrator:
             return manifest
 
         except Exception as exc:
-            failure = {
-                "stage": stage,
-                "type":
-                    type(exc).__name__,
-                "reason": str(exc),
-            }
+            failure = _failure_details(stage, exc)
 
             try:
                 run.update(
@@ -957,12 +965,7 @@ class RuntimeOrchestrator:
                 # even if failure recording itself breaks.
                 pass
 
-            raise OrchestrationError(
-                "{} failed: {}".format(
-                    stage,
-                    exc,
-                )
-            ) from exc
+            raise _execution_error(run, stage, exc, failure) from exc
     @_leased_operation
     def run_translation_to_review(
         self,
@@ -1360,14 +1363,7 @@ class RuntimeOrchestrator:
             return manifest
 
         except Exception as exc:
-            failure = {
-                "stage":
-                    stage,
-                "type":
-                    type(exc).__name__,
-                "reason":
-                    str(exc),
-            }
+            failure = _failure_details(stage, exc)
 
             try:
                 run.update(
@@ -1387,9 +1383,4 @@ class RuntimeOrchestrator:
             except Exception:
                 pass
 
-            raise OrchestrationError(
-                "{} failed: {}".format(
-                    stage,
-                    exc,
-                )
-            ) from exc
+            raise _execution_error(run, stage, exc, failure) from exc

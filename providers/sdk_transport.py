@@ -5,8 +5,10 @@ import importlib.util
 import json
 import time
 from urllib.parse import urlparse
+from urllib.request import proxy_bypass
 
 from providers.base import ProviderError, ProviderTransientError, ProviderResponseInterrupted
+from providers.errors import exception_chain, safe_text, service_message, service_request_id
 
 
 def available(mode):
@@ -37,7 +39,18 @@ def request(endpoint, headers, body, timeout, max_bytes, *, config, on_progress=
     suffix = {"chat_completions": "/chat/completions", "responses": "/responses",
               "anthropic_messages": "/v1/messages"}[mode]
     base = endpoint[:-len(suffix)]
-    local = urlparse(endpoint).hostname in {"localhost", "127.0.0.1", "::1"}
+    parsed = urlparse(endpoint)
+    local = parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+    system_bypass = (not local and config.proxy_mode == "system"
+                     and proxy_bypass(parsed.netloc))
+    # HTTPX reads the platform's proxy URLs but omits macOS proxy exceptions.
+    # Resolve this destination with urllib, as the standard-library path does.
+    # A direct transport disables HTTPX proxy mounts while retaining environment
+    # CA settings needed by enterprise HTTPS services.
+    direct_transport = httpx2.HTTPTransport(trust_env=True) if system_bypass else None
+    route = ("DIRECT_LOCAL" if local else "DIRECT_CONFIGURED" if config.proxy_mode == "none"
+             else "DIRECT_SYSTEM_BYPASS" if system_bypass else "CUSTOM" if config.proxy_mode == "custom"
+             else "SYSTEM")
     class LimitedStream(httpx2.SyncByteStream):
         def __init__(self, stream):
             self.stream = stream
@@ -61,6 +74,7 @@ def request(endpoint, headers, body, timeout, max_bytes, *, config, on_progress=
         # Bound error bodies too: SDKs read them before raising APIStatusError.
         response.stream = LimitedStream(response.stream)
     http_client = httpx2.Client(trust_env=not local and config.proxy_mode != "none",
+                               transport=direct_transport,
                                follow_redirects=False, timeout=float(timeout),
                                headers={"Accept-Encoding": "identity"},
                                event_hooks={"response": [bounded]})
@@ -82,7 +96,13 @@ def request(endpoint, headers, body, timeout, max_bytes, *, config, on_progress=
     direct = {key: value for key, value in payload.items() if key in core}
     extras = {key: value for key, value in payload.items() if key not in core}
     started = time.monotonic()
-    records = {"backend": "sdk", "sdk": sdk.__name__, "sdk_version": sdk.__version__}
+    records = {"backend": "sdk", "sdk": sdk.__name__, "sdk_version": sdk.__version__,
+               "route": route}
+    credentials = tuple(value for value in (headers.get("x-api-key"), headers.get("Authorization"),
+        headers.get("Authorization", "").removeprefix("Bearer ")) if value)
+    def failure_details(exc):
+        original = next((str(item) for item in reversed(exception_chain(exc)) if str(item)), str(exc))
+        return {**records, "service_message": safe_text(original, credentials)}
     def check_cancel():
         if cancel_event is not None and cancel_event.is_set():
             raise ProviderError("provider request cancelled")
@@ -130,24 +150,31 @@ def request(endpoint, headers, body, timeout, max_bytes, *, config, on_progress=
             retry_after = min(60, max(0, float(exc.response.headers.get("retry-after", 0))))
         except (TypeError, ValueError):
             retry_after = None
-        detail = str(exc)
-        for key in (headers.get("x-api-key"), headers.get("Authorization")):
-            if key:
-                detail = detail.replace(key, "[redacted]")
+        detail = safe_text(service_message(exc.body) or str(exc), credentials)
+        request_id = service_request_id(exc.response.content, exc.response.headers)
         guidance = {401: "API key or gateway token was rejected", 403: "token lacks access to this model",
                     402: "service balance or quota is exhausted", 429: "quota or rate limit was reached"}.get(status, "service returned an error")
         raise error("provider HTTP error: {} ({}; {})".format(status, guidance, detail[:350]),
-                    status=status, retry_after=retry_after) from exc
+                    status=status, retry_after=retry_after,
+                    details={**records, "service_message": detail, "request_id": safe_text(request_id, credentials, 128)},
+                    secrets=credentials) from exc
     except (sdk.APITimeoutError, httpx2.TimeoutException) as exc:
-        raise ProviderResponseInterrupted("provider SDK request timed out") from exc
+        raise ProviderResponseInterrupted("provider SDK request timed out", details=failure_details(exc), secrets=credentials) from exc
     except httpx2.RemoteProtocolError as exc:
-        raise ProviderResponseInterrupted("provider SDK response disconnected before completion") from exc
+        raise ProviderResponseInterrupted("provider SDK response disconnected before completion", details=failure_details(exc), secrets=credentials) from exc
     except (sdk.APIConnectionError, httpx2.HTTPError) as exc:
         cause = exc.__cause__
         while cause is not None:
             if isinstance(cause, ProviderError):
+                cause.details = {**records, **cause.details}
+                cause._secrets += credentials
                 raise cause from exc
             cause = cause.__cause__
-        raise ProviderTransientError("provider SDK connection failed; check VPN/proxy and the endpoint") from exc
+        raise ProviderTransientError("provider SDK connection failed; check VPN/proxy and the endpoint",
+            details=failure_details(exc), secrets=credentials) from exc
+    except ProviderError as exc:
+        exc.details = {**records, **exc.details}
+        exc._secrets += credentials
+        raise
     finally:
         client.close()

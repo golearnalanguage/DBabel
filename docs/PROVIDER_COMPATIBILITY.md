@@ -4,7 +4,7 @@
 
 Choose the protocol supplied by your gateway: **Chat Completions** for NewAPI/OpenAI-compatible channels, **Responses** for `/responses`, or **Claude Messages** for the native Anthropic API. Base URLs and complete endpoint URLs are accepted; DBabel does not append a second endpoint. Keep the gateway's exact model name. A successful connection test does not prove a complete document run.
 
-For a company NewAPI gateway, connect to its required intranet/VPN first. Start with streaming enabled and a 300-second idle timeout. Keep the system proxy, or select direct mode if company policy routes intranet traffic directly. A trusted HTTP intranet endpoint requires the existing explicit HTTP opt-in; TLS verification remains enabled. The app does not whitelist vendors/models. No company endpoint or credential is bundled.
+For a company NewAPI gateway, connect to its required intranet/VPN first. Start with streaming enabled and a 300-second idle timeout. System mode honors the operating system's proxy bypass rules, including macOS proxy exceptions, in both the built-in and SDK clients. A matching exception uses a direct connection while retaining configured certificate trust. No proxy always connects directly; Custom proxy uses the supplied proxy. A trusted HTTP intranet endpoint requires the existing explicit HTTP opt-in; TLS verification remains enabled. The app does not whitelist vendors/models. No company endpoint or credential is bundled.
 
 Desktop settings expose protocol, **Request client** (Automatic, Built-in compatible client, Official SDK), streaming, omission of temperature, timeout (1–600 seconds), and an optional model-parameters JSON object. Imported provider files also support `max_output_tokens` and `transport_backend`. Model parameters, for example `{"thinking":{"type":"disabled"}}`, are passed only when the user supplies them; support depends on the gateway/model. Do not place credentials in this object. GPT/o-series reasoning models omit sampling temperature by default. A 400 response explicitly rejecting temperature or streaming triggers one fallback removing that field. Other 400 responses remain visible errors.
 
@@ -29,6 +29,22 @@ python scripts/check_provider_connection.py --provider-config provider.json --ta
 This command sends one small synthetic Chinese-to-English translation, verifies the requested JSON unit and protected literals, and returns `TASK_READY` or `CONTRACT_FAILED` with usage/transport diagnostics. It uses provider tokens and measures one contract, not document-wide quality or throughput. Plain connection availability, format preflight, successful ingestion, actual coverage and final export remain separate checks.
 
 The desktop **Test translation capability** button runs this task probe. Its result distinguishes a usable translation contract from a connected endpoint that returned an invalid contract, with the validation failures shown for correction.
+
+## Understand and resolve errors
+
+Connection tests and failed translation runs show an error type and title, an explanation, suggested actions and the available service message. HTTP status is supporting detail. Diagnostics also include the request ID, attempts, request client and network route when available. Service messages are bounded and configured credentials are redacted; fields are omitted when the service supplies no message or request ID. Successful batches remain saved for resume after correction.
+
+| Error | Meaning and next action |
+|---|---|
+| Authentication (`401`) | The service rejected the token. Check the token issued for this gateway, its expiry and the saved service address. The request stops immediately. |
+| Payment or permission (`402` / `403`) | Check the gateway balance, token permissions and access to the selected model/channel. These statuses stop immediately. |
+| Endpoint or model (`404`) | Verify the protocol, endpoint path and exact model ID against the gateway configuration. |
+| Rate or quota limit (`429`) | Read the service message to distinguish a rate limit from exhausted quota. Wait for the stated retry interval or restore quota before resuming. |
+| Service or gateway unavailable (`500` / `502` / `503` / `504`) | A service, gateway or intermediate proxy failed. For an intranet endpoint, first verify VPN, DNS and the recorded route; compare the system bypass rules or an authorized direct route. If the service is reached and the failure persists, ask its administrator to check the upstream channel and capacity using the request ID. A `503` has at most three transport attempts. |
+| Network, TLS or timeout | Check connectivity, private DNS, VPN and proxy settings. TLS failures also require checking the certificate trust chain. For an idle timeout, check streaming support and adjust the timeout within the allowed range. |
+| Incomplete response or invalid contract | Check the reported truncation or JSON/unit/literal validation findings. Try the capability probe and the gateway's supported parameters; failed content is not saved as a completed batch. |
+
+An HTTP status alone does not identify which intermediary produced the response. Use the service message, request ID and actual route together to choose the next action.
 
 ## Reviewed upstream references
 

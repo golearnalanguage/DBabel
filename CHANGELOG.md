@@ -13,6 +13,8 @@
 - Preserve request-client selection across desktop configuration import, saved settings and translation; surface connected-but-invalid task probe failures with their findings.
 - Carry known project/product/version context through runtime routing and translation/semantic requests; align operational guides and package entry points with the current contracts.
 - Recover the saved semantic-adjudication stage after process death without repeating translation or adjudication requests.
+- Honor macOS/system proxy bypass rules in SDK requests while preserving certificate trust and explicit direct/custom proxy settings.
+- Show categorized API errors with explanations, recovery actions, bounded redacted service messages and available request ID, attempt, client and route diagnostics in connection tests and failed runs.
 
 ## 1.6.0 — 2026-10-03
 

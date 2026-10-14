@@ -9,10 +9,14 @@ from runtime.models import (
 
 
 class ProviderError(RuntimeError):
-    def __init__(self, message: str, *, status: int = None, retry_after: float = None):
+    def __init__(self, message: str, *, status: int = None, retry_after: float = None,
+                 details=None, kind=None, secrets=()):
         super().__init__(message)
         self.status = status
         self.retry_after = retry_after
+        self.details = dict(details or {})
+        self.kind = kind
+        self._secrets = tuple(value for value in secrets if isinstance(value, str) and value)
 
 
 class ProviderTransientError(ProviderError):

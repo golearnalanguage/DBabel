@@ -23,11 +23,21 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleExecutable</key><string>DBabel</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.7.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleVersion</key><string>2</string>
   <key>CFBundleIconFile</key><string>DBabelIcon</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST
+
+# Retain source provenance so same-version local installers can be identified.
+SOURCE_REVISION=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || printf 'unknown')
+if [ "$SOURCE_REVISION" != 'unknown' ]; then
+  if [ -n "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ]; then
+    SOURCE_REVISION="$SOURCE_REVISION-dirty"
+  fi
+fi
+/usr/libexec/PlistBuddy -c "Add :DBabelSourceRevision string $SOURCE_REVISION" \
+  "$APP/Contents/Info.plist"
 
 ICON_TMP=$(mktemp -d "${TMPDIR:-/tmp}/dbabel-icon.XXXXXX")
 trap 'rm -rf "$ICON_TMP"' EXIT

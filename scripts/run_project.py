@@ -24,6 +24,7 @@ from runtime.orchestrator import (  # noqa: E402
     OrchestrationError,
     RuntimeOrchestrator,
 )
+from providers.errors import is_provider_failure, known_secrets, provider_error_report, safe_text
 
 
 def parser() -> argparse.ArgumentParser:
@@ -178,9 +179,16 @@ def main() -> int:
     ) as exc:
         print(
             "DBabel project run failed: "
-            + str(exc),
+            + safe_text(exc, known_secrets(exc), 2000),
             file=sys.stderr,
         )
+        manifest = getattr(exc, "manifest", None)
+        if not isinstance(manifest, dict):
+            failure = {"type": type(exc).__name__, "reason": safe_text(exc, limit=2000)}
+            if is_provider_failure(exc) or isinstance(exc, ValueError):
+                failure["provider_error"] = provider_error_report(exc)
+            manifest = {"status": "FAILED", "failure": failure}
+        print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
         return 2
     finally:
         if progress_file:

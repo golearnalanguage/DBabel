@@ -153,6 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
     private var controls: [NSButton] = []
     private var progressPageActive = false
     private var progressLastEvent: [String: Any]?
+    private var progressFailureMessage: String?
     private var progressSteps: [NSTextField] = []
     private let progressHeading = NSTextField(labelWithString: "")
     private let progressDocument = NSTextField(labelWithString: "")
@@ -179,7 +180,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
     private let apiProxy = NSTextField(string: "")
     private let apiProxyMode = NSPopUpButton(frame: .zero, pullsDown: false)
     private let apiTrustedHTTP = NSButton(checkboxWithTitle: "", target: nil, action: nil)
-    private let apiStatus = NSTextField(labelWithString: "")
+    private let apiStatus = DiagnosticTextView(frame: NSRect(x: 0, y: 0, width: 550, height: 150))
     private let from = NSPopUpButton(frame: .zero, pullsDown: false)
     private let to = NSPopUpButton(frame: .zero, pullsDown: false)
     private let role = NSTextField(string: "PROSE")
@@ -291,7 +292,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             }
         }
         desktop.onProgress = { [weak self] event in self?.updateProgress(event) }
-        desktop.onTranslationFailure = { [weak self] message in self?.showProgressFailure(message) }
+        desktop.onTranslationFailure = { [weak self] message in
+            guard let self else { return }
+            self.showProgressFailure(self.desktop.lastTranslationFailureDetail(language: self.chinese ? "zh-CN" : "en") ?? message)
+        }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -952,9 +956,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         landingPage = .progress
         progressPageActive = true
         progressLastEvent = nil
+        progressFailureMessage = nil
         body.subviews.forEach { $0.removeFromSuperview() }
         browser = nil
         progressHeading.font = .systemFont(ofSize: 34, weight: .semibold)
+        progressHeading.textColor = .labelColor
         progressHeading.stringValue = local("正在准备翻译", "Preparing translation")
         progressDetail.stringValue = local("正在检查文档格式…", "Checking document format…")
         progressDetail.textColor = .secondaryLabelColor
@@ -1091,29 +1097,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
 
     private func showProgressFailure(_ message: String) {
         guard progressPageActive else { return }
+        progressFailureMessage = message
         progressBar.stopAnimation(nil)
         progressDocument.layer?.removeAnimation(forKey: "documentBreathe")
+        progressSteps.forEach { $0.layer?.removeAnimation(forKey: "progressPulse") }
+        body.subviews.forEach { $0.removeFromSuperview() }
         progressHeading.stringValue = local("翻译未完成", "Translation did not complete")
-        progressDetail.stringValue = message
-        progressDetail.textColor = .systemRed
-        progressUnit.stringValue = local("请查看上方原因，调整后重试。", "Review the reason above, then retry.")
-        progressSource.stringValue = ""
+        progressHeading.textColor = .systemRed
+        let details = DiagnosticTextView(frame: NSRect(x: 0, y: 0, width: 800, height: 300))
+        let scroll = details.scrollView(width: 800, height: 300)
+        details.stringValue = message
+        details.setAccessibilityLabel(local("翻译错误详情", "Translation error details"))
+        let heading = NSStackView(views: [progressHeading, progressDocument])
+        heading.orientation = .vertical
+        heading.alignment = .leading
+        heading.spacing = 12
+        heading.translatesAutoresizingMaskIntoConstraints = false
+        body.addSubview(heading)
+        body.addSubview(scroll)
         let back = button(local("返回首页", "Back to home"), #selector(homeAction))
-        back.translatesAutoresizingMaskIntoConstraints = false
-        body.addSubview(back)
-        let resume = button(local("继续本次运行", "Resume this run"), #selector(resumeAction))
-        resume.translatesAutoresizingMaskIntoConstraints = false
+        let configure = button(local("API 服务设置", "API service settings"), #selector(providerAction))
+        var actions = [back, configure]
         if let candidate = matchingResumeRun(), candidate.source == source {
             pendingResume = candidate
-            body.addSubview(resume)
-            NSLayoutConstraint.activate([
-                resume.leadingAnchor.constraint(equalTo: back.trailingAnchor, constant: 12),
-                resume.centerYAnchor.constraint(equalTo: back.centerYAnchor)
-            ])
+            actions.append(button(local("继续本次运行", "Resume this run"), #selector(resumeAction)))
         }
+        let buttons = NSStackView(views: actions)
+        buttons.orientation = .horizontal
+        buttons.spacing = 12
+        buttons.translatesAutoresizingMaskIntoConstraints = false
+        body.addSubview(buttons)
         NSLayoutConstraint.activate([
-            back.leadingAnchor.constraint(equalTo: body.leadingAnchor, constant: 52),
-            back.bottomAnchor.constraint(equalTo: body.bottomAnchor, constant: -40)
+            heading.topAnchor.constraint(equalTo: body.topAnchor, constant: 44),
+            heading.leadingAnchor.constraint(equalTo: body.leadingAnchor, constant: 52),
+            heading.trailingAnchor.constraint(lessThanOrEqualTo: body.trailingAnchor, constant: -52),
+            scroll.topAnchor.constraint(equalTo: heading.bottomAnchor, constant: 20),
+            scroll.leadingAnchor.constraint(equalTo: heading.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: body.trailingAnchor, constant: -52),
+            scroll.bottomAnchor.constraint(equalTo: buttons.topAnchor, constant: -20),
+            buttons.leadingAnchor.constraint(equalTo: heading.leadingAnchor),
+            buttons.bottomAnchor.constraint(equalTo: body.bottomAnchor, constant: -40)
         ])
     }
 
@@ -1238,9 +1261,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             chinese.toggle()
             refreshNativeLanguage()
             if progressPageActive {
-                let last = progressLastEvent
-                showProgress()
-                if let last = last { updateProgress(last) }
+                if let failure = progressFailureMessage {
+                    showProgressFailure(desktop.lastTranslationFailureDetail(language: chinese ? "zh-CN" : "en") ?? failure)
+                } else {
+                    let last = progressLastEvent
+                    showProgress()
+                    if let last = last { updateProgress(last) }
+                }
             } else {
                 switch landingPage {
                 case .welcome: showWelcome()
@@ -1372,7 +1399,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         populateModelPresets()
         apiStatus.stringValue = ""
         apiStatus.textColor = .systemRed
-        apiStatus.maximumNumberOfLines = 0
         if !providerFieldConstraintsSet {
             for field in [apiBaseURL, apiModel, apiKey, apiProxy, apiTimeout, apiOptions] {
                 field.translatesAutoresizingMaskIntoConstraints = false
@@ -1439,7 +1465,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         scroll.hasVerticalScroller = true
         scroll.documentView = stack
         scroll.translatesAutoresizingMaskIntoConstraints = false
-        let footer = NSStackView(views: [buttons, apiStatus])
+        let statusScroll = apiStatus.scrollView(width: 550, height: 150)
+        apiStatus.setAccessibilityLabel(local("API 测试详情", "API test details"))
+        let footer = NSStackView(views: [buttons, statusScroll])
         footer.orientation = .vertical
         footer.alignment = .leading
         footer.spacing = 8
@@ -1456,6 +1484,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             stack.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
             footer.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
             footer.widthAnchor.constraint(equalTo: scroll.widthAnchor),
+            statusScroll.widthAnchor.constraint(equalTo: footer.widthAnchor),
+            statusScroll.heightAnchor.constraint(equalToConstant: 150),
             footer.bottomAnchor.constraint(equalTo: sheet.contentView!.bottomAnchor, constant: -18)
         ])
         providerSheet = sheet
@@ -1642,6 +1672,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
     }
 
     @objc private func testProviderAction() {
+        guard let testingSheet = providerSheet else { return }
         let settings = providerDraft()
         if let error = settings.validationError() {
             apiStatus.textColor = .systemRed
@@ -1665,13 +1696,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             apiStatus.stringValue = local("正在检查样本翻译…", "Checking a sample translation…")
             desktop.checkProvider(provider: provider,
                                   apiKey: key.isEmpty ? "local" : key,
-                                  proxyURL: settings.proxyURL) { [weak self] success, detail in
-                guard let self = self, self.providerSheet != nil else { return }
+                                  proxyURL: settings.proxyURL,
+                                  language: chinese ? "zh-CN" : "en") { [weak self, weak testingSheet] success, detail in
+                guard let self, let testingSheet, self.providerSheet === testingSheet else { return }
                 self.apiTestButton?.isEnabled = true
                 self.apiStatus.textColor = success ? .systemGreen : .systemRed
                 self.apiStatus.stringValue = success
                     ? self.local("样本翻译检查通过。", "Sample translation check passed.")
-                    : String(detail.trimmingCharacters(in: .whitespacesAndNewlines).prefix(350))
+                    : (self.desktop.lastProviderCheckDetail(language: self.chinese ? "zh-CN" : "en") ?? detail)
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
             }
         } catch {
             apiStatus.textColor = .systemRed
@@ -1720,7 +1753,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             desktop.translate(source: source, from: languageCode(from), to: languageCode(to),
                               role: role.stringValue, provider: provider,
                               apiKey: key, proxyURL: settings.proxyURL,
-                              temporaryProvider: true, resumeRun: resumeRun)
+                              temporaryProvider: true, resumeRun: resumeRun,
+                              language: chinese ? "zh-CN" : "en")
         } catch {
             status.stringValue = error.localizedDescription
         }

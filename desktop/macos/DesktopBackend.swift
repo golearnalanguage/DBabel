@@ -4,6 +4,41 @@ import WebKit
 import UniformTypeIdentifiers
 import Darwin
 
+final class DiagnosticTextView: NSTextView {
+    var stringValue: String {
+        get { string }
+        set {
+            string = newValue
+            scrollRangeToVisible(NSRange(location: 0, length: 0))
+        }
+    }
+
+    func scrollView(width: CGFloat, height: CGFloat) -> NSScrollView {
+        isEditable = false
+        isSelectable = true
+        isRichText = false
+        drawsBackground = false
+        font = .systemFont(ofSize: 13)
+        textColor = .labelColor
+        textContainerInset = NSSize(width: 10, height: 10)
+        minSize = .zero
+        maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        isVerticallyResizable = true
+        isHorizontallyResizable = false
+        autoresizingMask = .width
+        textContainer?.widthTracksTextView = true
+        setAccessibilityLabel("DBabel error details")
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        scroll.drawsBackground = false
+        scroll.borderType = .bezelBorder
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.documentView = self
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        return scroll
+    }
+}
+
 func chooseFile(extensions: [String], directory: Bool = false) -> URL? {
     let panel = NSOpenPanel()
     panel.canChooseDirectories = directory
@@ -243,6 +278,26 @@ final class DesktopController {
     var onWorkbench: (URL) -> Void = { _ in }
     var onProgress: ([String: Any]) -> Void = { _ in }
     var onTranslationFailure: (String) -> Void = { _ in }
+    private var translationFailureDetails: [String: String] = [:]
+    private var providerCheckDetails: [String: String] = [:]
+
+    func lastTranslationFailureDetail(language: String) -> String? {
+        translationFailureDetails[language.lowercased().hasPrefix("zh") ? "zh-CN" : "en"]
+    }
+
+    func lastProviderCheckDetail(language: String) -> String? {
+        providerCheckDetails[language.lowercased().hasPrefix("zh") ? "zh-CN" : "en"]
+    }
+
+    func reportTranslationFailure(manifest: [String: Any]?, error: String,
+                                  language: String, apiKey: String) {
+        for selected in ["zh-CN", "en"] {
+            translationFailureDetails[selected] = Self.translationFailureMessage(
+                manifest: manifest, error: error, language: selected, secrets: [apiKey])
+        }
+        status = lastTranslationFailureDetail(language: language) ?? ""
+        onTranslationFailure(status)
+    }
     var workbenchURL: URL? { didSet { if let url = workbenchURL { onWorkbench(url) } } }
     var status = "" { didSet { onStatus(status) } }
     var busy = false { didSet { onBusy(busy) } }
@@ -445,6 +500,7 @@ final class DesktopController {
     }
 
     func openSession(_ bundle: URL, original: URL? = nil) {
+        translationFailureDetails = [:]
         guard bundle.pathExtension == "dbreview",
               FileManager.default.fileExists(atPath: bundle.path) else {
             status = "Choose an existing .dbreview session. / 请选择已有 .dbreview 会话。"
@@ -517,7 +573,9 @@ final class DesktopController {
 
     func translate(source: URL, from: String, to: String, role: String,
                    provider: URL, apiKey: String, proxyURL: String = "",
-                   temporaryProvider: Bool = false, resumeRun: URL? = nil) {
+                   temporaryProvider: Bool = false, resumeRun: URL? = nil,
+                   language: String = "en") {
+        translationFailureDetails = [:]
         guard FileManager.default.fileExists(atPath: source.path),
               FileManager.default.fileExists(atPath: provider.path),
               !from.trimmingCharacters(in: .whitespaces).isEmpty,
@@ -595,33 +653,22 @@ final class DesktopController {
                         self.openSession(URL(fileURLWithPath: path), original: source)
                         return
                     }
-                    if let failure = manifest?["failure"] as? [String: Any],
-                       let stage = failure["stage"] as? String,
-                       let reason = failure["reason"] as? String {
-                        let heading = stage == "FORMAT_PROBE"
-                            ? "Document preflight stopped before API translation. / 文档预检未通过，尚未调用翻译 API。"
-                            : "Translation stopped at \(stage). / 翻译停在 \(stage) 阶段。"
-                        self.status = heading + "\n" + String(reason.prefix(600))
-                        self.onTranslationFailure(self.status)
-                        return
-                    }
-                    let detail = self.contents(error).trimmingCharacters(in: .whitespacesAndNewlines)
-                    self.status = detail.isEmpty
-                        ? "Translation stopped before human review; inspect the run report. / 翻译未进入人工审核，请检查运行记录。"
-                        : detail
-                    self.onTranslationFailure(self.status)
+                    self.reportTranslationFailure(manifest: manifest, error: self.contents(error),
+                                                  language: language, apiKey: apiKey)
                 }
             }
         } catch {
             if temporaryProvider { try? FileManager.default.removeItem(at: provider) }
             busy = false
-            status = error.localizedDescription
-            onTranslationFailure(status)
+            reportTranslationFailure(manifest: nil, error: error.localizedDescription,
+                                     language: language, apiKey: apiKey)
         }
     }
 
     func checkProvider(provider: URL, apiKey: String, proxyURL: String = "",
+                       language: String = "en",
                        onResult: @escaping (Bool, String) -> Void) {
+        providerCheckDetails = [:]
         do {
             let (output, error) = try logFiles()
             var environment: [String: String] = [:]
@@ -645,35 +692,155 @@ final class DesktopController {
                 DispatchQueue.main.async {
                     try? FileManager.default.removeItem(at: provider)
                     guard let self = self else { return }
+                    let outputText = self.contents(output)
+                    let errorText = self.contents(error)
+                    for selected in ["zh-CN", "en"] {
+                        self.providerCheckDetails[selected] = Self.providerCheckResult(
+                            exitStatus: finished.terminationStatus, output: outputText,
+                            error: errorText, language: selected, secrets: [apiKey]).detail
+                    }
                     let result = Self.providerCheckResult(exitStatus: finished.terminationStatus,
-                                                          output: self.contents(output),
-                                                          error: self.contents(error))
+                                                          output: outputText,
+                                                          error: errorText, language: language,
+                                                          secrets: [apiKey])
                     onResult(result.success, result.detail)
                 }
             }
         } catch {
             try? FileManager.default.removeItem(at: provider)
-            onResult(false, error.localizedDescription)
+            onResult(false, Self.safeErrorText(error.localizedDescription, limit: 6_000, secrets: [apiKey]))
         }
     }
 
     static func providerCheckResult(exitStatus: Int32, output: String,
-                                    error: String) -> (success: Bool, detail: String) {
+                                    error: String, language: String = "en",
+                                    secrets: [String] = []) -> (success: Bool, detail: String) {
+        let chinese = language.lowercased().hasPrefix("zh")
         if let bytes = output.data(using: .utf8),
            let report = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any] {
             if exitStatus == 0, report["status"] as? String == "TASK_READY",
                report["contract_verified"] as? Bool == true {
-                return (true, "Sample translation check passed. / 样本翻译检查通过。")
+                return (true, chinese ? "样本翻译检查通过。" : "Sample translation check passed.")
+            }
+            if let failure = report["error"] as? [String: Any] {
+                return (false, providerErrorMessage(failure, language: language, secrets: secrets))
             }
             if report["status"] as? String == "CONTRACT_FAILED" {
-                let findings = (report["findings"] as? [String] ?? []).joined(separator: "; ")
-                return (false, "API connected, but the sample translation check failed. / API 已连接，样本翻译检查未通过。\n" + findings)
+                let findings = (report["findings"] as? [String] ?? []).prefix(20).joined(separator: "\n")
+                return (false, providerErrorMessage([
+                    "type": "CONTRACT_FAILED", "title_zh": "样本翻译检查未通过", "title_en": "Sample translation check failed",
+                    "explanation_zh": "API 已连接；返回的翻译格式或技术字面量未通过检查。",
+                    "explanation_en": "API connected; the translation format or technical literals failed validation.",
+                    "actions_zh": ["核对接口协议与模型，确认它支持按要求返回翻译 JSON。", "检查下方详情，调整配置后重新测试。"],
+                    "actions_en": ["Check the API protocol and model support for the required translation JSON.", "Review the details below, adjust the configuration, then test again."],
+                    "service_message": findings], language: language, secrets: secrets))
             }
         }
-        let detail = error.trimmingCharacters(in: .whitespacesAndNewlines)
+        let detail = safeErrorText(error, limit: 6_000, secrets: secrets)
         return (false, detail.isEmpty
-            ? "The API test returned no valid task result. / API 测试未返回有效的任务结果。"
-            : detail)
+            ? (chinese ? "API 测试未返回有效的任务结果。请核对服务配置后重新测试。"
+                       : "The API test returned no valid task result. Check the service configuration, then test again.")
+            : (chinese ? "API 测试失败\n\n错误详情\n" : "API test failed\n\nError details\n") + detail
+                + (chinese ? "\n\n操作步骤\n核对服务地址、模型、密钥和网络路由，调整后重新测试。"
+                           : "\n\nNext steps\nCheck the service URL, model, key and network route, then test again."))
+    }
+
+    static func safeErrorText(_ value: String, limit: Int, secrets: [String] = []) -> String {
+        var text = value
+        for secret in secrets where !secret.isEmpty {
+            text = text.replacingOccurrences(of: secret, with: "[REDACTED]")
+        }
+        for (pattern, replacement) in [
+            (#"(?i)\bBearer\s+[^\s,;\"']+"#, "Bearer [REDACTED]"),
+            (#"(?i)\b(api[_-]?key|authorization|access[_-]?token|password|secret)\b([\"']?\s*[:=]\s*[\"']?)[^\s,\"';}]+"#, "$1$2[REDACTED]"),
+            (#"(?i)(https?://)[^/\s@]+@"#, "$1[REDACTED]@"),
+            (#"\b(?:sk|rk|pk)-[A-Za-z0-9_-]{8,}\b"#, "[REDACTED]")
+        ] {
+            if let expression = try? NSRegularExpression(pattern: pattern) {
+                text = expression.stringByReplacingMatches(in: text,
+                    range: NSRange(text.startIndex..., in: text), withTemplate: replacement)
+            }
+        }
+        text = String(String.UnicodeScalarView(text.unicodeScalars.filter {
+            $0.value >= 32 || $0.value == 10 || $0.value == 9
+        })).trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.count > limit ? String(text.prefix(limit)) + "\n…" : text
+    }
+
+    static func providerErrorMessage(_ report: [String: Any], language: String = "en",
+                                     secrets: [String] = []) -> String {
+        let chinese = language.lowercased().hasPrefix("zh")
+        func local(_ zh: String, _ en: String) -> String { chinese ? zh : en }
+        func value(_ key: String, limit: Int = 2_000) -> String {
+            safeErrorText(report[key] as? String ?? "", limit: limit, secrets: secrets)
+        }
+        func localized(_ key: String, limit: Int = 2_000) -> String {
+            let selected = value(key + (chinese ? "_zh" : "_en"), limit: limit)
+            return selected.isEmpty ? value(key + (chinese ? "_en" : "_zh"), limit: limit) : selected
+        }
+        let type = value("type", limit: 100)
+        let title = localized("title", limit: 250)
+        var sections = [local("错误类型：", "Error type: ")
+                        + (title.isEmpty ? local("API 请求失败", "API request failed") : title)
+                        + (type.isEmpty ? "" : " (\(type))")]
+        let explanation = localized("explanation")
+        if !explanation.isEmpty { sections.append(local("原因\n", "Reason\n") + explanation) }
+        let selectedActions = report[chinese ? "actions_zh" : "actions_en"] as? [String] ?? []
+        let alternateActions = report[chinese ? "actions_en" : "actions_zh"] as? [String] ?? []
+        let actions = (selectedActions.isEmpty ? alternateActions : selectedActions).prefix(10)
+            .map { safeErrorText($0, limit: 900, secrets: secrets) }.filter { !$0.isEmpty }
+        if !actions.isEmpty {
+            sections.append(local("操作步骤\n", "Next steps\n") + actions.enumerated()
+                .map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n"))
+        }
+        var service = [String]()
+        if let code = report["http_status"] as? Int, (100...599).contains(code) { service.append("HTTP \(code)") }
+        let message = value("service_message", limit: 4_000)
+        if !message.isEmpty { service.append(message) }
+        if !service.isEmpty {
+            let heading = type == "CONTRACT_FAILED" ? local("检查详情\n", "Check details\n") : local("服务原文\n", "Service response\n")
+            sections.append(heading + service.joined(separator: "\n"))
+        }
+        var diagnostics = [String]()
+        for (key, zh, en, limit) in [("request_id", "请求 ID", "Request ID", 200),
+                                    ("backend", "请求客户端", "Request client", 150),
+                                    ("route", "网络路由", "Network route", 500)] {
+            let item = value(key, limit: limit)
+            if !item.isEmpty { diagnostics.append(local(zh, en) + ": " + item) }
+        }
+        if let attempts = report["attempts"] as? Int, attempts >= 0 {
+            diagnostics.append(local("尝试次数", "Attempts") + ": \(min(attempts, 10_000))")
+        }
+        if !diagnostics.isEmpty { sections.append(local("诊断信息\n", "Diagnostics\n") + diagnostics.joined(separator: "\n")) }
+        return safeErrorText(sections.joined(separator: "\n\n"), limit: 18_000, secrets: secrets)
+    }
+
+    static func translationFailureMessage(manifest: [String: Any]?, error: String,
+                                          language: String = "en", secrets: [String] = []) -> String {
+        let chinese = language.lowercased().hasPrefix("zh")
+        if let failure = manifest?["failure"] as? [String: Any] {
+            if let report = failure["provider_error"] as? [String: Any] {
+                return providerErrorMessage(report, language: language, secrets: secrets)
+            }
+            let reason = safeErrorText(failure["reason"] as? String ?? "", limit: 6_000, secrets: secrets)
+            if !reason.isEmpty {
+                let stage = safeErrorText(failure["stage"] as? String ?? "", limit: 100, secrets: secrets)
+                let heading = stage == "FORMAT_PROBE"
+                    ? (chinese ? "文档预检未通过，尚未调用翻译 API。" : "Document preflight stopped before API translation.")
+                    : (chinese ? "翻译停在 \(stage) 阶段。" : "Translation stopped at \(stage).")
+                return heading + "\n\n" + reason
+            }
+        }
+        if let report = manifest?["error"] as? [String: Any] {
+            return providerErrorMessage(report, language: language, secrets: secrets)
+        }
+        let detail = safeErrorText(error, limit: 6_000, secrets: secrets)
+        return detail.isEmpty
+            ? (chinese ? "翻译未进入人工审核。请查看运行记录中的错误详情，调整后继续本次运行。"
+                       : "Translation stopped before human review. Inspect the run report, make the suggested changes, then resume this run.")
+            : (chinese ? "翻译未完成\n\n错误详情\n" : "Translation did not complete\n\nError details\n") + detail
+                + (chinese ? "\n\n操作步骤\n查看可用运行记录，核对文件和 API 配置，调整后重试。"
+                           : "\n\nNext steps\nInspect the available run report, check the document and API configuration, then retry.")
     }
 
     func close() {

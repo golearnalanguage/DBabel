@@ -13,6 +13,7 @@ from urllib.request import (
     ProxyHandler,
     Request,
     build_opener,
+    proxy_bypass,
 )
 
 from providers.base import (
@@ -27,6 +28,7 @@ from runtime.models import (
     ProviderConfig,
 )
 from providers.protocol import decode_response
+from providers.errors import safe_text, service_message, service_request_id
 
 Transport = Callable[
     [str, Mapping[str, str], bytes, int, int],
@@ -52,6 +54,14 @@ _LOCAL_HOSTS = {
     "127.0.0.1",
     "::1",
 }
+
+
+def _transport_route(url, proxy_mode):
+    parsed = urlparse(url)
+    if parsed.hostname in _LOCAL_HOSTS: return "DIRECT_LOCAL"
+    if proxy_mode == "none": return "DIRECT_CONFIGURED"
+    if proxy_mode == "system" and proxy_bypass(parsed.netloc): return "DIRECT_SYSTEM_BYPASS"
+    return "CUSTOM" if proxy_mode == "custom" else "SYSTEM"
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -174,22 +184,20 @@ def _default_transport(
             404: "API route or model was not found",
             429: "quota or rate limit was reached",
         }.get(exc.code, "service returned an error")
-        detail = ""
+        detail = None
+        credentials = tuple(value for value in (headers.get("Authorization"), headers.get("x-api-key"),
+            headers.get("Authorization", "").removeprefix("Bearer ")) if value)
+        request_id = exc.headers.get("x-request-id") or exc.headers.get("request-id")
         try:
-            payload = json.loads(exc.read(4096).decode("utf-8"))
-            issue = payload.get("error", payload) if isinstance(payload, dict) else {}
-            if isinstance(issue, dict):
-                detail = str(issue.get("message") or issue.get("code") or "")[:350]
+            error_body = exc.read(4096)
+            detail = safe_text(service_message(error_body), credentials)
+            request_id = service_request_id(error_body, exc.headers)
         except (ValueError, UnicodeDecodeError, OSError):
             pass
         finally:
             exc.close()
         if detail:
-            for name in ("Authorization", "x-api-key"):
-                if headers.get(name):
-                    detail = detail.replace(headers[name], "[redacted]")
-            detail = re.sub(r"(?i)(bearer\s+|sk-)[A-Za-z0-9_-]{12,}", "[redacted]", detail)
-            guidance += "; " + detail
+            guidance += "; " + detail[:350]
         error_type = (ProviderResponseInterrupted if exc.code in {408, 504} else
                       ProviderTransientError if exc.code in {409, 425, 429} or 500 <= exc.code <= 599 else ProviderError)
         try:
@@ -199,6 +207,9 @@ def _default_transport(
         raise error_type(
             "provider HTTP error: {} ({})".format(exc.code, guidance),
             status=exc.code, retry_after=retry_after,
+            details={"backend": "stdlib", "route": _transport_route(url, proxy_mode),
+                     "service_message": detail, "request_id": safe_text(request_id, credentials, 128)},
+            secrets=credentials,
         ) from exc
 
     except (IncompleteRead, RemoteDisconnected) as exc:
@@ -310,11 +321,12 @@ class OpenAICompatibleProvider(
         if self._config.api_mode == "anthropic_messages":
             headers.pop("Authorization")
             headers.update({"x-api-key": self._api_key, "anthropic-version": "2023-06-01"})
-        attempts = 0
+        request_attempts = 0
         started = time.monotonic()
         attempt_records = []
         while True:
             body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            diagnostics = {"backend": "stdlib"}
             try:
                 if self._cancel_event is not None and self._cancel_event.is_set():
                     raise ProviderError("provider request cancelled")
@@ -324,10 +336,13 @@ class OpenAICompatibleProvider(
                            and sdk_transport.available(self._config.api_mode)
                            and sdk_transport.compatible(endpoint, self._config.api_mode))
                 if not self._explicit_transport and selected == "sdk" and not use_sdk:
-                    raise ProviderError("official SDK unavailable or endpoint unsupported; install requirements-integration.txt or select stdlib")
+                    raise ProviderError("official SDK unavailable or endpoint unsupported; install requirements-integration.txt or select stdlib", kind="CONFIGURATION_ERROR")
+                request_attempts += 1
                 if self._on_progress:
-                    self._on_progress({"stage": "PROVIDER", "state": "REQUEST_STARTED", "attempt": attempts + 1})
-                diagnostics = {"backend": "stdlib"}
+                    self._on_progress({"stage": "PROVIDER", "state": "REQUEST_STARTED", "attempt": request_attempts})
+                diagnostics = {"backend": "sdk" if use_sdk else "stdlib"}
+                if not use_sdk:
+                    diagnostics["route"] = _transport_route(endpoint, self._config.proxy_mode)
                 if use_sdk:
                     status, raw, diagnostics = sdk_transport.request(endpoint, headers, body,
                         self._config.timeout_seconds, self._config.max_response_bytes,
@@ -359,19 +374,21 @@ class OpenAICompatibleProvider(
                 return GenerationResponse(text=text, model=data.get("model") or self._config.model,
                     provider=self._config.provider, response_id=data.get("id"),
                     usage=data.get("usage") if isinstance(data.get("usage"), dict) else {},
-                    diagnostics={**diagnostics, "attempts": attempts + 1,
+                    diagnostics={**diagnostics, "attempts": request_attempts,
                                  "total_ms": round((time.monotonic() - started) * 1000),
                                  "retry_reasons": attempt_records})
             except (IncompleteRead, RemoteDisconnected, TimeoutError, socket.timeout) as exc:
                 transient = ProviderResponseInterrupted("provider response disconnected or timed out")
                 transient.__cause__ = exc
             except ProviderTransientError as exc:
+                exc.details = {**diagnostics, **exc.details, "attempts": request_attempts}
+                exc._secrets += (self._api_key,)
                 transient = exc
             except ProviderError as exc:
                 safe = str(exc).replace(self._api_key, "[redacted]")
                 # Some gateways reject optional sampling/stream fields. Only
                 # remove a field explicitly named in a 400 rejection, once.
-                if exc.status == 400 and any(word in safe.lower() for word in
+                if request_attempts < 3 and exc.status == 400 and any(word in safe.lower() for word in
                         ("unsupported", "not supported", "not allowed", "unknown", "invalid")):
                     if "temperature" in safe.lower() and "temperature" in payload:
                         payload.pop("temperature")
@@ -379,15 +396,18 @@ class OpenAICompatibleProvider(
                     if "stream" in safe.lower() and payload.get("stream"):
                         payload["stream"] = False
                         continue
-                raise ProviderError(safe, status=exc.status) from exc
-            if attempts >= 2:
-                raise type(transient)("provider request failed after 3 attempts: " +
+                raise ProviderError(safe, status=exc.status, kind=exc.kind,
+                    details={**diagnostics, **exc.details, "attempts": request_attempts},
+                    secrets=exc._secrets + (self._api_key,)) from exc
+            if request_attempts >= 3:
+                raise type(transient)("provider request failed after {} attempts: ".format(request_attempts) +
                     str(transient).replace(self._api_key, "[redacted]"),
-                    status=transient.status, retry_after=transient.retry_after) from transient
-            delay = transient.retry_after or (0.5 * (2 ** attempts))
-            attempt_records.append({"attempt": attempts + 1, "status": transient.status,
+                    status=transient.status, retry_after=transient.retry_after,
+                    kind=transient.kind, details={**diagnostics, **transient.details, "attempts": request_attempts},
+                    secrets=transient._secrets + (self._api_key,)) from transient
+            delay = transient.retry_after or (0.5 * (2 ** (request_attempts - 1)))
+            attempt_records.append({"attempt": request_attempts, "status": transient.status,
                                     "reason": type(transient).__name__})
             if self._on_progress:
-                self._on_progress({"stage": "PROVIDER", "state": "RETRYING", "attempt": attempts + 1})
+                self._on_progress({"stage": "PROVIDER", "state": "RETRYING", "attempt": request_attempts})
             time.sleep(min(60, delay))
-            attempts += 1
